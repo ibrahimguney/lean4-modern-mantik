@@ -29,7 +29,7 @@ inductive Turetilir : List Formul → Formul → Prop where
   | iseG    {Γ A B}  : Turetilir (A :: Γ) B → Turetilir Γ (A ⟹ B)
   | iseE    {Γ A B}  : Turetilir Γ (A ⟹ B) → Turetilir Γ A → Turetilir Γ B
   | botE    {Γ A}    : Turetilir Γ bot → Turetilir Γ A
-  | raa     {Γ A}    : Turetilir (∼A :: Γ) bot → Turetilir Γ A    -- klasik kural
+  | raa     {Γ A}    : Turetilir ((∼A) :: Γ) bot → Turetilir Γ A    -- klasik kural
 -- ANCHOR_END: turetilir
 
 /-! ## 11.2  Türetim örnekleri -/

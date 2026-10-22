@@ -26,7 +26,8 @@ theorem sifir_ard_degil (n : Dogal) : sifir ≠ ard n := by
 
 theorem ard_birebir (n m : Dogal) (h : ard n = ard m) : n = m := by
   injection h with h'            -- kurucular birebirdir: h' : n = m
-  exact h'
+                                 -- h' tam olarak hedef olduğu için injection
+                                 -- hedefi kendiliğinden kapatır
 -- ANCHOR_END: peano_teorem
 
 /-! ## 7.3  Özyineleme -/
@@ -140,7 +141,7 @@ end Dogal
 -- number of parameters: 0
 -- constructors:
 -- Nat.zero : Nat
--- Nat.succ (n : Nat) : Nat
+-- Nat.succ : Nat → Nat
 -- ANCHOR_END: nat_print
 
 -- ANCHOR: nat_sifir_arti

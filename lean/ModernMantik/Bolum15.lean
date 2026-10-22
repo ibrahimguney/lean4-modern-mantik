@@ -206,21 +206,23 @@ theorem em_ornek (p : Prop) : p ∨ ¬p := Classical.em p
 
 -- ANCHOR: ozyineleyici
 #check @Vek.rec
--- @Vek.rec : {α : Type u} → {motive : (a : Nat) → Vek α a → Sort u_1} →
---   motive 0 Vek.bos →
---   ({n : Nat} → (a : α) → (a_1 : Vek α n) → motive n a_1 →
---      motive (n + 1) (Vek.ekle a a_1)) →
---   {a : Nat} → (t : Vek α a) → motive a t
+-- @Vek.rec : {α : Type u_2} →
+--   {motive : (a : Nat) → Vek α a → Sort u_1} →
+--     motive 0 bos →
+--       ({n : Nat} → (a : α) → (a_1 : Vek α n) → motive n a_1 →
+--          motive (n + 1) (ekle a a_1)) →
+--         {a : Nat} → (t : Vek α a) → motive a t
 #check @Exists.intro
--- @Exists.intro : ∀ {α : Sort u} {p : α → Prop} (w : α), p w → Exists p
+-- @Exists.intro : ∀ {α : Sort u_1} {p : α → Prop} (w : α), p w → Exists p
 -- ANCHOR_END: ozyineleyici
 
 -- ANCHOR: elaborasyon
 -- Yazdığımız ifade ile çekirdeğin gördüğü terim:
 set_option pp.all true in
 #check fun (x : Nat) => x + 1
--- fun (x : Nat) => @HAdd.hAdd.{0, 0, 0} Nat Nat Nat
---   (@instHAdd.{0} Nat instAddNat) x (@OfNat.ofNat.{0} Nat 1 (instOfNatNat 1))
+-- fun (x : Nat) =>
+--   @HAdd.hAdd.{0, 0, 0} Nat Nat Nat (@instHAdd.{0} Nat instAddNat) x
+--     (@OfNat.ofNat.{0} Nat (nat_lit 1) (instOfNatNat (nat_lit 1))) : (x : Nat) → Nat
 -- ANCHOR_END: elaborasyon
 
 end Bolum15

@@ -110,7 +110,7 @@ theorem Tamsayi.topla_ters (x : Tamsayi) : x + -x = Tamsayi.sifir :=
     show (a.1 + a.2) + 0 = 0 + (a.2 + a.1)
     omega)
 
-#print axioms Tamsayi.topla_degisme      -- Quot.sound içerir; Classical.choice içermez
+#print axioms Tamsayi.topla_degisme      -- [propext, Quot.sound]
 -- ANCHOR_END: tamsayi_teorem
 
 /-! ## 16.3  Fonksiyon dışsallığı, Quot.sound'dan -/

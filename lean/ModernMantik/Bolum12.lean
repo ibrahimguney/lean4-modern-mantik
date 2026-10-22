@@ -47,7 +47,7 @@ theorem ucuncu_hal (Δ : List Formul) (B : Formul) : Turetilir Δ (B ⋁ ∼B) :
 
 -- Durum ayrımı: B'den de ∼B'den de A çıkıyorsa A çıkar.
 theorem durum_ayrimi {Γ : List Formul} {A B : Formul}
-    (h1 : Turetilir (B :: Γ) A) (h2 : Turetilir (∼B :: Γ) A) : Turetilir Γ A :=
+    (h1 : Turetilir (B :: Γ) A) (h2 : Turetilir ((∼B) :: Γ) A) : Turetilir Γ A :=
   Turetilir.veyaE (ucuncu_hal Γ B) h1 h2
 -- ANCHOR_END: ucuncu_hal
 
@@ -129,7 +129,7 @@ theorem isaretli_dogru {v : Degerleme} {n : Nat} (h : v n = true) :
   simp [isaretli, h]
 
 theorem isaretli_yanlis {v : Degerleme} {n : Nat} (h : v n = false) :
-    isaretli v n = ∼(atom n) := by
+    isaretli v n = (∼(atom n)) := by
   simp [isaretli, h]
 
 -- n < k ise n'inci işaretli atom bağlamdadır.
@@ -273,9 +273,9 @@ theorem atom_ele {A : Formul} {j : Nat}
     rw [atomBaglami_ardil, i, e] at t
     exact t
   -- 2. satır: pⱼ yanlış
-  have h2 : Turetilir (∼(atom j) :: atomBaglami v j) A := by
+  have h2 : Turetilir ((∼(atom j)) :: atomBaglami v j) A := by
     have t := h (ata v j false)
-    have i : isaretli (ata v j false) j = ∼(atom j) := isaretli_yanlis (by simp [ata])
+    have i : isaretli (ata v j false) j = (∼(atom j)) := isaretli_yanlis (by simp [ata])
     rw [atomBaglami_ardil, i, e] at t
     exact t
   -- pⱼ ⋁ ∼pⱼ ile birleştir:

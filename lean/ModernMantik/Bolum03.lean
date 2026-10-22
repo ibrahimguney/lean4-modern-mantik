@@ -35,7 +35,7 @@ theorem ex_falso' (P : Prop) : False → P := by
 
 -- ANCHOR: not_tanim
 #check @Not            -- Not : Prop → Prop
-#print Not             -- def Not : Prop → Prop := fun a => a → False
+#print Not             -- def Not : Prop → Prop := fun a => a → False  (öznitelikleriyle birlikte)
 -- ANCHOR_END: not_tanim
 
 -- ANCHOR: degil_giris
