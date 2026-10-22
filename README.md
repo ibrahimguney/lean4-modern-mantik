@@ -109,8 +109,7 @@ Kutu ortamları: `tanim`, `teorem`, `ornek` (numaralı); `onemlifikir`,
 - [x] Mathlib bağımlılığı eklendi (Bölüm 8).
 - [ ] `kaynakca.bib` içindeki `[DOĞRULA]` girdilerini kontrol et.
 - [x] Cilt I tamamlandı: Kısım I–IV (Bölüm 1–16) ve Kısım V (Bölüm 17: Projeler, Sonsöz).
-- [ ] Cilt I: ilk tam `lake build` ve çıkan hataların düzeltilmesi
-      (Lean kodu yazım ortamında derlenemedi).
+- [x] Cilt I: bütün Lean kodu Lean 4.35.0 + Mathlib v4.35.0 ile derleniyor (CI yeşil).
 - [ ] Cilt I: yazar adı (`ana.tex` içindeki `\yazar`) ve son okuma.
 - [ ] Cilt II: ayrı bir depo/kök dosya (`cilt2/ana.tex`) olarak başlat;
       Cilt I'deki `\ciltiki{n}` göndermeleri Cilt II'nin bölüm numaralarına uyar.
