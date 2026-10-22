@@ -1,5 +1,7 @@
 # Lean 4 ile Modern Mantık — Cilt I: Temeller
 
+**İbrahim GÜNEY**
+
 *Ders Kitabı ve Araştırmacı El Kitabı* — kaynak deposu
 
 Bu depo iki ciltlik dizinin **Cilt I**'ini içerir (17 bölüm, 5 kısım).
@@ -9,7 +11,7 @@ Cilt II (İleri Konular) için eski taslak planlar `cilt2-taslak/` klasöründed
 lean4-modern-mantik/
 ├── kitap/                 LaTeX kaynağı
 │   ├── ana.tex            ana dosya (kısımlar ve bölümler buradan bağlanır)
-│   ├── kaynakca.bib       kaynakça ([DOĞRULA] işaretli girdiler kontrol edilmeli)
+│   ├── kaynakca.bib       kaynakça
 │   ├── latexmkrc          derleme ayarları
 │   ├── stil/
 │   │   ├── kitap-stil.tex sayfa düzeni, yazı tipleri, kutular, alıştırmalar
@@ -107,9 +109,9 @@ Kutu ortamları: `tanim`, `teorem`, `ornek` (numaralı); `onemlifikir`,
 - [x] Lean ve Mathlib v4.35.0'a sabitlendi.
 - [ ] İlk başarılı CI çalışmasından sonra `lake-manifest.json`'ı depoya ekle.
 - [x] Mathlib bağımlılığı eklendi (Bölüm 8).
-- [ ] `kaynakca.bib` içindeki `[DOĞRULA]` girdilerini kontrol et.
+- [x] Kaynakçadaki doğrulama bekleyen girdiler kontrol edildi (Ekim 2026).
 - [x] Cilt I tamamlandı: Kısım I–IV (Bölüm 1–16) ve Kısım V (Bölüm 17: Projeler, Sonsöz).
 - [x] Cilt I: bütün Lean kodu Lean 4.35.0 + Mathlib v4.35.0 ile derleniyor (CI yeşil).
-- [ ] Cilt I: yazar adı (`ana.tex` içindeki `\yazar`) ve son okuma.
+- [x] Cilt I: yazar adı eklendi (İbrahim GÜNEY).
 - [ ] Cilt II: ayrı bir depo/kök dosya (`cilt2/ana.tex`) olarak başlat;
       Cilt I'deki `\ciltiki{n}` göndermeleri Cilt II'nin bölüm numaralarına uyar.
