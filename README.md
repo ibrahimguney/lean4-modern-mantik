@@ -45,21 +45,19 @@ derleme başında otomatik olarak çıkarılabilmesi için gereklidir.
 
 ## Lean kodunu denetlemek
 
-Bölüm 8'den itibaren proje **Mathlib**'e bağlıdır. Mathlib belirli bir Lean
-sürümüyle çalışır; bu yüzden ilk kurulumda projenin Lean sürümünü
-Mathlib'inkiyle eşleyin:
+Bölüm 8'den itibaren proje **Mathlib**'e bağlıdır. Lean sürümü (`lean/lean-toolchain`)
+ve Mathlib sürümü (`lean/lakefile.toml` içindeki `rev`) birlikte **v4.35.0**'a
+sabitlenmiştir. İlk kurulumda:
 
 ```bash
 cd lean
-# 1. Mathlib'in kullandığı Lean sürümünü al
-curl -L https://raw.githubusercontent.com/leanprover-community/mathlib4/master/lean-toolchain -o lean-toolchain
-# 2. Bağımlılıkları indir
-lake update
-# 3. Mathlib'in önceden derlenmiş dosyalarını indir (saatler sürecek derlemeyi önler)
-lake exe cache get
-# 4. Kitabın bütün kodunu denetle
-lake build
+lake update          # lake-manifest.json üretir (Mathlib v4.35.0 ve bağımlılıkları)
+lake exe cache get   # Mathlib'in önceden derlenmiş dosyaları
+lake build           # kitabın bütün kodunu denetle
 ```
+
+Sürümü yükseltmek için `lean-toolchain` ile `rev` değerini aynı Mathlib
+etiketine birlikte çekin ve yukarıdaki üç komutu yeniden çalıştırın.
 
 `lake exe cache get` adımını atlamayın: Mathlib'i sıfırdan derlemek
 saatler sürer.
@@ -106,8 +104,8 @@ Kutu ortamları: `tanim`, `teorem`, `ornek` (numaralı); `onemlifikir`,
 
 ## Yapılacaklar
 
-- [ ] `lean-toolchain` dosyasını ilk başarılı `lake build` sonrasında belirli
-      bir sürüme sabitle (şu an `stable`).
+- [x] Lean ve Mathlib v4.35.0'a sabitlendi.
+- [ ] İlk başarılı CI çalışmasından sonra `lake-manifest.json`'ı depoya ekle.
 - [x] Mathlib bağımlılığı eklendi (Bölüm 8).
 - [ ] `kaynakca.bib` içindeki `[DOĞRULA]` girdilerini kontrol et.
 - [x] Cilt I tamamlandı: Kısım I–IV (Bölüm 1–16) ve Kısım V (Bölüm 17: Projeler, Sonsöz).

@@ -3,18 +3,49 @@ name: Kitabı ve Lean kodunu derle
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   lean:
     name: Lean kodunu denetle
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: leanprover/lean-action@v1
+
+      - name: elan (Lean sürüm yöneticisi) kur
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          bash elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Bağımlılıkları çöz (lake-manifest.json)
+        working-directory: lean
+        run: lake update
+
+      - name: Mathlib önbelleğini indir
+        working-directory: lean
+        run: lake exe cache get
+
+      - name: Derle
+        working-directory: lean
+        run: |
+          set -o pipefail
+          lake build 2>&1 | tee build.log
+
+      - name: Hataları işaretle
+        if: failure()
+        run: python3 araclar/lean_hatalari.py lean/build.log
+
+      - name: Günlük ve manifest
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          lake-package-directory: lean
-          use-mathlib-cache: true
-      # Ana bölüm dosyalarında 'sorry' kalmasın (alıştırmalar hariç)
+          name: lean-derleme
+          path: |
+            lean/build.log
+            lean/lake-manifest.json
+
+      # Ana bölüm dosyalarında 'sorry' kalmasın (alıştırmalar ve projeler hariç)
       - name: Bölüm dosyalarında sorry denetimi
         run: |
           if grep -n "sorry" lean/ModernMantik/Bolum*.lean lean/ModernMantik/Cozumler/*.lean; then
@@ -23,17 +54,29 @@ jobs:
 
   kitap:
     name: Kitabı derle (XeLaTeX)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: xu-cheng/latex-action@v3
-        with:
-          root_file: ana.tex
-          working_directory: kitap
-          latexmk_use_xelatex: true
-          latexmk_shell_escape: true
-          extra_system_packages: "py3-pygments python3"
-      - uses: actions/upload-artifact@v4
+
+      - name: TeX Live, yazı tipleri ve Pygments
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-xetex texlive-latex-base texlive-latex-recommended \
+            texlive-latex-extra texlive-fonts-recommended texlive-pictures \
+            texlive-science texlive-lang-greek latexmk \
+            fonts-dejavu fonts-texgyre fonts-lmodern python3-pygments
+
+      - name: Kitabı derle
+        working-directory: kitap
+        run: |
+          latexmk ana.tex || { grep -n -A3 "^!" ana.log | head -60; exit 1; }
+
+      - name: PDF ve günlük
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: kitap-pdf
-          path: kitap/ana.pdf
+          path: |
+            kitap/ana.pdf
+            kitap/ana.log
