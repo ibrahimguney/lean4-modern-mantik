@@ -1,0 +1,4 @@
+# latexmk yapılandırması — Lean 4 ile Modern Mantık
+$pdf_mode = 5;                       # XeLaTeX
+$xelatex = 'xelatex -shell-escape -interaction=nonstopmode -synctex=1 %O %S';
+$bibtex_use = 2;

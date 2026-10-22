@@ -1,0 +1,616 @@
+% =====================================================================
+%  Bölüm 15 — Bağımlı Tipler ve Lean'in Çekirdeği
+% =====================================================================
+\chapter{Bağımlı Tipler ve Lean'in Çekirdeği}\label{bol:bagimli}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Bağımlı fonksiyon ($Π$) ve bağımlı çift ($Σ$) tiplerini ve bunların
+        $\forall$ ve $\exists$ ile ilişkisini,
+  \item Tip aileleriyle ``doğruluğu tipine yazılmış'' veri yapıları kurmayı
+        (uzunluk indisli vektörler, \lc{Fin}),
+  \item Martin-Löf tip kuramını, İnşalar Hesabını ve $\lambda$-küpünü,
+  \item \Lean{}'in evren hiyerarşisini ve \lc{Prop}'un impredikatifliğini,
+  \item Kanıt-ilgisizliğini, tanımsal ve önermesel eşitlik ayrımını,
+  \item \Lean{}'in güvenilir çekirdeğini ve \leankw{\#print} \lc{axioms}
+        komutunu.
+\end{itemize}
+\end{bolumhedefleri}
+
+Bölüm~14'teki basit tiplerde terimler ve tipler iki ayrı dünyada
+yaşıyordu: Tipler terimlere bağlı olamıyordu. $A \Rightarrow B$ yazabiliyor,
+ama ``$n$ uzunluğunda listeler'' gibi bir tip yazamıyorduk. Bu bölümde iki
+dünyayı birleştiriyoruz. Tiplerin terimlere bağlı olabildiği bir dilde,
+yani \emph{bağımlı tip kuramında}, Curry--Howard eşlemesi önermeler
+mantığından yüklemler mantığına genişler: $\forall$ bir bağımlı fonksiyon,
+$\exists$ ise bir bağımlı çift olur. \Lean{}'in kendisi böyle bir dildir.
+Bu bölümün sonunda \Lean{}'in çekirdeğinin neye inandığını ve neden ona
+güvenebileceğimizi anlatacağız.
+
+% ---------------------------------------------------------------------
+\section{$Π$-tipleri: bağımlı fonksiyonlar}\label{sec:pi}
+
+Sıradan bir fonksiyon $f : A \to B$, her $a : A$ için \emph{aynı} $B$
+tipinde bir değer döndürür. Bağımlı bir fonksiyonun dönüş tipi ise
+argümana göre değişebilir:
+\[
+  f : \prod_{x : A} B(x)
+  \qquad\text{\Lean{}'de}\qquad
+  f : (x : A) \to B\;x .
+\]
+Burada $B : A \to \mathsf{Type}$ bir \emph{tip ailesidir}: Her $x$'e bir
+tip atar. Basit bir örnekle başlayalım:
+
+\leandosya[Π-tipleri]{Bolum15}{pi}
+
+\noindent \lc{ornekDeger true} bir doğal sayı, \lc{ornekDeger false} ise
+bir metindir. \Cref{fig:pi-sigma-lif}'nın sol tarafı bunu geometrik olarak
+gösteriyor. Bir tip ailesini, taban tipin her noktasının üzerinde duran
+bir ``lif'' olarak düşünebiliriz. Bağımlı bir fonksiyon, her lif üzerinden
+bir nokta seçer.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    lif/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                minimum width=1.6cm, minimum height=2.6cm},
+    nokta/.style={circle, fill=#1, inner sep=2.2pt},
+  ]
+  % --- Π ---
+  \node[font=\baslikfont\bfseries, text=anarenk] at (1.6,3.6) {$Π$: her liften bir nokta};
+  \node[lif=anarenk] (l1) at (0.6,1.6) {};
+  \node[lif=ikincil] (l2) at (2.6,1.6) {};
+  \node[font=\baslikfont\scriptsize, text=anarenk] at (0.6,3.05) {\lc{Nat}};
+  \node[font=\baslikfont\scriptsize, text=ikincil] at (2.6,3.05) {\lc{String}};
+  \node[nokta=teoremframe] (p1) at (0.6,1.9) {};
+  \node[nokta=teoremframe] (p2) at (2.6,1.2) {};
+  \node[font=\scriptsize, right=1pt of p1] {42};
+  \node[font=\scriptsize, right=1pt of p2] {``kırk iki''};
+  \draw[very thick, black!60] (-0.2,-0.2) -- (3.4,-0.2);
+  \node[nokta=black!70] (b1) at (0.6,-0.2) {};
+  \node[nokta=black!70] (b2) at (2.6,-0.2) {};
+  \node[font=\scriptsize, below=2pt of b1] {\lc{true}};
+  \node[font=\scriptsize, below=2pt of b2] {\lc{false}};
+  \node[font=\baslikfont\scriptsize, text=black!55] at (4.0,-0.2) {\lc{Bool}};
+  \draw[teoremframe, thick, dashed] (p1) -- (p2);
+  % --- Σ ---
+  \begin{scope}[xshift=7.2cm]
+  \node[font=\baslikfont\bfseries, text=ikincil] at (1.6,3.6) {$Σ$: liflerin ayrık birleşimi};
+  \node[lif=anarenk] at (0.6,1.6) {};
+  \node[lif=ikincil] at (2.6,1.6) {};
+  \node[font=\baslikfont\scriptsize, text=anarenk] at (0.6,3.05) {\lc{Vek Nat 0}};
+  \node[font=\baslikfont\scriptsize, text=ikincil] at (2.6,3.05) {\lc{Vek Nat 2}};
+  \node[nokta=teoremframe] (q) at (2.6,1.6) {};
+  \node[font=\scriptsize, below=2pt of q, align=center] {\lc{⟨2, [7,8]⟩}};
+  \draw[very thick, black!60] (-0.2,-0.2) -- (3.4,-0.2);
+  \node[nokta=black!70] (c1) at (0.6,-0.2) {};
+  \node[nokta=black!70] (c2) at (2.6,-0.2) {};
+  \node[font=\scriptsize, below=2pt of c1] {0};
+  \node[font=\scriptsize, below=2pt of c2] {2};
+  \node[font=\scriptsize, text=black!55] at (1.6,1.6) {$\cdots$};
+  \node[font=\baslikfont\scriptsize, text=black!55] at (4.0,-0.2) {\lc{Nat}};
+  \end{scope}
+\end{tikzpicture}
+\caption{Bir tip ailesini, taban tipin her noktası üzerinde duran bir
+lif olarak düşünmek. Solda: bir $Π$-tipi elemanı, \emph{her} liften bir
+nokta seçer (bir ``kesit''). Sağda: bir $Σ$-tipi elemanı, \emph{bir} lif
+ve o liften bir noktadır.}
+\label{fig:pi-sigma-lif}
+\end{figure}
+
+\noindent Bu bakış açısı Bölüm~6'da $\forall$ için verdiğimiz okumayla
+örtüşür: $\forall x,\, P\,x$'in bir kanıtı, her $x$ için $P\,x$'in bir
+kanıtını veren bir fonksiyondur. Yani \emph{$\forall$, dönüş tipi
+\lc{Prop} olan bir $Π$-tipidir}. \lc{pi} kesitindeki son satır bunu
+doğruluyor. \Lean{}'de \lc{∀ n : Nat, P n} ile \lc{(n : Nat) → P n} aynı
+terimdir. $A \to B$ ise $B$'nin $x$'e bağlı olmadığı özel durumdur.
+
+% ---------------------------------------------------------------------
+\section{Doğruluğu tipine yazılmış veri: vektörler}\label{sec:vektor}
+
+Bağımlı tiplerin programlamadaki en bilinen kullanımı, bir veri yapısının
+bir özelliğini tipine yazmaktır. Bölüm~9'daki \lc{Liste} tipinin boş bir
+listenin başını almaya çalışınca ne yapacağı belli değildi; \lc{Option}
+döndürmek zorundaydık. Uzunluğu tipinde taşıyan bir vektör tipi bu
+sorunu ortadan kaldırır:
+
+\leandosya[Uzunluk indisli vektörler]{Bolum15}{vek}
+
+\noindent \lc{Vek α n}, Bölüm~9'da gördüğümüz \emph{tümevarımsal
+ailelerin} bir örneğidir: \lc{α} bir \emph{parametre}, \lc{n} ise bir
+\emph{indistir}. Kurucular indisi belirler: \lc{bos}'un uzunluğu 0,
+\lc{ekle a v}'ninki \lc{v}'ninkinden bir fazladır. Fonksiyonlara
+bakalım:
+
+\begin{itemize}
+  \item \lc{bas}, yalnızca \lc{Vek α (n + 1)} kabul eder. Boş bir vektörün
+        tipi \lc{Vek α 0}'dır ve \lc{0}, \lc{n + 1} biçiminde değildir.
+        Bu yüzden \lc{bas}'ın tanımında \lc{bos} durumu yoktur: \Lean{} bu
+        durumun \emph{olanaksız} olduğunu kendisi görür.
+  \item \lc{fermuar}, iki vektörün aynı uzunlukta olmasını \emph{tipinde}
+        ister. Uzunlukları farklı iki vektörü fermuarlamaya çalışmak bir
+        çalışma zamanı hatası değil, bir tip hatasıdır.
+  \item \lc{birlestir}'in sonuç tipi \lc{Vek α (n + m)}'dir. Tanım,
+        \lc{Nat.add}'ın ikinci argümanı üzerinde özyinelemeli olmasından
+        yararlanır. \lc{bos} durumunda \lc{n + 0} ile \lc{n}, \lc{ekle}
+        durumunda \lc{n + (k + 1)} ile \lc{(n + k) + 1} \emph{tanımsal
+        olarak} eşittir.
+\end{itemize}
+
+\leandosya[Vektörlerle çalışmak]{Bolum15}{vek_ornek}
+
+\begin{dikkat}[Dikkat: İndis aritmetiği]
+\lc{birlestir}'in sonuç tipini \lc{Vek α (m + n)} diye yazsaydık
+tanım reddedilirdi. \lc{bos} durumunda \lc{0 + n} ile \lc{n}
+\emph{tanımsal} olarak eşit değildir; yalnızca \emph{önermesel} olarak
+eşittir (\lc{Nat.zero\_add}). Bağımlı tiplerle programlamanın en sık
+karşılaşılan güçlüğü budur. Tip denetleyici yalnızca hesaplayarak görülen
+eşitlikleri kabul eder; geri kalanlar için eşitliği açıkça kanıtlayıp
+\lc{h ▸ v} ile ``taşımak'' gerekir (\cref{sec:tanimsal}).
+\end{dikkat}
+
+\subsection{\lc{Fin}: güvenli indisleme}
+
+\lc{Fin n}, $n$'den küçük doğal sayıların tipidir. Bir sayı ile onun $n$'den
+küçük olduğunun kanıtından oluşan bir yapıdır. \lc{Vek α n}'yi \lc{Fin n}
+ile indislemek ``dizi sınırı aşıldı'' hatasını tip düzeyinde olanaksız
+kılar:
+
+\leandosya[Fin ile indisleme]{Bolum15}{al}
+
+\noindent \lc{al}'ın tanımında \lc{bos} durumunda \lc{Fin 0}'ın elemanı
+olmadığı için \lc{Fin.elim0} kullanıyoruz. Özyinelemeli durumda, $i + 1 <
+k + 1$ kanıtından $i < k$ kanıtını \lc{Nat.lt\_of\_succ\_lt\_succ} ile
+elde ediyoruz. Veri ile kanıt bu fonksiyonda iç içedir.
+
+% ---------------------------------------------------------------------
+\section{Bağımlı tipler üzerinde ispat}\label{sec:bagimli-ispat}
+
+Vektörleri ters çeviren bir fonksiyon yazalım ve iki kez ters
+çevirmenin vektörü değiştirmediğini ispatlayalım. Bölüm~9'da aynı teoremi
+listeler için ispatlamıştık. Burada tipler, ters çevirmenin uzunluğu
+koruduğunu zaten garanti ediyor:
+
+\leandosya[Ters çevirme]{Bolum15}{ters}
+
+\noindent İspatlar, listelerdekilerle neredeyse aynıdır. Fark, tümevarımın
+artık bir \emph{tümevarımsal aile} üzerinde yapılmasıdır. \leantac{induction}
+\lc{v}, \lc{v}'nin uzunluğunu da otomatik olarak genelleştirir. \lc{ekle}
+durumunda uzunluk \lc{k + 1}, tümevarım hipotezinde ise \lc{k}'dır.
+
+\leandosya[Eşitlik boyunca taşıma]{Bolum15}{donustur}
+
+\noindent \lc{h ▸ v} ifadesi, \lc{h : n = m} eşitliğini kullanarak \lc{v}'yi
+\lc{Vek α n} tipinden \lc{Vek α m} tipine ``taşır''. Bölüm~9'daki \lc{Esit}
+tanımının eleme ilkesi tam olarak budur: Eşit şeyler, birbirinin yerine
+konabilir.
+
+% ---------------------------------------------------------------------
+\section{$Σ$-tipleri: bağımlı çiftler}\label{sec:sigma}
+
+$Σ$-tipleri, $Π$-tiplerinin ikizidir. $\sum_{x : A} B(x)$ tipinin bir
+elemanı, bir $a : A$ ile bir $b : B(a)$'dan oluşan bir çifttir. İkinci
+bileşenin tipi birinci bileşene bağlıdır. \Lean{}'de üç çeşidi vardır:
+
+\leandosya[Σ-tipleri, alt tipler ve $\exists$]{Bolum15}{sigma}
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.1cm}
+                >{\raggedright\arraybackslash}p{2.3cm}
+                >{\raggedright\arraybackslash}p{2.5cm}
+                >{\raggedright\arraybackslash}p{3.8cm}}
+\rowcolor{tabloust}
+\tablobaslik{Yazım} & \tablobaslik{İkinci bileşen} & \tablobaslik{Sonuç} & \tablobaslik{Tanık çıkarılabilir mi?} \\
+\lc{(x : α) × β x}     & veri (\lc{Type})  & veri (\lc{Type}) & evet: \lc{.1} \\
+\lc{\{x : α // P x\}}  & kanıt (\lc{Prop}) & veri (\lc{Type}) & evet: \lc{.val} \\
+\lc{∃ x : α, P x}      & kanıt (\lc{Prop}) & önerme (\lc{Prop}) & hayır (yalnızca bir kanıt içinde) \\
+\end{tabular}
+\caption{\Lean{}'deki üç $Σ$-tipi. Fark, sonucun hangi evrende yaşadığıdır.}
+\label{tab:sigma-cesitleri}
+\end{table}
+
+\noindent Tablonun son satırı önemlidir. \lc{∃ n, n > 3}'ün bir kanıtından,
+\emph{bir program içinde} tanığı (4'ü) çıkaramayız:
+
+\begin{leanhata}[Lean hata mesajı (özet)]
+def tanik (h : ∃ n : Nat, n > 3) : Nat :=
+  match h with | ⟨n, _⟩ => n
+-- hata: Exists.casesOn yalnızca Prop'a eleme yapabilir
+\end{leanhata}
+
+\noindent Bunun nedeni bir sonraki kesimde göreceğimiz
+\emph{kanıt-ilgisizliğidir}: Bir önermenin iki kanıtı \Lean{} için ayırt
+edilemez. \lc{∃ n, n > 3}'ün biri 4'ü, diğeri 5'i tanık gösteren iki kanıtı
+\emph{aynı} sayılır. Kanıttan tanığı çıkaran bir fonksiyon, aynı girdiye
+iki farklı cevap vermek zorunda kalırdı. Bu yüzden \lc{Prop}'tan
+\lc{Type}'a ``büyük eleme'' genel olarak yasaktır. Bir \emph{ispat içinde}
+ise tanığı kullanmak serbesttir (\leantac{obtain} \lc{⟨n, hn⟩ := h}), çünkü
+sonuç yine bir önermedir. Bu kısıtlama, Bölüm~4'teki yapıcı/klasik
+tartışmasının bir başka yüzüdür: \Lean{}'de varlık kanıtları
+\emph{hesaplama içeriği taşımaz}. Hesaplama içeriği isteniyorsa $Σ$ ya da
+alt tip kullanılır.
+
+% ---------------------------------------------------------------------
+\section{Martin-Löf tip kuramı}\label{sec:mltt}
+
+Bağımlı tiplerin mantık için sistemli bir kuramını İsveçli mantıkçı Per
+Martin-Löf 1970'lerde geliştirdi \citep{martinlof1984}. Martin-Löf tip
+kuramında (MLTT) her tip oluşturucu dört tür kuralla tanıtılır. Bu kalıp,
+Bölüm~5'teki giriş/eleme kurallarının tiplere genişletilmiş hâlidir:
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.6}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.4cm} X X}
+\rowcolor{tabloust}
+\tablobaslik{Kural} & \tablobaslik{$Π$} & \tablobaslik{$Σ$} \\
+oluşum   & $A$ tip, $x{:}A \vdash B$ tip $\Rightarrow$ $Π_{x:A} B$ tip & $A$ tip, $x{:}A \vdash B$ tip $\Rightarrow$ $Σ_{x:A} B$ tip \\
+giriş    & $x{:}A \vdash b : B$ $\Rightarrow$ $\lambda x.\, b : Π_{x:A} B$ & $a : A$, $b : B[a/x]$ $\Rightarrow$ $\langle a, b\rangle : Σ_{x:A}B$ \\
+eleme    & $f : Π_{x:A}B$, $a : A$ $\Rightarrow$ $f\,a : B[a/x]$ & $p : Σ_{x:A}B$ $\Rightarrow$ $p.1 : A$, $p.2 : B[p.1/x]$ \\
+hesaplama & $(\lambda x.\, b)\,a \equiv b[a/x]$ \hfill($\beta$) & $\langle a, b\rangle.1 \equiv a$, $\langle a, b\rangle.2 \equiv b$ \\
+\end{tabularx}
+\caption{Martin-Löf tip kuramında $Π$ ve $Σ$ için kurallar. $\equiv$,
+tanımsal eşitliktir.}
+\label{tab:mltt}
+\end{table}
+
+\noindent MLTT'nin üçüncü temel tipi \emph{özdeşlik tipidir}: $a =_A b$.
+Bölüm~9'da \lc{Esit} olarak tanımladığımız tümevarımsal aile budur. Tek
+kurucusu $\mathsf{refl} : a = a$'dır, eleme ilkesi ise ``eşitleri
+birbirinin yerine koyma''dır (\lc{▸}). Özdeşlik tiplerinin beklenmedik
+derecede zengin bir yapısı vardır. Bir $p : a = b$ kanıtını $a$'dan $b$'ye
+bir \emph{yol} olarak düşünmek, \emph{homotopi tip kuramına} götürür
+\citep{hott2013}.
+
+\begin{tarihce}[Tarihçe: Martin-Löf'ten Lean'e]
+Martin-Löf'ün ilk sistemi (1971) $\mathsf{Type} : \mathsf{Type}$ kuralını
+içeriyordu. Jean-Yves Girard aynı yıl bu sistemin tutarsız olduğunu
+gösterdi \citep{girard1972}. Martin-Löf bunun üzerine evren hiyerarşisini
+getirdi. Thierry Coquand ve Gérard Huet 1988'de \emph{İnşalar Hesabını}
+(Calculus of Constructions, CoC) tanıttılar \citep{coquand1988}. Christine
+Paulin-Mohring ve Coquand bu sisteme tümevarımsal tipleri ekleyerek
+\emph{Tümevarımsal İnşalar Hesabını} (CIC) kurdular \citep{paulin1993}.
+CIC, Coq'un (bugün Rocq) temelidir. \Lean{}'in tip kuramı da CIC'nin bir
+çeşitlemesidir \citep{demoura2021lean4,carneiro2019}.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{İnşalar Hesabı ve evrenler}\label{sec:evrenler}
+
+\subsection{$\lambda$-küpü}
+
+Basit tipli $\lambda$-hesabından \Lean{}'e giden yolu, Barendregt'in
+$\lambda$-küpü ile görselleştirebiliriz \citep{barendregt1991}. Basit
+tiplerde yalnızca \emph{terimlere bağlı terimler} vardır (sıradan
+fonksiyonlar). Küpün üç ekseni üç yeni bağımlılık ekler
+(\cref{fig:lambda-kup}):
+
+\begin{itemize}
+  \item \textbf{Tiplere bağlı terimler} (çok biçimlilik): \lc{id : (α :
+        Type) → α → α}. Sistem F \citep{girard1989}.
+  \item \textbf{Tiplere bağlı tipler} (tip oluşturucular): \lc{List :
+        Type → Type}.
+  \item \textbf{Terimlere bağlı tipler} (bağımlı tipler): \lc{Vek α :
+        Nat → Type}. $\lambda P$, mantıkta yüklemler.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kose/.style={draw=#1, fill=#1!10, thick, rounded corners=3pt,
+                 font=\small, inner sep=4pt, minimum width=1.3cm},
+    kenar/.style={-{Stealth[length=2mm]}, thick, black!45},
+    x={(3.6cm,0cm)}, y={(0cm,3.0cm)}, z={(1.7cm,1.2cm)},
+  ]
+  \node[kose=anarenk]     (st)  at (0,0,0) {$\lambda{\to}$};
+  \node[kose=anarenk]     (f)   at (0,1,0) {$\lambda 2$ (F)};
+  \node[kose=anarenk]     (w)   at (0,0,1) {$\lambda\underline{\omega}$};
+  \node[kose=anarenk]     (fw)  at (0,1,1) {$\lambda\omega$};
+  \node[kose=ikincil]     (p)   at (1,0,0) {$\lambda P$};
+  \node[kose=ikincil]     (p2)  at (1,1,0) {$\lambda P2$};
+  \node[kose=ikincil]     (pw)  at (1,0,1) {$\lambda P\underline{\omega}$};
+  \node[kose=teoremframe] (coc) at (1,1,1) {\textbf{CoC}};
+  \draw[kenar] (st) -- (f);  \draw[kenar] (st) -- (w);  \draw[kenar] (st) -- (p);
+  \draw[kenar] (f) -- (fw);  \draw[kenar] (f) -- (p2);
+  \draw[kenar] (w) -- (fw);  \draw[kenar] (w) -- (pw);
+  \draw[kenar] (p) -- (p2);  \draw[kenar] (p) -- (pw);
+  \draw[kenar] (fw) -- (coc); \draw[kenar] (p2) -- (coc); \draw[kenar] (pw) -- (coc);
+  \node[font=\baslikfont\scriptsize, text=black!60, anchor=north] at (0.5,-0.12,0) {terimlere bağlı tipler $\to$};
+  \node[font=\baslikfont\scriptsize, text=black!60, anchor=south, rotate=90] at (-0.2,0.5,0) {çok biçimlilik $\rightarrow$};
+  \node[font=\baslikfont\scriptsize, text=black!60, anchor=north west] at (0.02,-0.02,0.5) {tip oluşturucular};
+  \node[font=\baslikfont\scriptsize, text=teoremframe, anchor=west, align=left] at (1.15,1.1,1)
+       {+ tümevarımsal tipler\\+ evrenler\\$\Rightarrow$ CIC, \Lean{}};
+\end{tikzpicture}
+\caption{Barendregt'in $\lambda$-küpü. Sol alt köşe Bölüm~14'ün basit tipli
+$\lambda$-hesabıdır. Her eksen bir bağımlılık türü ekler. Sağ üst köşe,
+Coquand ve Huet'nin İnşalar Hesabıdır. \Lean{}'in tip kuramı buna
+tümevarımsal tipleri ve bir evren hiyerarşisini ekler.}
+\label{fig:lambda-kup}
+\end{figure}
+
+\subsection{Evrenler}
+
+\lc{Nat}'ın tipi \lc{Type}'tır. Peki \lc{Type}'ın tipi nedir?
+\lc{Type : Type} olamaz; Girard paradoksu bunu tutarsız kılar. \Lean{}'in
+çözümü sonsuz bir evren hiyerarşisidir (\cref{fig:evrenler}):
+
+\leandosya[Evrenler]{Bolum15}{evrenler}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    evren/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                  minimum width=2.6cm, minimum height=0.8cm, font=\small},
+    ok/.style={-{Stealth[length=2mm]}, thick, black!40},
+    ornek/.style={font=\scriptsize, text=black!60, anchor=west},
+  ]
+  \node[evren=teoremframe] (p)  at (0,0)   {\lc{Prop} = \lc{Sort 0}};
+  \node[evren=anarenk]     (t0) at (0,1.4) {\lc{Type} = \lc{Sort 1}};
+  \node[evren=anarenk]     (t1) at (0,2.8) {\lc{Type 1} = \lc{Sort 2}};
+  \node[font=\large, text=black!40] (dd) at (0,3.9) {$\vdots$};
+  \draw[ok] (p) -- node[right, font=\scriptsize]{:} (t0);
+  \draw[ok] (t0) -- node[right, font=\scriptsize]{:} (t1);
+  \draw[ok] (t1) -- (dd);
+  \node[ornek] at (1.7,0)   {\lc{2 + 2 = 4}, \lc{∀ p : Prop, p → p}, \dots \quad (önermeler)};
+  \node[ornek] at (1.7,1.4) {\lc{Nat}, \lc{List Nat}, \lc{Vek Nat 3}, \lc{Prop}, \dots};
+  \node[ornek] at (1.7,2.8) {\lc{Type}, \lc{ChurchSayi}, \lc{(α : Type) → α → α}, \dots};
+\end{tikzpicture}
+\caption{\Lean{}'in evren hiyerarşisi. Her evren bir üsttekinin elemanıdır.
+\lc{Prop} en alttadır ve \emph{impredikatiftir}: \lc{Prop}'lar üzerinde
+niceleme yapan bir önerme yine \lc{Prop}'tadır.}
+\label{fig:evrenler}
+\end{figure}
+
+\noindent İki niceleme arasındaki fark incedir ama önemlidir.
+\lc{(α : Type) → α → α} tipi \emph{bütün} tipler üzerinde nicelediği için
+\lc{Type}'ın içinde olamaz; bir üst evrene, \lc{Type 1}'e çıkar. Buna
+\emph{predikatif} niceleme denir. \lc{∀ p : Prop, p → p} ise \emph{bütün}
+önermeler üzerinde niceler, kendisi de bunlardan biri olmasına rağmen
+\lc{Prop}'ta kalır. Bu \emph{impredikatif} niceleme, \ciltiki{5}'te göreceğimiz
+gibi klasik matematiğin büyük bir kısmını \Lean{}'de ifade etmeyi mümkün
+kılar. Tutarlılığı ise \lc{Prop}'tan büyük elemenin kısıtlanmasına bağlıdır
+(\cref{sec:sigma}).
+
+\noindent Evren çok biçimliliği (\leankw{universe} \lc{u}) sayesinde
+\lc{List} ya da \lc{Vek} gibi tanımlar her evrende bir kez yazılır.
+\lc{\#check @List.map}'in çıktısındaki \lc{u\_1}, \lc{u\_2} bu evren
+değişkenleridir.
+
+% ---------------------------------------------------------------------
+\section{Kanıt-ilgisizliği ve tanımsal eşitlik}\label{sec:tanimsal}
+
+\Lean{}'de \lc{Prop}'un elemanları için \emph{tanımsal kanıt-ilgisizliği}
+geçerlidir: Aynı önermenin herhangi iki kanıtı tanımsal olarak eşittir.
+
+\leandosya[Kanıt-ilgisizliği]{Bolum15}{kanit_ilgisiz}
+
+\noindent Bu, Bölüm~9'da \lc{Prop} ile \lc{Bool}'u karşılaştırırken
+vurguladığımız ayrımın ta kendisidir. Bir önermede önemli olan
+\emph{doğru olup olmadığıdır}, nasıl kanıtlandığı değil. Pratikte bunun
+büyük bir yararı vardır: \lc{\{n : Nat // n > 0\}} ya da \lc{Fin n} gibi
+tiplerin elemanları yalnızca değerleriyle belirlenir. Kanıt bileşenleri
+eşitlik ispatlarında hiç dert olmaz.
+
+\subsection{İki tür eşitlik}
+
+Kitap boyunca iki farklı eşitlik kullandık. Şimdi aralarındaki farkı
+kesin olarak söyleyebiliriz:
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.6cm} X X}
+\rowcolor{tabloust}
+\tablobaslik{} & \tablobaslik{Tanımsal eşitlik ($\equiv$)} & \tablobaslik{Önermesel eşitlik ($=$)} \\
+nedir?          & bir \emph{yargı}: iki terim hesaplanınca aynı olur & bir \emph{önerme}: \lc{a = b} bir tiptir \\
+kim karar verir? & tip denetleyici, otomatik olarak & biz, bir ispatla \\
+örnek           & \lc{n + 0 ≡ n}, \lc{(fun x => x + 1) 2 ≡ 3} & \lc{0 + n = n} (tümevarım gerekir) \\
+\Lean{}'de      & \leantac{rfl}, \leantac{show}, \leantac{change}, \leantac{decide} & \leantac{rw}, \leantac{simp}, \lc{▸}, \leantac{calc} \\
+karar verilebilir mi? & ilke olarak evet (tip denetimi buna dayanır) & genel olarak hayır \\
+\end{tabularx}
+\caption{Tanımsal ve önermesel eşitlik.}
+\label{tab:esitlikler}
+\end{table}
+
+\leandosya[Tanımsal ve önermesel eşitlik]{Bolum15}{tanimsal}
+
+\noindent Tanımsal eşitlik ``bedavadır'': \Lean{} onu görmek için hiçbir
+kanıt istemez. Ama onu kullanan bir tanım, tanımın \emph{nasıl} yazıldığına
+bağımlı hâle gelir. \lc{n + 0 = n}'nin \leantac{rfl} ile, \lc{0 + n = n}'nin
+ise yalnızca tümevarımla ispatlanabilmesinin nedeni, \lc{Nat.add}'ın
+ikinci argümanı üzerinde özyinelemeli tanımlanmış olmasıdır.
+
+\begin{dikkat}[Dikkat: Tanımsal eşitliğin sınırları]
+Kuramsal olarak \Lean{}'in tanımsal eşitliği karar verilebilir
+\emph{değildir}: Kanıt-ilgisizliği ile alt tekil eleme
+(\emph{subsingleton elimination}) birleşince, tanımsal eşitliğin geçişli
+olmadığı yapay örnekler kurulabilir \citep{carneiro2019}. Uygulamada bu
+örneklere neredeyse hiç rastlanmaz. \Lean{}'in çekirdeği tanımsal eşitliği
+bir algoritmayla denetler; algoritma bazı durumlarda ``eşit değil''
+diyebilir, ama asla yanlış yere ``eşit'' demez. Tutarlılık için önemli
+olan da budur.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Lean'in çekirdeği}\label{sec:cekirdek}
+
+Bir ispat asistanına neden güvenelim? Asistanın kendisi binlerce satırlık
+bir programdır ve hatalar içerebilir. Nicolaas de~Bruijn'in Automath
+projesinden \citep{debruijn1970} kalan cevap, \emph{de~Bruijn ölçütü}
+olarak bilinir:
+
+\begin{onemlifikir}[Önemli Fikir: de Bruijn ölçütü]
+Bir ispat asistanı, ürettiği her ispatı küçük ve bağımsız olarak
+denetlenebilir bir \emph{çekirdeğe} doğrulatmalıdır. Taktikler, otomasyon,
+notasyon ve tip sınıfı çözümlemesi ne kadar karmaşık olursa olsun, sonuçta
+çekirdeğin anlayacağı basit bir terim üretilir. Güvenmemiz gereken tek
+şey, bu terimi denetleyen çekirdektir.
+\end{onemlifikir}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kat/.style={draw=#1, fill=#1!8, thick, rounded corners=5pt,
+                text width=3.0cm, align=center, inner sep=6pt, font=\small,
+                minimum height=1.6cm},
+    ok/.style={-{Stealth[length=2.6mm]}, very thick, black!40},
+  ]
+  \node[kat=arastirmaframe] (k) at (0,0)   {\textbf{Kaynak kod}\\{\scriptsize \leantac{simp}, \leantac{omega}, notasyon, \lc{x + 1}}};
+  \node[kat=anarenk]        (e) at (4.4,0) {\textbf{Elaboratör}\\{\scriptsize taktikler, tip sınıfları, örtük argümanlar}};
+  \node[kat=teoremframe]    (c) at (8.8,0) {\textbf{Çekirdek}\\{\scriptsize CIC terimleri, tip denetimi, 3 aksiyom}};
+  \draw[ok] (k) -- (e);
+  \draw[ok] (e) -- node[above, font=\baslikfont\scriptsize]{terim} (c);
+  \node[font=\baslikfont\scriptsize, text=hataframe, anchor=north] at (4.4,-1.05) {güvenilmez (hata yapabilir)};
+  \node[font=\baslikfont\scriptsize, text=bittiframe, anchor=north] at (8.8,-1.05) {güvenilir (küçük, denetlenebilir)};
+  \node[draw=bittiframe, dashed, thick, rounded corners=4pt, fit=(c), inner sep=8pt] {};
+  \node[font=\baslikfont\scriptsize, text=black!55, align=center] at (8.8,1.45) {bağımsız denetleyiciler:\\Lean4Lean, nanoda, \dots};
+\end{tikzpicture}
+\caption{\Lean{}'in mimarisi. Elaboratörün hataları en kötü ihtimalle
+geçerli bir ispatın reddedilmesine yol açar. Geçersiz bir ispatın kabul
+edilmesi için çekirdekte bir hata olması gerekir.}
+\label{fig:lean-mimari}
+\end{figure}
+
+\noindent Elaboratörün ne kadar iş yaptığını görmek için
+\lc{pp.all} seçeneğiyle bir terimin çekirdekteki hâline bakabiliriz:
+
+\leandosya[Elaborasyon]{Bolum15}{elaborasyon}
+
+\noindent Masum görünen \lc{x + 1}, aslında üç tip sınıfı örneği ve bir
+sayı sabiti kodlaması içerir. Bir taktik ispatı ise çok daha büyük bir
+terime dönüşür. Çekirdeğin gördüğü her tümevarımsal tip, kendi
+\emph{özyineleyicisi} ile birlikte gelir:
+
+\leandosya[Özyineleyiciler]{Bolum15}{ozyineleyici}
+
+\noindent \lc{Vek.rec}'in tipi Bölüm~9'daki tümevarım ilkelerinin bağımlı
+hâlidir. \emph{Motive}, hem indise (\lc{n}) hem de vektörün kendisine
+bağlıdır. \leankw{match} ile yazdığımız her tanım ve \leantac{induction}
+ile yaptığımız her ispat, çekirdekte bu özyineleyiciye çevrilir.
+
+\subsection{Aksiyomlar}
+
+\Lean{}'in çekirdeği CIC'ye yalnızca üç aksiyom ekler:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.4cm}
+                >{\raggedright\arraybackslash}p{5.2cm}
+                >{\raggedright\arraybackslash}p{3.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Aksiyom} & \tablobaslik{Söylediği} & \tablobaslik{Nerede?} \\
+\lc{propext}          & denk önermeler eşittir: \lc{(p ↔ q) → p = q} & \leantac{simp}, \leantac{rw} ile ↔ \\
+\lc{Quot.sound}       & bölüm tiplerinde ilişkili elemanlar eşittir & fonksiyon dışsallığı (\lc{funext}) \\
+\lc{Classical.choice} & boş olmayan her tipten bir eleman seçilebilir & üçüncü hâl, \lc{Classical} \\
+\end{tabular}
+\end{center}
+
+\noindent Bir teoremin hangi aksiyomlara dayandığını \leankw{\#print}
+\lc{axioms} ile öğrenebiliriz:
+
+\leandosya[Aksiyomları denetlemek]{Bolum15}{aksiyomlar}
+
+\noindent Vektör teoremimiz hiçbir aksiyoma dayanmıyor: Tamamen yapıcıdır.
+Üçüncü hâlin olanaksızlığı ise üç aksiyomun üçüne de dayanır. Bölüm~4'te
+yapıcı ile klasik arasında çizdiğimiz çizgi, \Lean{}'de tam olarak bu
+komutla denetlenebilir. Diaconescu teoremi \citep{diaconescu1975},
+seçim aksiyomunun \lc{propext} ve \lc{funext} ile birlikte üçüncü hâli
+gerektirdiğini söyler. Bu yüzden \lc{Classical.em} bir aksiyom değil, bir
+\emph{teoremdir}. Aksiyomları ve onların kuramsal sonuçlarını Bölüm~16'da
+ayrıntılı olarak ele alacağız.
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Tip kuramının çeşitleri.} \Lean{}, kanıt-ilgisizliği ve
+\lc{propext} sayesinde ``klasik matematik dostu'' bir tasarım seçmiştir.
+Başka seçimler de mümkündür. \emph{Homotopi tip kuramı} \citep{hott2013},
+kanıt-ilgisizliği yerine eşitlik kanıtlarına yollar olarak zengin bir yapı
+verir ve \emph{tekdeğerlilik} (\emph{univalence}) aksiyomunu ekler:
+Denk tipler eşittir. Kübik tip kuramı bu aksiyomu hesaplanabilir kılar ve
+Agda'nın kübik kipinde kullanılır. \emph{Gözlemsel tip kuramı}
+(\emph{observational type theory}) ise fonksiyon dışsallığını aksiyom
+olmadan tanımsal olarak sağlamayı hedefler.
+
+\textbf{Çekirdeğin doğrulanması.} Mario Carneiro'nun yüksek lisans tezi
+\citep{carneiro2019}, \Lean{}'in tip kuramının ilk kesin tanımını verdi ve
+tutarlılığını küme kuramında bir modelle gösterdi. Lean4Lean
+\citep{carneiro2026}, bu çalışmayı \Lean{}'in içine taşır: \Lean{}'in
+çekirdeğinin bir kopyası \Lean{}'de yazılmıştır ve özelliklerinin
+ispatları da \Lean{}'dedir. Gödel'in ikinci eksiklik teoremi (\ciltiki{4})
+nedeniyle bir sistemin kendi tutarlılığını ispatlayamayacağını
+hatırlatalım. Bu yüzden bu tür çalışmalar tutarlılığı ancak daha güçlü bir
+sistemde (örneğin ek bir evrenle) ifade edebilir.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item $Π$-tipleri bağımlı fonksiyonlardır. $\forall$, dönüş tipi
+        \lc{Prop} olan bir $Π$-tipidir. $A \to B$ bağımsız özel
+        durumdur.
+  \item $Σ$-tipleri bağımlı çiftlerdir. \Lean{}'de üç çeşidi vardır:
+        \lc{Sigma} (veri), alt tip (veri + kanıt) ve \lc{Exists} (önerme).
+        \lc{Exists}'ten tanık bir program içinde çıkarılamaz.
+  \item Tümevarımsal aileler (\lc{Vek α n}, \lc{Fin n}) bir özelliği tipe
+        yazarak çalışma zamanı hatalarını tip hatalarına dönüştürür. Bunun
+        bedeli indis aritmetiği ve eşitlik boyunca taşımadır.
+  \item Martin-Löf tip kuramı her tipi oluşum, giriş, eleme ve hesaplama
+        kurallarıyla tanıtır. CIC ve \Lean{}, bu çizginin
+        devamıdır. $\lambda$-küpü bağımlılık türlerini düzenler.
+  \item Evrenler bir hiyerarşi oluşturur. \lc{Prop} impredikatiftir,
+        \lc{Type u}'lar predikatiftir.
+  \item \lc{Prop}'ta kanıt-ilgisizliği tanımsaldır. Tanımsal eşitlik tip
+        denetleyicinin yargısıdır, önermesel eşitlik ise ispat ister.
+  \item de~Bruijn ölçütü: Güven yalnızca küçük çekirdeğe dayanır.
+        \Lean{}'in üç aksiyomu vardır ve \leankw{\#print} \lc{axioms} bir
+        teoremin hangilerine dayandığını gösterir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} \lc{tekrarlaV a n}'yi \lc{f} ile eşlemek, \lc{tekrarlaV (f a)
+n}'yi verir. (\lc{a15\_1})
+
+\alistirma{1} \lc{son (v.sonaEkle a) = a}. \lc{son}'un tanımında neden
+uzunluk üzerinde örüntü eşleme yapılıyor? (\lc{a15\_2})
+
+\alistirma{2} Fermuarın birinci bileşenleri ilk vektörü verir. (\lc{a15\_3})
+
+\alistirma{2} \lc{birlestir} ile \lc{toList} uyumludur. (\lc{a15\_4})
+
+\alistirma{2} Eşitlik boyunca taşımak, vektörün listesini değiştirmez.
+\leantac{subst}'ün burada ne yaptığını açıklayın. (\lc{a15\_5})
+
+\alistirma{1} \lc{Fin}'de kanıt-ilgisizliği. (\lc{a15\_6})
+
+\alistirma{2} Her liste, uzunluğu kadar bir vektöre dönüşür. Sonuç neden bir
+$Σ$-tipi? (\lc{a15\_7})
+
+\alistirma{3} Sabit bir vektörün her elemanı aynıdır. (\lc{a15\_8})
+
+\alistirma{2} (Kâğıt-kalem) \lc{(α : Type) → List α → Nat} ve
+\lc{∀ α : Type, Nonempty α → True} tiplerinin hangi evrende yaşadığını
+belirleyin ve \leankw{\#check} ile doğrulayın.
+
+\alistirma{2} (Kâğıt-kalem) \lc{birlestir}'in sonuç tipini \lc{Vek α (m +
+n)} olarak yazıp \Lean{}'in hata mesajını okuyun. Tanımı
+\lc{Nat.add\_comm} ve \lc{▸} ile düzeltin.
+
+\alistirma{3} (Proje) \lc{Vek} için bir \lc{ters} fonksiyonunu
+\lc{sonaEkle} kullanmadan, bir biriktirici ile tanımlayın:
+\lc{tersAux : Vek α m → Vek α n → Vek α (m + n)}. Hangi indis eşitliğine
+ihtiyaç duyuyorsunuz?
+
+\alistirma{3} (Araştırma) Bölüm~14'teki basit tipli $\lambda$-hesabına
+bağımlı fonksiyon tipleri ekleyerek $\lambda P$'yi tanımlayın. Tipler artık
+terimler içerebildiği için \lc{Tip} ile \lc{Terim} neden aynı tümevarımsal
+tip içinde tanımlanmak zorundadır?
+\end{alistirmalar}

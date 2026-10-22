@@ -1,0 +1,485 @@
+% =====================================================================
+%  Bölüm 16 — Lean'in Aksiyomları
+% =====================================================================
+\chapter{Lean'in Aksiyomları}\label{bol:aksiyomlar}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item \Lean{}'in üç aksiyomunu (\lc{propext}, \lc{Quot.sound},
+        \lc{Classical.choice}) ve her birinin ne işe yaradığını,
+  \item Bölüm tipleriyle yeni matematiksel nesneler kurmayı (tamsayılar),
+  \item Fonksiyon dışsallığının \lc{Quot.sound}'dan nasıl türetildiğini,
+  \item Seçim aksiyomunu, hesaplanamayan tanımları ve \leankw{noncomputable}
+        anahtar sözcüğünü,
+  \item Diaconescu teoremini: seçimin üçüncü hâli gerektirdiğini,
+  \item \Lean{}'in aksiyomlarını homotopi tip kuramının tek-değerlilik
+        aksiyomuyla karşılaştırmayı.
+\end{itemize}
+\end{bolumhedefleri}
+
+Bölüm~15'in sonunda \Lean{}'in çekirdeğinin, İnşalar Hesabına yalnızca
+üç aksiyom eklediğini söyledik. Bu bölümde o üç aksiyomu tek tek ele
+alıyoruz. Her biri bir ihtiyaçtan doğmuştur: \lc{propext} önermeleri
+``doğruluk değerleri'' gibi kullanabilmek için, \lc{Quot.sound} bölüm
+yapıları kurabilmek için, \lc{Classical.choice} ise klasik matematiği
+yapabilmek için. Bölümün ana teoremi, bu üç aksiyomun birlikte üçüncü
+hâlin olanaksızlığını \emph{gerektirdiğini} söyleyen Diaconescu
+teoremidir. Bölüm~4'te ``\Lean{} klasik mantığa izin verir'' diye
+başlattığımız öykünün sonu budur.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    aks/.style={draw=teoremframe, fill=teorembg, very thick, rounded corners=4pt,
+                font=\small\ttfamily, inner sep=5pt, minimum width=3.0cm},
+    sonuc/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                  font=\small, inner sep=4pt, align=center},
+    ok/.style={-{Stealth[length=2.2mm]}, thick, black!45},
+  ]
+  \node[aks] (pe) at (0,0)   {propext};
+  \node[aks] (qs) at (4.6,0) {Quot.sound};
+  \node[aks] (ch) at (9.2,0) {Classical.choice};
+  \node[sonuc=anarenk]  (iff) at (0,-1.8)   {\lc{↔} ile \leantac{rw},\\\leantac{simp}};
+  \node[sonuc=anarenk]  (bol) at (3.2,-1.8) {bölüm tipleri\\(\lc{Int}, \lc{ℚ}, \lc{ℝ}, \dots)};
+  \node[sonuc=anarenk]  (fe)  at (6.0,-1.8) {\lc{funext}};
+  \node[sonuc=anarenk]  (nc)  at (9.2,-1.8) {\leankw{noncomputable}\\tanımlar};
+  \node[sonuc=dikkatframe] (em) at (4.6,-3.8) {\textbf{\lc{Classical.em}}\\{\scriptsize Diaconescu teoremi}};
+  \node[sonuc=ikincil] (kl) at (4.6,-5.4) {klasik matematik: \leantac{by\_contra}, \leantac{by\_cases}, \dots};
+  \draw[ok] (pe) -- (iff); \draw[ok] (qs) -- (bol); \draw[ok] (qs) -- (fe);
+  \draw[ok] (ch) -- (nc);
+  \draw[ok, dikkatframe] (pe) -- (em); \draw[ok, dikkatframe] (fe) -- (em);
+  \draw[ok, dikkatframe] (ch) -- (em);
+  \draw[ok] (em) -- (kl);
+\end{tikzpicture}
+\caption{\Lean{}'in üç aksiyomu ve en önemli sonuçları. Üçüncü hâlin
+olanaksızlığı bir aksiyom değil, üç aksiyomun birlikte verdiği bir
+teoremdir.}
+\label{fig:aksiyom-haritasi}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\section{Önerme dışsallığı}\label{sec:propext}
+
+Matematikte ``$A \cap B = B \cap A$'' derken iki kümenin \emph{aynı
+elemanlara sahip olduğu için} eşit olduğunu söyleriz. Buna
+\emph{dışsallık} denir: Bir nesne, ``dışarıdan'' gözlemlenebilen
+davranışıyla belirlenir. \emph{Önerme dışsallığı} aynı ilkeyi önermelere
+uygular: Birbirine denk iki önerme eşittir.
+
+\leandosya[propext]{Bolum16}{propext}
+
+\noindent İkinci örnek önemli bir gözlem içeriyor: \lc{h : p ↔ q} ile
+\leantac{rw} yapmak \lc{propext} gerektirir. \leantac{rw} yalnızca
+\emph{eşitliklerle} yeniden yazabilir. Bir denkliği eşitliğe çeviren şey
+\lc{propext}'tir. \leantac{simp} de aynı nedenle \lc{propext}'i sık
+kullanır. Bu yüzden Mathlib'deki teoremlerin büyük çoğunluğu bu aksiyoma
+dayanır.
+
+\begin{onemlifikir}[Önemli Fikir: Prop, doğruluk değerlerinin tipi olur]
+\lc{propext} olmadan \lc{Prop}'un elemanları, kanıtları birbirinden ayırt
+edilemeyen ama \emph{kendileri} ayırt edilebilen ``tipler''dir.
+\lc{propext} ile birlikte, denk önermeler özdeşleşir. Üçüncü hâli de
+eklersek \lc{Prop} tam olarak iki elemanlı bir tip olur: Her önerme ya
+\lc{True}'ya ya \lc{False}'a eşittir. Bölüm~10'daki iki değerli anlambilim,
+bu durumda \lc{Prop}'un \emph{kendisidir}.
+\end{onemlifikir}
+
+\leandosya[Prop'un iki değeri]{Bolum16}{iki_deger}
+
+% ---------------------------------------------------------------------
+\section{Bölüm tipleri}\label{sec:bolum-tipleri}
+
+Matematikte yeni nesneleri sık sık eski nesnelerin \emph{denklik
+sınıfları} olarak kurarız. Rasyonel sayılar kesirlerin, tamsayılar ise
+doğal sayı çiftlerinin denklik sınıflarıdır. Bölüm~8'de denklik bağıntılarını
+ve denklik sınıflarını küme kuramı içinde görmüştük. Şimdi aynı yapıyı
+\Lean{}'in çekirdek düzeyinde, bir \emph{tip} olarak kuruyoruz.
+
+\begin{tanim}{Bölüm tipi}{bolum-tipi}
+$\alpha$ bir tip, $r$ de $\alpha$ üzerinde bir bağıntı olsun. \textbf{Bölüm
+tipi} \lc{Quot r}, $r$ ile ilişkili elemanların özdeşleştirildiği tiptir.
+Dört ilkel işlemi vardır:
+\begin{itemize}
+  \item \lc{Quot.mk r a : Quot r} \hfill (bir elemanın sınıfı)
+  \item \lc{Quot.lift f h : Quot r → β}, eğer \lc{h : ∀ a b, r a b → f a = f b} \hfill (bölümden dışarı)
+  \item \lc{Quot.ind} \hfill (her eleman bir \lc{Quot.mk}'dir)
+  \item \lc{Quot.sound : r a b → Quot.mk r a = Quot.mk r b} \hfill \textcolor{teoremframe}{\textbf{(aksiyom)}}
+\end{itemize}
+Ayrıca \lc{Quot.lift f h (Quot.mk r a) ≡ f a} bir \emph{hesaplama
+kuralıdır}: Tanımsal olarak geçerlidir.
+\end{tanim}
+
+\noindent İlk üç işlem ve hesaplama kuralı çekirdeğe yerleşik olarak
+gelir ve bir aksiyom sayılmaz. Bunlar yalnızca yeni bir tip ve onun
+eleme kuralıdır, tümevarımsal tipler gibi. \lc{Quot.sound} ise yeni bir
+\emph{eşitlik} ilan eder. Bu yüzden bir aksiyomdur.
+
+\subsection{Tamsayıları sıfırdan kurmak}
+
+Bir $(a, b)$ doğal sayı çiftini ``$a - b$'' sayısı olarak düşünelim.
+$(3, 1)$ ile $(5, 3)$ aynı sayıyı, yani 2'yi temsil etmelidir. Genel
+olarak $(a, b) \sim (c, d) \iff a + d = c + b$. Bu bağıntı bir denklik
+bağıntısıdır ve bölümü tamsayılardır (\cref{fig:tamsayi-izgara}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.62]
+  \foreach \k/\c in {-3/vurgu, -2/dikkatframe, -1/tarihframe, 0/black!60, 1/ikincil, 2/anarenk, 3/ornekframe} {
+    \pgfmathsetmacro{\xs}{max(0,\k)}
+    \pgfmathsetmacro{\ys}{max(0,-\k)}
+    \pgfmathsetmacro{\xe}{min(6,6+\k)}
+    \pgfmathsetmacro{\ye}{min(6,6-\k)}
+    \draw[\c, very thick, opacity=0.55] (\xs,\ys) -- (\xe,\ye);
+  }
+  \foreach \x in {0,...,6} \foreach \y in {0,...,6} \fill[black!70] (\x,\y) circle (2.2pt);
+  \draw[-{Stealth[length=2mm]}, thick] (-0.5,0) -- (6.8,0) node[right, font=\small] {$a$};
+  \draw[-{Stealth[length=2mm]}, thick] (0,-0.5) -- (0,6.8) node[above, font=\small] {$b$};
+  \foreach \k/\c/\l in {3/ornekframe/{+3}, 2/anarenk/{+2}, 1/ikincil/{+1}, 0/black!60/0} {
+    \node[font=\scriptsize\bfseries, text=\c, anchor=west] at (6.25, 6-\k) {\l};
+  }
+  \foreach \k/\c/\l in {-1/tarihframe/{$-1$}, -2/dikkatframe/{$-2$}, -3/vurgu/{$-3$}} {
+    \node[font=\scriptsize\bfseries, text=\c, anchor=south] at (6+\k, 6.25) {\l};
+  }
+  \fill[teoremframe] (3,1) circle (4pt); \fill[teoremframe] (5,3) circle (4pt);
+  \node[font=\scriptsize, text=teoremframe, anchor=north west] at (3,1) {$(3,1)$};
+  \node[font=\scriptsize, text=teoremframe, anchor=north west] at (5,3) {$(5,3)$};
+\end{tikzpicture}
+\caption{$\mathbb{N} \times \mathbb{N}$ ızgarasında tamsayılar. Her köşegen
+bir denklik sınıfıdır: Aynı köşegendeki çiftler aynı tamsayıyı temsil eder.
+$(3,1)$ ve $(5,3)$, $+2$ köşegenindedir.}
+\label{fig:tamsayi-izgara}
+\end{figure}
+
+\leandosya[Tamsayılar bir bölüm tipi olarak]{Bolum16}{tamsayi}
+
+\noindent \lc{Setoid}, bir bağıntı ile onun bir denklik bağıntısı olduğunun
+kanıtını bir araya getiren bir yapıdır. \lc{Quotient}, \lc{Quot}'un
+\lc{Setoid}'li hâlidir. Son satırdaki \lc{example} \lc{Quot.sound}'u
+kullanıyor: $3 + 3 = 5 + 1$ olduğu için \lc{Tamsayi.mk 3 1} ile
+\lc{Tamsayi.mk 5 3} \emph{eşittir}. Bu eşitlik bir hesaplamayla elde
+edilemezdi. İki terim farklıdır ve aynı oldukları ancak aksiyomla
+söylenebilir.
+
+\subsection{Bölümden dışarı fonksiyonlar}
+
+Bir tamsayı üzerinde fonksiyon tanımlamak için bir \emph{temsilci} üzerinde
+tanımlayıp sonucun temsilciye bağlı olmadığını kanıtlamamız gerekir.
+Bu kanıt \lc{Quotient.lift}'in ikinci argümanıdır. Matematikte ``iyi
+tanımlılık'' denilen şeyin biçimsel hâlidir:
+
+\leandosya[Tamsayılarda işlemler]{Bolum16}{tamsayi_islem}
+
+\noindent Toplamada iki argümanın da temsilcisi değişebilir. Bu yüzden
+\lc{Quotient.lift₂}'nin iyi tanımlılık kanıtı iki varsayım alır. Her
+kanıt, \leantac{show} ile hedefi açık bir doğal sayı eşitliğine çevirip
+\leantac{omega} ile biter. Bölümler üzerinde teorem ispatlamak için
+\lc{Quotient.inductionOn} kullanırız. Bir tamsayı hakkındaki her önermeyi,
+temsilcileri hakkındaki bir önermeye indirger:
+
+\leandosya[Tamsayılarda ispat]{Bolum16}{tamsayi_teorem}
+
+\begin{dikkat}[Dikkat: İyi tanımlılığı unutmak]
+Kâğıt üzerinde ``$[(a,b)] + [(c,d)] = [(a+c, b+d)]$ olarak tanımlayalım''
+deyip iyi tanımlılığı atlamak kolaydır. \Lean{} bunu atlatmaz:
+\lc{Quotient.lift}'in ikinci argümanı verilmeden tanım kabul edilmez.
+Ünlü bir örnek: Kesirler üzerinde $\frac{a}{b} \mapsto a$ ``fonksiyonu''
+iyi tanımlı değildir ($\frac12 = \frac24$, ama $1 \neq 2$). Bu fonksiyonu
+\lc{Quotient.lift} ile tanımlamaya çalışan herkes, ispatlanamaz bir hedefle
+karşılaşır.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Fonksiyon dışsallığı}\label{sec:funext}
+
+İki fonksiyon her girdide aynı çıktıyı veriyorsa eşit midir? Matematikte
+bu açıktır, çünkü küme kuramında bir fonksiyon, girdi--çıktı çiftlerinin
+kümesidir. Tip kuramında ise fonksiyonlar \emph{programlardır}:
+\lc{fun n => 0 + n} ile \lc{fun n => n} farklı programlardır ve
+tanımsal olarak eşit değildir. Martin-Löf'ün yoğunlamalı (\emph{intensional})
+tip kuramında fonksiyon dışsallığı ispatlanamaz.
+
+\Lean{}'de ise \lc{funext} bir teoremdir. Şaşırtıcı biçimde, ispatı
+\lc{Quot.sound}'u kullanır. Fikir şudur: Fonksiyonları ``noktasal eşitlik''
+bağıntısına göre bölelim. Bu bölümün elemanlarını bir noktada
+değerlendirmek iyi tanımlıdır. Noktasal eşit iki fonksiyonun bölümdeki
+sınıfları \lc{Quot.sound} ile eşittir. Bu eşitliğe \lc{uygula}'yı
+uyguladığımızda, iki fonksiyonun kendisinin eşitliğini elde ederiz:
+
+\leandosya[Quot.sound'dan funext]{Bolum16}{funext}
+
+\noindent İspatın kilit adımı \leantac{show} satırıdır.
+\lc{uygula (Quot.mk NoktaEsit f)}, \lc{fun x => f x}'e, o da $\eta$-kuralı
+ile \lc{f}'ye tanımsal olarak eşittir. Yani hedefi ``iki bölüm elemanına
+aynı fonksiyonu uygulamak'' biçiminde yeniden yazabiliriz. Gerisi
+\lc{congrArg} ve \lc{Quot.sound}'dur. \leankw{\#print} \lc{axioms}, bu
+ispatın yalnızca \lc{Quot.sound}'a dayandığını doğrular.
+
+\leandosya[funext kullanmak]{Bolum16}{funext_ornek}
+
+% ---------------------------------------------------------------------
+\section{Seçim aksiyomu}\label{sec:secim}
+
+\lc{Classical.choice}, \Lean{}'in en güçlü ve en ``klasik'' aksiyomudur:
+\[
+  \texttt{Classical.choice} : \texttt{Nonempty}\;\alpha \to \alpha .
+\]
+\lc{Nonempty α}, \lc{α}'nın boş olmadığını söyleyen bir \emph{önermedir}.
+Aksiyom, bu önermeden \lc{α}'nın bir \emph{elemanını} üretir. Bölüm~15'te
+\lc{Prop}'tan \lc{Type}'a ``büyük elemenin'' yasak olduğunu, bu yüzden bir
+\lc{∃} kanıtından tanık çıkaramayacağımızı görmüştük. Seçim aksiyomu bu
+yasağı \emph{tek bir noktada}, bir aksiyomla deler:
+
+\leandosya[Seçim aksiyomu]{Bolum16}{secim}
+
+\noindent \lc{secilen} bir fonksiyondur ama \leankw{noncomputable} olarak
+işaretlenmiştir. \Lean{}'in derleyicisi \lc{Classical.choice} için kod
+üretemez, çünkü aksiyom hangi elemanın seçildiğini söylemez. Seçilen eleman
+hakkında bildiğimiz tek şey, istenen özelliği sağladığıdır
+(\lc{secilen\_ozellik}). \lc{ucten\_buyuk} 4 müdür, 5 midir, 1000 midir?
+Bilemeyiz ve bilmemize gerek yoktur.
+
+\begin{dikkat}[Dikkat: Kanıt ile hesaplama]
+\leankw{noncomputable} bir tanım, mantıksal olarak tamamen geçerlidir:
+Teoremlerde serbestçe kullanılabilir. Yalnızca \leankw{\#eval} ile
+çalıştırılamaz. Mathlib'de gerçel sayılar, ölçüler ve birçok soyut yapı
+bu türdendir. Hesaplama gerektiğinde (örneğin bir karar yöntemi
+yazarken) seçimden kaçınmak gerekir. \leankw{\#print} \lc{axioms} burada
+da yol göstericidir.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Diaconescu teoremi}\label{sec:diaconescu}
+
+\begin{teorem}{Diaconescu (1975)}{diaconescu}
+Seçim aksiyomu, önerme dışsallığı ve fonksiyon dışsallığı birlikte
+üçüncü hâlin olanaksızlığını gerektirir: Her $p$ için $p \lor \lnot p$.
+\end{teorem}
+
+\noindent Radu Diaconescu bu sonucu topos kuramında ispatladı
+\citep{diaconescu1975}. Goodman ve Myhill aynı fikri yapıcı küme kuramına
+taşıdılar \citep{goodman1978}. İspatın fikri zariftir
+(\cref{fig:diaconescu}). Bir $p$ önermesi verilsin. İki yüklem tanımlayalım:
+\[
+  U(x) \;:=\; (x = \mathsf{True}) \lor p,
+  \qquad
+  V(x) \;:=\; (x = \mathsf{False}) \lor p .
+\]
+İkisi de boş değildir: $U(\mathsf{True})$ ve $V(\mathsf{False})$
+doğrudur. Seçim aksiyomuyla birer tanık seçelim: $u$ ve $v$.
+
+\begin{itemize}
+  \item $u$'nun seçildiği yerde ya $u = \mathsf{True}$ ya da $p$ doğrudur;
+        $v$ için de ya $v = \mathsf{False}$ ya da $p$. Dolayısıyla ya
+        $p$ doğrudur ya da $u = \mathsf{True}$ ve $v = \mathsf{False}$,
+        yani $u \neq v$.
+  \item Öte yandan $p$ doğruysa, $U$ ile $V$ her $x$ için doğrudur. propext
+        ile her noktada eşittirler, funext ile $U = V$'dir. Aynı yüklemden
+        yapılan seçim aynı sonucu verir: $u = v$.
+\end{itemize}
+
+\noindent Demek ki $u \neq v$ ise $p$ yanlıştır. Böylece her durumda ya $p$
+ya da $\lnot p$ elde edilir. Seçim, burada bir ``karar verici'' gibi
+çalışır: $u$ ile $v$'nin eşit olup olmadığına bakarak $p$ hakkında karar
+verir.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!8, thick, rounded corners=5pt,
+                 text width=4.6cm, align=center, inner sep=6pt, font=\small},
+  ]
+  \node[kutu=ikincil] (a) at (0,0)
+     {\textbf{$p$ doğru}\\[3pt] $U(x)$ ve $V(x)$ her $x$ için doğru\\
+      $\Downarrow$ propext + funext\\ $U = V$\\ $\Downarrow$\\ seçimler aynı: $u = v$};
+  \node[kutu=hataframe] (b) at (7,0)
+     {\textbf{$p$ yanlış}\\[3pt] $U(x) \iff x = \mathsf{True}$\\ $V(x) \iff x = \mathsf{False}$\\
+      $\Downarrow$\\ $u = \mathsf{True}$, $v = \mathsf{False}$\\ seçimler farklı: $u \neq v$};
+  \node[draw=dikkatframe, fill=dikkatbg, very thick, rounded corners=5pt,
+        font=\small, align=center, inner sep=6pt] (c) at (3.5,-3.3)
+     {$u = v$ mi?\quad bu soru $p$'yi belirler\\
+      {\scriptsize (eşitlik sorusu, seçilmiş iki \emph{önerme} hakkındadır)}};
+  \draw[-{Stealth[length=2.6mm]}, very thick, black!40] (a.south) -- (c);
+  \draw[-{Stealth[length=2.6mm]}, very thick, black!40] (b.south) -- (c);
+\end{tikzpicture}
+\caption{Diaconescu teoreminin fikri. Seçim aksiyomu, $p$'nin doğru olup
+olmadığını $u$ ile $v$'nin eşitliği sorusuna dönüştürür.}
+\label{fig:diaconescu}
+\end{figure}
+
+\leandosya[Diaconescu teoremi]{Bolum16}{diaconescu}
+
+\noindent \Lean{} ispatı, kâğıt üzerindeki ispatın satır satır karşılığıdır.
+\lc{h0} adımı dikkat çekicidir: \lc{U = V} eşitliğiyle yeniden yazdıktan
+sonra iki seçim, \emph{aynı} yüklemin iki varlık kanıtı üzerinden yapılır.
+Kanıt-ilgisizliği sayesinde bu iki kanıt da aynıdır, dolayısıyla seçimler
+\leantac{rfl} ile eşittir. Kanıt-ilgisizliğinin bu ispattaki gizli rolü,
+yapıcı tip kuramlarında Diaconescu teoreminin neden ``kaçınılabildiğini''
+de açıklar.
+
+\begin{onemlifikir}[Önemli Fikir: Lean'de klasik mantık bir teoremdir]
+Bölüm~4'te \lc{Classical.em}'i bir ``kapı'' olarak tanıtmıştık. Şimdi
+kapının arkasını görüyoruz: \lc{Classical.em}, \Lean{}'in standart
+kütüphanesinde \emph{tam olarak bu ispatla} kanıtlanmış bir teoremdir. Ayrı
+bir aksiyom değildir. Bu yüzden ``\Lean{} klasik midir?'' sorusunun cevabı
+``evet, çünkü seçim aksiyomunu kabul eder'' olur. Seçimi kullanmayan bir
+teorem, \leankw{\#print} \lc{axioms} çıktısında \lc{Classical.choice}
+görünmüyorsa, yapıcıdır.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Aksiyomlar ve tutarlılık}\label{sec:aksiyom-tutarlilik}
+
+Bir aksiyom eklemek tehlikelidir: Yanlış bir aksiyom her şeyi
+kanıtlanabilir kılar. \Lean{}'de herkes \leankw{axiom} anahtar
+sözcüğüyle yeni bir aksiyom ekleyebilir:
+
+\begin{leanhata}[Kötü bir fikir (derlemeyin)]
+axiom kotu : False
+
+theorem bir_iki : 1 = 2 := kotu.elim     -- kabul edilir!
+
+#print axioms bir_iki
+-- 'bir_iki' depends on axioms: [kotu]
+\end{leanhata}
+
+\noindent Bu örnek, \leankw{\#print} \lc{axioms}'un neden önemli olduğunu
+gösteriyor: Bir teoremin güvenilirliği, dayandığı aksiyomların
+güvenilirliği kadardır. Mathlib'de yeni bir \leankw{axiom} bildirimi
+kabul edilmez. \ciltiki{8}'de göreceğimiz otomatik ispat yarışmalarında da
+ilk denetim, çözümün yalnızca bu üç standart aksiyoma dayanmasıdır.
+
+\Lean{}'in üç aksiyomunun birlikte tutarlı olduğu, \Lean{}'in tip kuramının
+küme kuramında bir modeli kurularak gösterilmiştir \citep{carneiro2019}.
+Bu model ZFC'ye ve sayılabilir sayıda erişilemez kardinale dayanır. Gödel'in
+ikinci eksiklik teoremi (\ciltiki{4}), böyle bir göreli tutarlılık sonucundan
+daha iyisini bekleyemeyeceğimizi söyler.
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.2cm} X X}
+\rowcolor{tabloust}
+\tablobaslik{Aksiyom} & \tablobaslik{Olmadan ne olur?} & \tablobaslik{Kim reddeder?} \\
+\lc{propext}          & denk önermeler ayrı kalır; \leantac{rw} ↔ ile çalışmaz & bazı yapıcı sistemler (ama çoğu kabul eder) \\
+\lc{Quot.sound}       & bölüm tipleri ve \lc{funext} yoktur & yoğunlamalı MLTT \\
+\lc{Classical.choice} & üçüncü hâl yoktur; her tanım hesaplanabilir & Bishop tarzı yapıcı matematik \citep{bishop1967} \\
+\end{tabularx}
+\caption{Her aksiyomun rolü. Yapıcı matematik genellikle yalnızca
+\lc{Classical.choice}'u reddeder.}
+\label{tab:aksiyom-rolleri}
+\end{table}
+
+% ---------------------------------------------------------------------
+\section{Bir karşılaştırma: tek-değerlilik}\label{sec:univalence}
+
+Homotopi tip kuramı (HoTT) \citep{hott2013}, \Lean{}'in aksiyomlarına
+farklı bir cevap verir. HoTT'de eşitlik kanıtları birer ``yol''dur ve
+birbirinden farklı olabilir; kanıt-ilgisizliği \emph{yoktur}. Vladimir
+Voevodsky'nin \emph{tek-değerlilik} (\emph{univalence}) aksiyomu, iki tip
+arasındaki her denkliğin bir eşitliğe karşılık geldiğini söyler:
+\[
+  (A \simeq B) \;\simeq\; (A = B).
+\]
+Bu aksiyom, \lc{propext}'in tiplere genellenmesidir. \lc{propext} denk
+\emph{önermelerin} eşit olduğunu söyler, tek-değerlilik ise denk
+\emph{tiplerin}. Üstelik tek-değerlilikten \lc{funext} de türetilir.
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.2cm} X X}
+\rowcolor{tabloust}
+\tablobaslik{} & \tablobaslik{\Lean{} 4 / Mathlib} & \tablobaslik{HoTT} \\
+eşitlik kanıtları & hepsi aynı (kanıt-ilgisizliği) & yollar, birbirinden farklı olabilir \\
+denk nesneler     & \lc{propext}: denk önermeler eşit & tek-değerlilik: denk tipler eşit \\
+\lc{funext}       & \lc{Quot.sound}'dan teorem & tek-değerlilikten teorem \\
+bölümler          & ilkel (\lc{Quot}) & yüksek tümevarımsal tipler \\
+üçüncü hâl        & teorem (Diaconescu) & önermeler için tutarlı; tüm tipler için tek-değerlilikle çelişir \\
+amaç              & klasik matematiğin büyük ölçekli formalizasyonu & homotopi kuramı, yapısal matematik \\
+\end{tabularx}
+\caption{\Lean{}'in aksiyomları ile homotopi tip kuramının karşılaştırılması.}
+\label{tab:lean-hott}
+\end{table}
+
+\noindent İki yaklaşım arasındaki seçim bir zevk meselesi değil, bir mühendislik
+kararıdır. \Lean{}'in tasarımı, klasik matematikçilerin alıştığı akıl
+yürütmeyi mümkün olduğunca az sürtünmeyle formalize etmeyi hedefler. HoTT
+ise matematiğin temellerine yeni bir bakış önerir.
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Ters matematik.} Hangi teoremin hangi aksiyomlara gerçekten ihtiyaç
+duyduğu sorusu, \emph{ters matematik} (\emph{reverse mathematics})
+programının konusudur \citep{simpson2009}. İkinci mertebe aritmetiğin beş
+alt sistemi, sıradan matematiğin teoremlerinin büyük çoğunluğunu
+sınıflandırmaya yeter. \Lean{}'de \leankw{\#print} \lc{axioms}, bu sorunun
+çok kaba bir versiyonunu otomatik olarak cevaplar.
+
+\textbf{Yapıcı formalizasyon.} Mathlib klasiktir, ama yapıcı matematiği
+\Lean{}'de yapmak mümkündür: \lc{Classical} kullanılmaz ve
+\leankw{\#print} \lc{axioms} ile denetlenir. Agda ve Rocq toplulukları
+yapıcı ve homotopi tip kuramı tabanlı kütüphaneler geliştirir. Kübik tip
+kuramı, tek-değerliliği bir aksiyom olmaktan çıkarıp \emph{hesaplanabilir}
+bir teorem hâline getirir. Bu, Bölüm~15'teki ``aksiyomlar hesaplamayı
+durdurur'' sorununa bir çözümdür.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item \Lean{}'in üç aksiyomu vardır: \lc{propext}, \lc{Quot.sound},
+        \lc{Classical.choice}. \leankw{\#print} \lc{axioms} bir teoremin
+        hangilerine dayandığını gösterir.
+  \item \lc{propext} denk önermeleri eşitler. ↔ ile yeniden yazmak buna
+        dayanır. Üçüncü hâlle birlikte \lc{Prop}'u iki değerli yapar.
+  \item Bölüm tipleri denklik sınıflarını kurar. Bölümden dışarı her
+        fonksiyon iyi tanımlılık kanıtı ister. Tamsayılar doğal sayı
+        çiftlerinin bir bölümüdür.
+  \item \lc{funext}, \lc{Quot.sound}'dan türetilen bir teoremdir.
+  \item \lc{Classical.choice}, \lc{Prop}'tan veri çıkarmanın tek yoludur.
+        Kullanan tanımlar \leankw{noncomputable}'dır.
+  \item Diaconescu teoremi: seçim + propext + funext $\Rightarrow$ üçüncü
+        hâl. \Lean{}'deki \lc{Classical.em} tam olarak bu ispattır.
+  \item HoTT'nin tek-değerlilik aksiyomu, \lc{propext}'in tiplere
+        genellenmesidir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} $(\mathsf{True} \to p) = p$. (\lc{a16\_1})
+
+\alistirma{1} \lc{(fun n => n * 1) = (fun n => n)}. Hangi aksiyom
+kullanıldı? (\lc{a16\_2})
+
+\alistirma{2} İki yüklemin eşitliği için propext ile funext'i birlikte
+kullanın. (\lc{a16\_3})
+
+\alistirma{2} \lc{Tamsayi.mk (a + 1) (b + 1) = Tamsayi.mk a b}.
+(\lc{a16\_4})
+
+\alistirma{2} Tamsayılarda toplama birleşmelidir. \lc{Quotient.inductionOn₃}
+kullanın. (\lc{a16\_5})
+
+\alistirma{2} Seçilen tanık istenen özelliği sağlar. (\lc{a16\_6})
+
+\alistirma{2} \lc{p ≠ True} ise \lc{p = False}. Bu teorem yapıcı mıdır?
+\leankw{\#print} \lc{axioms} ile denetleyin. (\lc{a16\_7})
+
+\alistirma{3} \lc{Tamsayi.isaret} birebirdir. Buradan tamsayıların
+\lc{Int}'e eşyapılı olduğunu çıkarmak için başka ne gerekir? (\lc{a16\_8})
+
+\alistirma{2} (Kâğıt-kalem) Kesirleri \lc{Int × Nat} çiftlerinin bir bölümü
+olarak tanımlayın. Denklik bağıntısı nedir? Paydası sıfır olan çiftlerle ne
+yapılmalı?
+
+\alistirma{3} (Proje) \lc{Tamsayi} için çarpmayı tanımlayın ve dağılma
+özelliğini ispatlayın. İyi tanımlılık kanıtında \leantac{omega} neden yetmez?
+(İpucu: doğrusal olmayan terimler.)
+
+\alistirma{3} (Araştırma) \lc{Classical.choice} kullanmadan \lc{propext} ve
+\lc{Quot.sound} ile üçüncü hâli ispatlayamayacağımızı gösteren bir model
+düşünün. Bunu \Lean{}'de ispatlamak neden mümkün değildir?
+\end{alistirmalar}

@@ -1,0 +1,172 @@
+% =====================================================================
+%  lean-stil.tex — Lean 4 kod renklendirme ve kod kutuları
+%  Lean 4 ile Modern Mantık
+%
+%  Renklendirme minted + Pygments ile yapılır (Unicode ve Türkçe
+%  karakterler sorunsuz). Kitaba özel sözcük çözümleyicisi:
+%  stil/leankitap.py
+%
+%  Derleme -shell-escape gerektirir:
+%      latexmk -xelatex -shell-escape ana
+% =====================================================================
+
+\usepackage[newfloat]{minted}
+\usemintedstyle{bw}
+\tcbuselibrary{minted}
+
+% Sözcük çözümleyicisi: Pygments'e dosyadan özel çözümleyici yükletmek için
+% "-x" bayrağı gerekir; dil adı olarak dosya yolu ve sınıf adı verilir.
+\renewcommand{\MintedPygmentize}{pygmentize -x}
+
+% ---------- Renk paleti ----------
+\definecolor{leanbg}{HTML}{F7F9FC}      % kod arka planı
+\definecolor{leanframe}{HTML}{3B5BDB}   % kod çerçevesi (lacivert)
+\definecolor{leankw}{HTML}{7048E8}      % anahtar kelime (mor)
+\definecolor{leantac}{HTML}{D6336C}     % taktik (pembe-kırmızı)
+\definecolor{leantype}{HTML}{0C8599}    % Prop, Type (camgöbeği)
+\definecolor{leanhyp}{HTML}{E8590C}     % hipotez adları (turuncu)
+\definecolor{leancom}{HTML}{5C7F4A}     % yorum (zeytin yeşili)
+\definecolor{leansym}{HTML}{1971C2}     % → ⊢ ∧ ∨ (mavi)
+\definecolor{leancmd}{HTML}{862E9C}     % #check, #eval
+\definecolor{leankirik}{HTML}{ADB5BD}   % satır numarası
+
+\definecolor{hedefbg}{HTML}{FFF9DB}     % hedef durumu kutusu
+\definecolor{hedefframe}{HTML}{F59F00}
+\definecolor{bittibg}{HTML}{EBFBEE}
+\definecolor{bittiframe}{HTML}{2F9E44}
+\definecolor{hatabg}{HTML}{FFF5F5}
+\definecolor{hataframe}{HTML}{E03131}
+
+% ---------- Token renkleri ----------
+% Pygments'in "bw" stili yüklendikten sonra, her kod bloğunun başında
+% token makroları kitabın renk diliyle değiştirilir (formatcom).
+\makeatletter
+\newcommand{\leanrenk}[3]{% #1: token kısaltması, #2: renk, #3: ek biçim
+  \@namedef{PYG@tok@#1}{\def\PYG@tc####1{\textcolor{#2}{####1}}#3}}
+\newcommand{\leanrenkleri}{%
+  \leanrenk{k}{leankw}{\let\PYG@bf=\textbf}%          anahtar kelime
+  \leanrenk{kt}{leantype}{\let\PYG@bf=\textbf}%       Prop, Type
+  \leanrenk{nb}{leantac}{\let\PYG@bf=\textbf}%        taktik
+  \leanrenk{nv}{leanhyp}{\let\PYG@bf=\textbf}%        hipotez adı
+  \leanrenk{nd}{leancmd}{\let\PYG@bf=\textbf}%        #check
+  \leanrenk{o}{leansym}{\let\PYG@bf=\relax}%          → ∧ ∨ ⊢
+  \leanrenk{nt}{leankw}{\let\PYG@bf=\relax}%          ⟨ ⟩
+  \leanrenk{c}{leancom}{\let\PYG@it=\textit}%         yorum
+  \leanrenk{c1}{leancom}{\let\PYG@it=\textit}%
+  \leanrenk{cm}{leancom}{\let\PYG@it=\textit}%
+  \leanrenk{s2}{leantype}{\let\PYG@it=\relax}%        dizgi
+  \leanrenk{s}{leantype}{\let\PYG@it=\relax}%
+  \leanrenk{nx}{leansym}{\def\PYG@ff####1{{\sembolkodfont ####1}}}% ⋀ ⋁ ⟹ ⊨
+}
+\makeatother
+
+\setminted{
+  fontsize=\small,
+  breaklines, breakanywhere,
+  tabsize=2,
+  numbersep=8pt,
+  formatcom=\leanrenkleri,
+}
+\renewcommand{\theFancyVerbLine}{\textcolor{leankirik}{\tiny\arabic{FancyVerbLine}}}
+
+% Lean dosyalarından çıkarılan kesitlerin yeri (ana.tex'e göre)
+\newcommand{\kesitdizini}{kesitler}
+
+% Derleme başında kesitleri yeniden çıkar (shell-escape açıkken)
+\AtBeginDocument{%
+  \immediate\write18{python3 ../araclar/kesitleri_cikar.py
+    ../lean/ModernMantik \kesitdizini}}
+
+% ---------- Kod kutuları ----------
+\tcbset{
+  leankutu/.style={
+    enhanced, breakable,
+    colback=leanbg, colframe=leanframe,
+    boxrule=0.8pt, arc=3pt,
+    left=4pt, right=6pt, top=6pt, bottom=4pt,
+    fonttitle=\sffamily\bfseries\small,
+    coltitle=white,
+    attach boxed title to top left={xshift=8pt,yshift=-2.2mm},
+    boxed title style={colback=leanframe, arc=2pt, boxrule=0pt},
+    before skip=12pt, after skip=10pt,
+    listing engine=minted,
+    minted language=stil/leankitap.py:LeanKitapLexer,
+    minted options={linenos, xleftmargin=1.6em, fontsize=\small,
+                    breaklines, breakanywhere, numbersep=8pt,
+                    formatcom=\leanrenkleri},
+  }
+}
+
+% Kitap içine doğrudan yazılan kod (derlenmeyen örnekler için):
+%   \begin{leankod}[Başlık] ... \end{leankod}
+\newtcblisting{leankod}[1][Lean 4]{leankutu, title={#1}, listing only}
+
+% Eşlik eden Lean projesinden ÇEKİLEN kod (tek doğruluk kaynağı):
+%   \leandosya[Başlık]{Bolum02}{hipotetik_kiyas}
+% Bolum02.lean içindeki  -- ANCHOR: hipotetik_kiyas  ...
+%                        -- ANCHOR_END: hipotetik_kiyas  arası basılır.
+\newcommand{\leandosya}[3][Lean 4]{%
+  \tcbinputlisting{leankutu,
+    title={#1\quad{\normalfont\scriptsize\ttfamily ModernMantik/#2.lean}},
+    listing only,
+    listing file={\kesitdizini/#2/#3.lean}}%
+}
+
+% Hedef durumu (Lean'in Infoview paneli):
+%   \begin{hedefdurumu}[Başlık] ... \end{hedefdurumu}
+\newtcblisting{hedefdurumu}[1][Hedef durumu]{
+  enhanced, listing only,
+  listing engine=minted, minted language=stil/leankitap.py:LeanKitapLexer,
+  minted options={fontsize=\small, formatcom=\leanrenkleri},
+  colback=hedefbg, colframe=hedefframe,
+  boxrule=0.6pt, arc=2pt, leftrule=3pt,
+  left=6pt, top=2pt, bottom=2pt,
+  title={\sffamily\footnotesize\bfseries #1},
+  coltitle=black!75, colbacktitle=hedefframe!30,
+  toptitle=1pt, bottomtitle=1pt,
+  before skip=6pt, after skip=6pt,
+}
+
+% Lean hata mesajı kutusu
+\newtcblisting{leanhata}[1][Lean hata mesajı]{
+  enhanced, listing only,
+  listing engine=minted, minted language=text,
+  minted options={fontsize=\small},
+  colback=hatabg, colframe=hataframe,
+  boxrule=0.6pt, arc=2pt, leftrule=3pt,
+  left=6pt, top=2pt, bottom=2pt,
+  title={\sffamily\footnotesize\bfseries #1},
+  coltitle=hataframe!80!black, colbacktitle=hataframe!15,
+  toptitle=1pt, bottomtitle=1pt,
+  before skip=6pt, after skip=6pt,
+}
+
+% "İspat tamamlandı" çubuğu
+\newcommand{\ispatbitti}{%
+  \begin{tcolorbox}[enhanced, colback=bittibg, colframe=bittiframe,
+      boxrule=0.6pt, arc=2pt, leftrule=3pt,
+      left=6pt, top=3pt, bottom=3pt, before skip=6pt, after skip=8pt]
+    {\leanfont\small No goals}\hfill
+    \textcolor{bittiframe}{\sffamily\bfseries İspat tamamlandı {\sembolfont ✓}}
+  \end{tcolorbox}}
+
+% ---------- Metin içi kısayollar ----------
+\newcommand{\leantac}[1]{{\leanfont\textcolor{leantac}{\bfseries #1}}}
+\newcommand{\leankw}[1]{{\leanfont\textcolor{leankw}{\bfseries #1}}}
+\newcommand{\leanhyp}[1]{{\leanfont\textcolor{leanhyp}{\bfseries #1}}}
+\newcommand{\leantype}[1]{{\leanfont\textcolor{leantype}{\bfseries #1}}}
+\newcommand{\lc}[1]{{\leanfont #1}}
+
+% İki hedef durumunu yan yana gösterme (önce ⇒ sonra):
+%   \begin{hedefgecisi}
+%     \begin{hedefdurumu}[Önce] ... \end{hedefdurumu}
+%   \sonra
+%     \begin{hedefdurumu}[Sonra] ... \end{hedefdurumu}
+%   \end{hedefgecisi}
+\newenvironment{hedefgecisi}
+  {\par\smallskip\noindent\begin{minipage}[t]{0.455\linewidth}\vspace{0pt}}
+  {\end{minipage}\par\smallskip}
+\newcommand{\sonra}{\end{minipage}\hfill
+  \begin{minipage}[t]{0.05\linewidth}\vspace{0.9cm}\centering
+    \textcolor{leantac}{\Large$\Rightarrow$}\end{minipage}\hfill
+  \begin{minipage}[t]{0.455\linewidth}\vspace{0pt}}

@@ -1,0 +1,630 @@
+% =====================================================================
+%  Bölüm 13 — Ardışık Hesap ve Kesme Eleme
+% =====================================================================
+\chapter{Ardışık Hesap ve Kesme Eleme}\label{bol:ardisik}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Gentzen'in ardışık hesabını, LK ve LJ sistemlerini ve aralarındaki
+        farkı,
+  \item Çok sonuçlu ardışıkların klasik mantığı nasıl ``kendiliğinden''
+        verdiğini,
+  \item Kuralların tersinirliğini ve bunun bir ispat arama algoritmasına
+        nasıl dönüştüğünü,
+  \item Kesme kuralını, Gentzen'in \emph{Hauptsatz}'ını ve kesmenin
+        \Lean{}'de anlambilimsel yoldan elenmesini,
+  \item Alt formül özelliğini ve bunun tutarlılık, karar verilebilirlik ve
+        otomatik ispat için sonuçlarını.
+\end{itemize}
+\end{bolumhedefleri}
+
+Kısım~III'ün ilk üç bölümünde önermeler mantığının \emph{bir} ispat
+sistemini, doğal çıkarımı, inceledik ve onun iki değerli anlambilime göre
+hem geçerli hem tam olduğunu gösterdik. Bu bölümde aynı mantık için
+ikinci bir ispat sistemi tanıtıyoruz: Gerhard Gentzen'in \emph{ardışık
+hesabı}. İki sistem aynı formülleri türetir. Ama ardışık hesabın
+kurallarının biçimi ona doğal çıkarımda olmayan bir özellik kazandırır:
+Türetimler \emph{aşağıdan yukarıya}, mekanik olarak aranabilir. Bu bölümün
+sonunda, \Lean{}'de çalışan küçük bir otomatik ispatlayıcımız olacak.
+
+% ---------------------------------------------------------------------
+\section{Ardışıklar}\label{sec:ardisiklar}
+
+Bölüm~5'te doğal çıkarım kurallarını $\Gamma \vdash A$ biçimindeki
+\emph{ardışıklarla} yazmıştık. Solda bir varsayım listesi, sağda tek bir
+sonuç vardı. Gentzen'in ardışık hesabında sağ taraf da bir listedir:
+
+\begin{tanim}{Ardışık}{ardisik}
+Bir \textbf{ardışık}, iki formül listesinden oluşan bir çifttir ve
+\[
+  A_1, \dots, A_m \;\Rightarrow\; B_1, \dots, B_n
+\]
+diye yazılır. Anlamı şudur: \emph{Soldaki formüllerin hepsi doğruysa,
+sağdaki formüllerden en az biri doğrudur.} Yani sol taraf bir ``ve'', sağ
+taraf bir ``veya'' gibi okunur:
+\[
+  \Gamma \Rightarrow \Delta
+  \quad\text{geçerlidir}\quad\iff\quad
+  \models \textstyle\bigwedge\Gamma \oise \bigvee\Delta .
+\]
+\end{tanim}
+
+\noindent İki uç durum öğreticidir. $\Rightarrow A$ (sol boş), $A$'nın bir
+totoloji olduğunu söyler. $A \Rightarrow$ (sağ boş) ise $A$'nın
+\emph{sağlanamaz} olduğunu söyler, çünkü boş bir ``veya'' hiçbir zaman
+doğru değildir. Boş ardışık $\Rightarrow$ ise hiçbir zaman geçerli
+olamaz; onu türetebilen bir sistem tutarsızdır.
+
+\begin{tarihce}[Tarihçe: Gentzen ve Hauptsatz]
+Gerhard Gentzen, 1934--35'te yayımlanan ``Mantıksal çıkarım üzerine
+incelemeler'' adlı tezinde \citep{gentzen1935} iki sistem birden tanıttı:
+\emph{doğal çıkarım} (NK, NJ) ve \emph{ardışık hesap} (LK, LJ). Doğal
+çıkarımın matematikçilerin gerçek akıl yürütmesine yakın olduğunu, ama
+onun hakkında teoremler ispatlamanın zor olduğunu gördü. Ardışık hesabı bu
+yüzden geliştirdi: Tezin ana sonucu olan \emph{Hauptsatz} (ana teorem),
+ardışık hesapta \emph{kesme} kuralının elenebileceğini söyler. Gentzen bir
+yıl sonra aynı teknikleri kullanarak Peano aritmetiğinin tutarlılığını
+ispatladı \citep{gentzen1936}. Ardışık hesabın bugünkü standart sunumu
+için \citet{troelstra2000} ve \citet{negri2001} başvuru kaynaklarıdır.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{Kesmesiz bir ardışık hesap}\label{sec:g3}
+
+Ardışık hesabın her bağlaç için iki kuralı vardır: bağlacı \emph{solda}
+tanıtan bir kural ve \emph{sağda} tanıtan bir kural. Eleme kuralı yoktur.
+Bunun yerine doğal çıkarımdaki eleme kurallarının işini sol kurallar
+görür. \Cref{fig:g3-kurallar}, \Lean{}'de tanımlayacağımız sistemin
+kurallarını gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\setlength{\tabcolsep}{14pt}
+\renewcommand{\arraystretch}{3.0}
+\begin{tabular}{cc}
+\begin{prooftree}
+  \hypo{p_n \in \Gamma}
+  \hypo{p_n \in \Delta}
+  \infer2[Aks]{\Gamma \Rightarrow \Delta}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\bot \in \Gamma}
+  \infer1[$\bot$L]{\Gamma \Rightarrow \Delta}
+\end{prooftree}
+\\
+\begin{prooftree}
+  \hypo{A, B, \Gamma \Rightarrow \Delta}
+  \infer1[$\wedge$L]{A \ove B, \Gamma \Rightarrow \Delta}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma \Rightarrow A, \Delta}
+  \hypo{\Gamma \Rightarrow B, \Delta}
+  \infer2[$\wedge$R]{\Gamma \Rightarrow A \ove B, \Delta}
+\end{prooftree}
+\\
+\begin{prooftree}
+  \hypo{A, \Gamma \Rightarrow \Delta}
+  \hypo{B, \Gamma \Rightarrow \Delta}
+  \infer2[$\vee$L]{A \oveya B, \Gamma \Rightarrow \Delta}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma \Rightarrow A, B, \Delta}
+  \infer1[$\vee$R]{\Gamma \Rightarrow A \oveya B, \Delta}
+\end{prooftree}
+\\
+\begin{prooftree}
+  \hypo{\Gamma \Rightarrow A, \Delta}
+  \hypo{B, \Gamma \Rightarrow \Delta}
+  \infer2[$\to$L]{A \oise B, \Gamma \Rightarrow \Delta}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{A, \Gamma \Rightarrow B, \Delta}
+  \infer1[$\to$R]{\Gamma \Rightarrow A \oise B, \Delta}
+\end{prooftree}
+\\
+\multicolumn{2}{c}{%
+\colorbox{fikirbg}{\begin{prooftree}
+  \hypo{\Gamma \Rightarrow \Delta}
+  \hypo{\Gamma \subseteq \Gamma'}
+  \hypo{\Delta \subseteq \Delta'}
+  \infer3[Yapı]{\Gamma' \Rightarrow \Delta'}
+\end{prooftree}\quad\raisebox{0.4em}{\textcolor{fikirframe}{\baslikfont\scriptsize\bfseries yapısal kural}}}}
+\\
+\end{tabular}
+\caption{Kesmesiz klasik ardışık hesap. Her bağlaç için bir sol (L) ve
+bir sağ (R) kuralı vardır. Son kural, Gentzen'in zayıflatma, değiştirme
+ve daraltma kurallarını tek bir kuralda toplar. Kesme kuralı \emph{yoktur}.}
+\label{fig:g3-kurallar}
+\end{figure}
+
+\noindent Kurallara yakından bakalım. $\to$L kuralı, doğal çıkarımdaki
+modus ponensin ardışık hesaptaki karşılığıdır. Solda $A \oise B$ varsa ve
+$A$'yı ``sağlayabiliyorsak'' (sol öncül), $B$'yi varsayabiliriz (sağ öncül).
+$\vee$R kuralı ise çok sonuçlu olmanın gücünü gösterir: $A \oveya B$'yi
+kanıtlamak için hangisinin doğru olduğuna \emph{karar vermek} zorunda
+değiliz; ikisini birden sağa yazarız. \Lean{}'deki tanım şöyle:
+
+\leandosya[Kesmesiz ardışık hesap]{Bolum13}{ardisik}
+
+\noindent \lc{Ardisik Γ Δ} tanımı, Bölüm~11'deki \lc{Turetilir}
+tanımıyla aynı kalıptadır: Her kural bir kurucudur. Tek fark, ana
+formülün listenin \emph{başında} durmasıdır. Ana formül başka bir yerdeyse,
+\lc{degis} yapısal kuralıyla öne alınır.
+
+\begin{dikkat}[Dikkat: \lc{::} ve bağlaçların önceliği]
+\Lean{}'de \lc{::} işlecinin önceliği (67), bağlaçlarımızınkinden
+(25--35) yüksektir. Bu yüzden \lc{A {\sembolkodfont ⋀} B :: Γ}, \lc{A {\sembolkodfont ⋀} (B :: Γ)} diye
+okunur ve bir tip hatası verir. Ana formülü her zaman paranteze alıyoruz:
+\lc{(A {\sembolkodfont ⋀} B) :: Γ}.
+\end{dikkat}
+
+\subsection{LK ve LJ}
+
+Gentzen'in klasik sistemi LK'dır. Sezgici sistem LJ ise LK'dan tek bir
+kısıtlamayla elde edilir: \emph{Sağ tarafta en fazla bir formül
+bulunabilir.} Bu küçük sözdizimsel kısıtlama, Bölüm~4'te uzun uzun
+tartıştığımız yapıcı/klasik ayrımını tam olarak yakalar. Bunu görmek için
+Peirce yasasının türetimine bakalım (\cref{fig:peirce-ardisik}).
+
+\leandosya[İki örnek türetim]{Bolum13}{ornekler}
+
+\begin{figure}[htbp]
+\centering
+\begin{prooftree}
+  \infer0[Aks]{p \Rightarrow \colorbox{teorembg}{$q,\; p$}}
+  \infer1[$\to$R]{\Rightarrow \colorbox{teorembg}{$p \oise q,\; p$}}
+  \infer0[Aks]{p \Rightarrow p}
+  \infer2[$\to$L]{(p \oise q) \oise p \Rightarrow p}
+  \infer1[$\to$R]{\Rightarrow ((p \oise q) \oise p) \oise p}
+\end{prooftree}
+\caption{Peirce yasasının ardışık hesaptaki türetimi, \Lean{}'deki
+\lc{peirce\_ardisik} ispatının adım adım karşılığı. Renkli ardışıklarda
+sağ tarafta \emph{iki} formül vardır; LJ'de bu adımlara izin verilmez. Bu
+yüzden Peirce yasası LJ'de türetilemez.}
+\label{fig:peirce-ardisik}
+\end{figure}
+
+\begin{onemlifikir}[Önemli Fikir: Klasik mantık = çok sonuçlu ardışıklar]
+Doğal çıkarımda klasik mantığa geçmek için yeni bir \emph{kural}
+eklememiz gerekmişti (RAA). Ardışık hesapta kurallar aynı kalır; değişen
+yalnızca sağ tarafın kaç formül taşıyabildiğidir. Klasik mantığın ``ya
+öyle ya böyle, ama hangisi olduğunu söylemeden'' akıl yürütmesi, sağ
+taraftaki virgülde saklıdır. Girard'ın deyişiyle, klasik ve sezgici mantık
+arasındaki fark bağlaçlarda değil, \emph{yapıdadır} \citep{girard1989}.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Anlambilim ve geçerlilik}\label{sec:ardisik-gecerlilik}
+
+Bir ardışığın anlamını \Lean{}'de iki küçük yüklemle ifade ediyoruz. Sol
+tarafın hepsi doğru (\lc{HepsiDogru}), sağ taraftan biri doğru
+(\lc{BiriDogru}):
+
+\leandosya[Ardışıkların anlamı]{Bolum13}{gecerli_tanim}
+
+\noindent Listelerin başına bir eleman eklendiğinde bu iki yüklemin nasıl
+davrandığını söyleyen iki önsav, bölümün geri kalanında sürekli
+kullanılacak. Üçüncü önsav ise geçerliliğin listeler büyüdükçe
+korunduğunu söyler (bu, yapısal kuralın geçerliliğidir):
+
+\leandosya[Liste önsavları]{Bolum13}{liste_onsavlari}
+
+\noindent Geçerlilik teoremi Bölüm~11'deki gibi kural tümevarımıyla
+ispatlanır. Her kural, öncüllerindeki geçerliliği sonucuna taşır:
+
+\leandosya[Ardışık hesabın geçerliliği]{Bolum13}{ardisik_gecerli}
+
+\noindent Son satırdaki \lc{bos\_ardisik\_yok}, boş ardışığın
+türetilemediğini, yani sistemin tutarlı olduğunu söyler. Geçerlilik
+ispatı burada da kısa bir sonuç verir: Boş ardışık hiçbir değerlemede
+doğru değildir.
+
+% ---------------------------------------------------------------------
+\section{Tersinirlik ve ispat arama}\label{sec:tersinirlik}
+
+Doğal çıkarımda bir formülü türetmeye çalışırken çoğu zaman ne yapacağımızı
+\emph{tahmin etmemiz} gerekir. Modus ponens hangi $A$ ile uygulanmalı?
+Hangi ara önsav işe yarar? Ardışık hesabın kurallarında böyle bir tahmin
+yoktur. Her kuralın öncüllerinde yalnızca sonucunda geçen formüllerin
+\emph{parçaları} bulunur. Üstelik bizim sistemimizin her kuralı
+\emph{tersinirdir}:
+
+\begin{tanim}{Tersinir kural}{tersinir}
+Bir kural, sonucu geçerli olduğunda öncüllerinin hepsi de geçerliyse
+\textbf{tersinirdir}.
+\end{tanim}
+
+\noindent Tersinirlik, ispat aramada hiçbir zaman yanlış bir seçim
+yapamayacağımız anlamına gelir. Geçerli bir ardışığa \emph{hangi} kuralı
+uygularsak uygulayalım, öncüller de geçerli kalır. Bu yüzden arama hiçbir
+zaman geri dönmek (\emph{backtracking}) zorunda kalmaz.
+
+\leandosya[Tersinirlik önsavları]{Bolum13}{tersinirlik}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    ard/.style={draw=#1, fill=#1!8, thick, rounded corners=3pt,
+                font=\small, inner sep=4pt},
+    ok/.style={-{Stealth[length=2.2mm]}, thick, black!45},
+    kural/.style={font=\baslikfont\scriptsize\bfseries, text=leantac},
+  ]
+  \node[ard=teoremframe] (k) at (0,0) {$\Rightarrow (p \oveya q) \oise (q \oveya p)$};
+  \node[ard=anarenk] (a1) at (0,1.4) {$p \oveya q \Rightarrow q \oveya p$};
+  \node[ard=anarenk] (a2) at (0,2.8) {$p \oveya q \Rightarrow q,\; p$};
+  \node[ard=ikincil] (l) at (-2.6,4.3) {$p \Rightarrow q,\; p$};
+  \node[ard=ikincil] (r) at (2.6,4.3) {$q \Rightarrow q,\; p$};
+  \node[font=\baslikfont\scriptsize\bfseries, text=ikincil] at (-2.6,5.0) {Aks ($p$)};
+  \node[font=\baslikfont\scriptsize\bfseries, text=ikincil] at (2.6,5.0) {Aks ($q$)};
+  \draw[ok] (k) -- node[right, kural]{$\to$R} (a1);
+  \draw[ok] (a1) -- node[right, kural]{$\vee$R} (a2);
+  \draw[ok] (a2) -- node[left, kural, pos=0.45]{$\vee$L} (l);
+  \draw[ok] (a2) -- (r);
+  \node[font=\baslikfont\scriptsize, text=black!55, align=left, anchor=west] at (4.6,1.4)
+       {her adımda:\\en soldaki bağlacı\\parçala};
+  \node[font=\baslikfont\scriptsize, text=black!55, align=left, anchor=west] at (4.6,4.3)
+       {yapraklar:\\yalnızca atomlar};
+  \draw[-{Stealth[length=3mm]}, very thick, black!25] (-5.2,0) -- (-5.2,4.6)
+       node[midway, left, font=\baslikfont\scriptsize, text=black!55, align=right]{arama\\yönü};
+\end{tikzpicture}
+\caption{$(p \oveya q) \oise (q \oveya p)$ için ispat arama. Kök, ispatlamak
+istediğimiz ardışıktır. Her adımda bir bağlaç parçalanır. Yapraklarda
+yalnızca atomlar kaldığında, solda ve sağda ortak bir atom olup olmadığına
+bakılır.}
+\label{fig:ispat-arama}
+\end{figure}
+
+\subsection{Kesmesiz tamlık}
+
+Tersinirlik, bir tamlık ispatına doğrudan dönüşür. Geçerli bir ardışık
+verilsin. Bağlaçları birer birer parçalayalım; tersinirlik sayesinde her
+yeni ardışık da geçerlidir. Bağlaç kalmadığında elimizde yalnızca
+atomlardan oluşan geçerli ardışıklar kalır. Böyle bir ardışık ya solda ve
+sağda ortak bir atom içerir (o zaman Aks kuralı uygulanır), ya da
+geçersizdir. Çünkü soldaki atomları doğru, diğer her şeyi yanlış yapan
+değerleme bir karşı model olurdu.
+
+Bunu \Lean{}'de yazmak için önce aramanın sona ereceğini garanti eden bir
+\emph{ölçü} tanımlıyoruz. Her kural uygulaması bu ölçüyü en az bir
+azaltır:
+
+\leandosya[Ardışığın ölçüsü]{Bolum13}{olcu}
+
+\noindent Ölçüdeki $2 \cdot \mathrm{boyut}$ çarpanı önemlidir. Örneğin
+$\wedge$L kuralı $A \ove B$'yi $A$ ve $B$ ile değiştirir. Bağlaç sayısı
+bir azalır ama formül sayısı bir artar. Bağlaçlara iki kat ağırlık
+verilmezse toplam değişmezdi.
+
+Atomik formülleri işlerken onları listenin sonundaki bir ``atom
+bölgesine'' taşırız. \lc{tasi1} ve \lc{tasi2}, bu taşımanın üyeliği
+değiştirmediğini söyler. Böylece \lc{degis} kuralı taşımayı türetime
+dönüştürebilir:
+
+\leandosya[Atomları kenara almak]{Bolum13}{tasi}
+
+\noindent Aramanın yaprakları, yalnızca atomlardan oluşan ardışıklardır.
+Burada karşı model yöntemi devreye girer:
+
+\leandosya[Atomik ardışıklar]{Bolum13}{atomik}
+
+\noindent Artık arama algoritmasını bir tamlık ispatı olarak yazabiliriz.
+\lc{tam\_aux}, ölçü üzerinde (\lc{n} ile sınırlanmış) özyinelemeyle
+tanımlanmış bir teoremdir. Önce soldaki formülleri, sol boşalınca da
+sağdakileri işler. Her durumda tersinirlik önsavı yeni ardışığın geçerli
+olduğunu, özyinelemeli çağrı ise türetilebildiğini söyler:
+
+\leandosya[İspat arama, bir tamlık ispatı olarak]{Bolum13}{tam_aux}
+
+\noindent \lc{tam\_aux}'un örüntüleri, \cref{fig:ispat-arama}'daki
+aramanın birebir tarifidir. \lc{P} ve \lc{Q} kenara alınmış atomları
+tutar. Ardından son adım gelir: Başlangıçta kenarda hiç atom yoktur.
+
+\leandosya[Kesmesiz tamlık]{Bolum13}{ardisik_tam}
+
+\begin{teorem}{Kesmesiz tamlık}{kesmesiz-tamlik}
+Geçerli her $\Gamma \Rightarrow \Delta$ ardışığı, kesme kuralı
+kullanılmadan türetilebilir.
+\end{teorem}
+
+% ---------------------------------------------------------------------
+\section{Kesme kuralı}\label{sec:kesme}
+
+Matematikte bir teoremi ispatlarken önce bir \emph{önsav} ispatlar, sonra
+onu kullanırız. Ardışık hesapta bu adımın adı \emph{kesme}dir:
+\begin{center}
+\begin{prooftree}
+  \hypo{\Gamma \Rightarrow A, \Delta}
+  \hypo{A, \Gamma \Rightarrow \Delta}
+  \infer2[\textcolor{teoremframe}{Kesme}]{\Gamma \Rightarrow \Delta}
+\end{prooftree}
+\end{center}
+Sol öncül önsavı ispatlar. Sağ öncül önsavı varsayarak asıl sonuca
+ulaşır. $A$ formülü sonuçta görünmez; ``kesilip atılmıştır''. Kesme,
+tüm diğer kurallardan farklıdır: Sonuçta \emph{bulunmayan} bir formül
+(önsav) öncüllerde ortaya çıkar. İspat arama açısından bu bir felakettir.
+Kesmeyi aşağıdan yukarıya uygulayacak olsak, sonsuz sayıdaki olası
+$A$'lardan birini tahmin etmemiz gerekirdi.
+
+\begin{teorem}{Hauptsatz (Gentzen, 1935)}{hauptsatz}
+Kesme kuralı elenebilir: Kesme ile türetilebilen her ardışık, kesme
+kullanılmadan da türetilebilir.
+\end{teorem}
+
+\noindent Elimizdeki araçlarla bu teoremin önermeler mantığı için
+ispatı birkaç satırdır. Kesmenin iki öncülü geçerliyse sonucu da
+geçerlidir. Kesmesiz tamlık ise geçerli her ardışığın kesmesiz bir
+türetimi olduğunu söyler:
+
+\leandosya[Kesme elenebilir]{Bolum13}{kesme}
+
+\noindent Bu ispat, kesmeyi sisteme bir kural olarak eklememize gerek
+olmadığını gösterir. \lc{kesme} bir \emph{teorem} olarak elimizdedir ve
+kesmesiz sistemin türetebildiklerini değiştirmez. Böyle kurallara
+\emph{kabul edilebilir} (\emph{admissible}) kurallar denir.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!8, very thick, rounded corners=5pt,
+                 text width=2.3cm, align=center, inner sep=6pt, font=\small},
+    ok/.style={-{Stealth[length=3mm]}, very thick, #1},
+  ]
+  \node[kutu=anarenk]     (k) at (0,0)    {Kesmeli türetim\\$\Gamma \Rightarrow \Delta$};
+  \node[kutu=ikincil]     (g) at (5.3,0)  {$\Gamma \Rightarrow \Delta$\\geçerli};
+  \node[kutu=teoremframe] (s) at (10.6,0) {Kesmesiz türetim\\$\Gamma \Rightarrow \Delta$};
+  \draw[ok=ikincil] (k) -- node[above, font=\baslikfont\scriptsize\bfseries]{geçerlilik} (g);
+  \draw[ok=teoremframe] (g) -- node[above, font=\baslikfont\scriptsize\bfseries]{kesmesiz tamlık} (s);
+  \draw[ok=black!30, dashed] (k.south) to[bend right=18]
+       node[below, font=\baslikfont\scriptsize, text=black!60]{Gentzen: türetimi doğrudan dönüştür (sözdizimsel)} (s.south);
+\end{tikzpicture}
+\caption{Kesme elemenin iki yolu. Üstteki anlambilimsel yol bu bölümde
+\Lean{}'de yapıldı. Alttaki sözdizimsel yol, Gentzen'in yöntemidir.}
+\label{fig:kesme-yollari}
+\end{figure}
+
+\subsection{Sözdizimsel kesme eleme}
+
+Gentzen'in ispatı anlambilim kullanmaz. Kesmeli bir türetimi adım adım
+kesmesiz bir türetime \emph{dönüştürür}. Ana fikir, bir kesmeyi
+öncüllerine doğru ``yukarı itmektir''. Kesme formülü her iki öncülde de
+yeni tanıtılmışsa, kesme daha küçük formüller üzerinde kesmelere bölünür.
+Örneğin $A \ove B$ için:
+\begin{center}
+\scriptsize
+\begin{prooftree}
+  \hypo{\Gamma \Rightarrow A, \Delta}
+  \hypo{\Gamma \Rightarrow B, \Delta}
+  \infer2[$\wedge$R]{\Gamma \Rightarrow A \ove B, \Delta}
+  \hypo{A, B, \Gamma \Rightarrow \Delta}
+  \infer1[$\wedge$L]{A \ove B, \Gamma \Rightarrow \Delta}
+  \infer2[Kesme]{\Gamma \Rightarrow \Delta}
+\end{prooftree}
+\quad\raisebox{1.2em}{\normalsize$\rightsquigarrow$}\quad
+\begin{prooftree}
+  \hypo{\Gamma \Rightarrow A, \Delta}
+  \hypo{\Gamma \Rightarrow B, \Delta}
+  \hypo{A, B, \Gamma \Rightarrow \Delta}
+  \infer2[Kesme$_B$]{A, \Gamma \Rightarrow \Delta}
+  \infer2[Kesme$_A$]{\Gamma \Rightarrow \Delta}
+\end{prooftree}
+\end{center}
+(Sağdaki türetimde öncüllere gereken zayıflatmalar gösterilmemiştir.)
+Kesme formülü bir öncülde yeni tanıtılmamışsa, kesme o öncülün kuralının
+üstüne taşınır. İspat, kesme formülünün boyutu ve türetimin yüksekliği
+üzerinde \emph{iç içe} bir tümevarımdır. Bu tümevarımın \Lean{}'deki
+formalizasyonu, \cref{bol:proje}'deki projelerden biridir. Pfenning'in
+``yapısal kesme eleme'' yöntemi, bu ispatın ispat asistanlarına uygun bir
+biçimidir \citep{pfenning2000}.
+
+\begin{dikkat}[Dikkat: Kesme elemenin bedeli]
+Kesme eleme ``bedava'' değildir. Kesmesiz türetimler, kesmeli olanlardan
+\emph{akıl almaz} derecede uzun olabilir. Bazı formül aileleri için
+kesmeli türetimin boyutu $n$ iken, kesmesiz türetimin boyutu $2^{2^{\cdot^{\cdot^{2}}}}$
+(yüksekliği $n$ olan bir üs kulesi) mertebesindedir \citep{statman1979}.
+Matematikte önsavların neden bu kadar önemli olduğunun biçimsel bir
+açıklaması budur. Önsavlar türetimleri küçültür. Bu bölümün
+\lc{ardisik\_tam} ispatı da, kesmesiz türetimleri doğruluk tablosu
+büyüklüğünde üretir.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Alt formül özelliği ve sonuçları}\label{sec:alt-formul}
+
+\Cref{fig:g3-kurallar}'deki kurallara bir kez daha bakın. Her kuralın
+öncüllerinde geçen her formül, sonucundaki bir formülün \emph{alt
+formülüdür}. Kesme bu özelliği taşımayan tek kuraldı.
+
+\begin{teorem}{Alt formül özelliği}{alt-formul}
+Kesmesiz bir türetimde geçen her formül, kök ardışıktaki bir formülün alt
+formülüdür.
+\end{teorem}
+
+\noindent Bu sözdizimsel özelliğin şaşırtıcı derecede güçlü sonuçları
+vardır:
+
+\begin{itemize}
+  \item \textbf{Tutarlılık.} Boş ardışığın kesmesiz bir türetimi
+        olsaydı, alt formül özelliğine göre bu türetimde hiçbir formül
+        geçemezdi. Ama Aks ve $\bot$L kurallarının ikisi de bir formül
+        gerektirir. Gentzen'in Peano aritmetiği için tutarlılık ispatının
+        iskeleti budur. Bölüm~5'te doğal çıkarım için aynı sonuca
+        normalleştirmeyle ulaşmıştık.
+  \item \textbf{Karar verilebilirlik.} Bir ardışığın olası kesmesiz
+        türetimlerinde yalnızca sonlu sayıda formül kullanılabilir. Bu
+        yüzden arama sonludur. Önermeler mantığı için bunu
+        \lc{tam\_aux}'ta gördük. LJ için de geçerlidir, ama daraltma
+        kuralı yüzünden çok daha incedir (aşağıdaki araştırma notuna
+        bakın).
+  \item \textbf{Ara değer (interpolasyon).} $A \Rightarrow B$ geçerliyse,
+        yalnızca $A$ ile $B$'nin \emph{ortak} atomlarını içeren bir $C$
+        formülü vardır ki $A \Rightarrow C$ ve $C \Rightarrow B$ geçerlidir
+        \citep{craig1957}. Kesmesiz türetim üzerinde tümevarımla $C$
+        doğrudan inşa edilebilir.
+\end{itemize}
+
+\subsection{Çalıştırılabilir bir ispatlayıcı}
+
+\lc{tam\_aux} bir \emph{teoremdir}; bir türetim olduğunu söyler. Aynı
+özyinelemeyi \lc{Bool} döndüren bir \emph{fonksiyon} olarak yazarsak,
+çalıştırabileceğimiz bir karar yöntemi elde ederiz:
+
+\leandosya[Çalıştırılabilir ispat arama]{Bolum13}{ara}
+
+\noindent \lc{ara}'nın doğruluğunu (yani \lc{ara} \lc{true} döndürdüğünde
+gerçekten bir türetim olduğunu) ispatlamak, \lc{tam\_aux}'un yapısını
+izleyen güzel bir alıştırmadır. \ciltiki{6}'da bu fikri \emph{yansıma}
+(\emph{reflection}) adıyla genelleştireceğiz. Orada bir karar yönteminin
+doğruluğunu bir kez ispatlayıp, sonra onu \leantac{decide} ile çalışan bir
+taktik olarak kullanacağız.
+
+% ---------------------------------------------------------------------
+\section{Doğal çıkarım ile ardışık hesap}\label{sec:dogal-ardisik}
+
+İki sistemimiz de iki değerli anlambilime göre geçerli ve tamdır. Öyleyse
+aynı şeyleri türetirler. \Lean{}'de bu, iki tamlık teoreminin
+birleştirilmesiyle tek satırda ispatlanır:
+
+\leandosya[Doğal çıkarım ile denklik]{Bolum13}{denklik}
+
+\noindent Ama iki sistemin ilişkisi ``aynı şeyleri türetmek''ten daha
+derindir. \Cref{fig:nd-lk}'de görüldüğü gibi, kurallar arasında
+yapısal bir eşleşme vardır.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                 text width=3.6cm, align=center, inner sep=5pt, font=\small,
+                 minimum height=1.0cm},
+    ok/.style={{Stealth[length=2.4mm]}-{Stealth[length=2.4mm]}, thick, black!40},
+  ]
+  \node[font=\baslikfont\bfseries, text=anarenk] at (0,1.2) {Doğal çıkarım};
+  \node[font=\baslikfont\bfseries, text=ikincil] at (7,1.2) {Ardışık hesap};
+  \node[kutu=anarenk] (g)  at (0,0)    {giriş kuralları};
+  \node[kutu=anarenk] (e)  at (0,-1.4) {eleme kuralları};
+  \node[kutu=anarenk] (d)  at (0,-2.8) {dolambaç\\{\scriptsize (giriş + eleme)}};
+  \node[kutu=anarenk] (n)  at (0,-4.2) {normalleştirme};
+  \node[kutu=ikincil] (r)  at (7,0)    {sağ kurallar (R)};
+  \node[kutu=ikincil] (l)  at (7,-1.4) {sol kurallar (L)};
+  \node[kutu=ikincil] (k)  at (7,-2.8) {kesme};
+  \node[kutu=ikincil] (ke) at (7,-4.2) {kesme eleme};
+  \draw[ok] (g) -- (r); \draw[ok] (e) -- (l);
+  \draw[ok] (d) -- (k); \draw[ok] (n) -- (ke);
+\end{tikzpicture}
+\caption{Doğal çıkarım ile ardışık hesap arasındaki eşleşme. Doğal
+çıkarımda bir girişin hemen ardından gelen eleme (dolambaç, Bölüm~5),
+ardışık hesapta bir kesmeye karşılık gelir. Prawitz'in normalleştirme
+teoremi ile Gentzen'in Hauptsatz'ı aynı madalyonun iki yüzüdür.}
+\label{fig:nd-lk}
+\end{figure}
+
+\noindent Curry--Howard açısından bakınca bu eşleşme daha da
+anlamlıdır. Doğal çıkarım türetimleri $\lambda$-terimleridir;
+normalleştirme ise bir programın \emph{çalıştırılmasıdır}. Ardışık hesaptaki
+kesme eleme de bir hesaplamadır. Bu hesaplamanın programlama dillerindeki
+karşılıkları (örneğin ``\emph{let}'' ifadelerinin açılması) Bölüm~14'te
+$\lambda$-hesabı ile birlikte ele alınacak.
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Sezgici mantıkta ispat arama.} LJ'de $\to$L kuralı ana formülü
+öncüllerde de tutmak zorundadır. Aksi hâlde sistem tam olmaz. Bu yüzden
+saf geriye arama sonsuza kadar sürebilir. Roy Dyckhoff'un \emph{LJT}
+sistemi \citep{dyckhoff1992}, $\to$L kuralını öncülün biçimine göre dört
+kurala bölerek bu sorunu çözer ve her türetimde ölçünün azaldığı,
+daraltmasız bir sezgici ardışık hesap verir. Mathlib'deki \leantac{itauto}
+gibi sezgici karar yöntemleri bu çizgidedir.
+
+\textbf{Formalize edilmiş kesme eleme.} Kesme eleme, ispat asistanlarında
+metamantık formalizasyonunun ölçütlerinden biridir. Chaudhuri, Lima ve
+Reis doğrusal mantıklar için kesme elemeyi formalize ettiler
+\citep{chaudhuri2019}. Shillito, van~der~Giessen, Goré ve Iemhoff ise
+sezgici bir kanıtlanabilirlik mantığı için yeni bir ardışık hesap
+önerip kesme elemesini ve ispat aramasının sonlanmasını Coq'ta
+formalize ettiler \citep{shillito2023}. Lean~4 tarafında Foundation
+kütüphanesi \citep{foundation}, kip mantıkları ve kanıtlanabilirlik
+mantığı için çeşitli ispat sistemlerini formalize eder.
+
+\textbf{İspat aramadan otomasyona.} Mathlib'deki \leantac{tauto} ve
+genel amaçlı \leantac{aesop} taktiği \citep{limperg2023aesop}, bu
+bölümdeki fikirlerin \Lean{}'in kendi mantığına uygulanmış hâlleridir:
+Tersinir kurallar ``güvenli'' kabul edilip hemen uygulanır, tersinir
+olmayanlar için ise en iyi öncelikli bir arama yapılır.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Bir ardışık $\Gamma \Rightarrow \Delta$, ``$\Gamma$'nın hepsi
+        doğruysa $\Delta$'dan biri doğrudur'' demektir. Ardışık hesapta
+        her bağlacın bir sol ve bir sağ kuralı vardır.
+  \item LK (klasik) ile LJ (sezgici) arasındaki fark, sağ tarafta kaç
+        formül bulunabileceğidir. Peirce yasası ve üçüncü hâl, sağda iki
+        formül gerektirir.
+  \item Sistemimizin her kuralı tersinirdir. Bu yüzden geriye doğru ispat
+        arama hiç yanlış seçim yapmaz ve bir ölçü sayesinde sona erer.
+  \item Arama, bir tamlık ispatına dönüşür: Geçerli her ardışığın
+        kesmesiz bir türetimi vardır (\lc{ardisik\_tam}).
+  \item Kesme kuralı elenebilir (\emph{Hauptsatz}). Anlambilimsel ispat,
+        geçerlilik ile kesmesiz tamlığın birleşimidir. Gentzen'in
+        sözdizimsel ispatı ise türetimleri doğrudan dönüştürür; bunun
+        bedeli türetim boyutunda büyük bir artıştır.
+  \item Kesmesiz türetimlerin alt formül özelliği; tutarlılık, karar
+        verilebilirlik ve interpolasyon sonuçlarının kaynağıdır.
+  \item Doğal çıkarım ve ardışık hesap aynı formülleri türetir. Dolambaç
+        ile kesme ve normalleştirme ile kesme eleme birbirine karşılık
+        gelir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} $p \ove q \Rightarrow q \ove p$. Türetim ağacını da çizin
+ve \lc{a11\_3} ile karşılaştırın: Hangisi daha kısa? (\lc{a13\_1})
+
+\alistirma{1} ${\sim}p, p \Rightarrow$\,. Sağ tarafın boş olmasının
+anlamı nedir? (\lc{a13\_2})
+
+\alistirma{1} Zayıflatma, yapısal kuralın özel bir hâlidir.
+(\lc{a13\_3})
+
+\alistirma{2} Dummett formülü: $\Rightarrow (p \oise q) \oveya (q \oise
+p)$. Ana formülü öne almak için \lc{degis}'i kullanmanız gerekecek. Bu
+formül sezgici mantıkta türetilemez. Türetiminizin hangi adımı LJ'de
+yasaktır? (\lc{a13\_4})
+
+\alistirma{2} $p \oveya q \not\Rightarrow p$: Bu ardışık türetilemez.
+(\lc{a13\_5})
+
+\alistirma{2} Sözdizimsel tersinirlik: $A \ove B, \Gamma \Rightarrow
+\Delta$ türetilebiliyorsa $A, B, \Gamma \Rightarrow \Delta$ da
+türetilebilir. Tamlığı kullanın. (\lc{a13\_6})
+
+\alistirma{2} Doğal çıkarımda ispatlanan bir önsavı, ardışık hesapta
+kesme ile kullanın. (\lc{a13\_7})
+
+\alistirma{3} $\Rightarrow A$ türetilebilir $\iff$ $A$ bir totolojidir.
+(\lc{a13\_8})
+
+\alistirma{2} (Kâğıt-kalem) $(p \oise q) \oise ({\sim}q \oise {\sim}p)$
+için \cref{fig:ispat-arama} benzeri bir arama ağacı çizin. Kaç yaprak
+var?
+
+\alistirma{3} (Proje) \lc{ara n Γ Δ P Q = true} ise \lc{Ardisik (Γ ++
+P.map atom) (Δ ++ Q.map atom)} olduğunu ispatlayın. İpucu: \lc{tam\_aux}
+ile aynı örüntüleri kullanın; atomik durumda \lc{List.any} için bir
+önsav gerekecek.
+
+\alistirma{3} (Proje) LJ'yi \lc{ArdisikJ : List Formul → Option Formul
+→ Prop} olarak tanımlayın (sağda en fazla bir formül). Geçerliliğini
+ispatlayın ve \lc{ArdisikJ [] (some peirce)}'in türetilemediğini
+tartışın. Bu türetilemezliği ispatlamak için hangi anlambilim gerekir?
+(İpucu: \ciltiki{2}.)
+
+\alistirma{3} (Araştırma) Gentzen'in sözdizimsel kesme eleme ispatını
+\lc{Ardisik} sistemine kesme kuralı eklenmiş bir \lc{ArdisikK} için
+formalize etmeye çalışın. Tümevarımın ölçüsü ne olmalı? \lc{degis}
+kuralı ispatı nasıl etkiliyor?
+\end{alistirmalar}

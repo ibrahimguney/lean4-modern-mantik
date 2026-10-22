@@ -1,0 +1,12 @@
+name = "ModernMantik"
+version = "0.2.0"
+defaultTargets = ["ModernMantik"]
+
+# Kısım I ve Bölüm 6–7 yalnızca Lean çekirdeğini kullanır.
+# Bölüm 8'den itibaren Mathlib gerekir.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+
+[[lean_lib]]
+name = "ModernMantik"

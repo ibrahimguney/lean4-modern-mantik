@@ -1,0 +1,17 @@
+# LaTeX
+kitap/*.aux
+kitap/*.log
+kitap/*.out
+kitap/*.toc
+kitap/*.bbl
+kitap/*.blg
+kitap/*.fls
+kitap/*.fdb_latexmk
+kitap/*.synctex.gz
+kitap/*.xdv
+kitap/_minted-*/
+kitap/kesitler/
+# Lean
+lean/.lake/
+kitap/*.listing
+kitap/ana.pdf

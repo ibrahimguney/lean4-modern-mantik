@@ -1,0 +1,67 @@
+% =====================================================================
+%  LEAN 4 İLE MODERN MANTIK — CİLT I: TEMELLER
+%  Ders Kitabı ve Araştırmacı El Kitabı
+%
+%  Derleme (XeLaTeX):
+%     xelatex ana && bibtex ana && xelatex ana && xelatex ana
+%  ya da:  latexmk -xelatex ana
+% =====================================================================
+\documentclass[11pt, a4paper, twoside, openany]{book}
+
+% ---- Kitap bilgileri (buradan değiştirin) ----
+\newcommand{\kitapadi}{Lean 4 ile Modern Mantık}
+\newcommand{\altbaslik}{Ders Kitabı ve Araştırmacı El Kitabı}
+\newcommand{\ciltadi}{Cilt I: Temeller}
+\newcommand{\yazar}{Yazar Adı}
+\newcommand{\surum}{Cilt I · Sürüm 1.0 (gözden geçirme taslağı) — Ekim 2026}
+
+\input{stil/kitap-stil}
+\input{stil/lean-stil}
+
+\begin{document}
+
+\frontmatter
+\input{on/kapak}
+\input{on/onsoz}
+\input{on/okuma-kilavuzu}
+\tableofcontents
+
+\mainmatter
+% ---------------------------------------------------------------------
+\part{Temeller}
+\input{bolumler/bolum01}   % Mantık nedir, ispat asistanı nedir?
+\input{bolumler/bolum02}   % Önermeler mantığı I: →, ∧, ∨
+\input{bolumler/bolum03}   % Önermeler mantığı II: ¬, False, ↔
+\input{bolumler/bolum04}   % Yapıcı ve klasik mantık
+\input{bolumler/bolum05}   % Doğal çıkarım ağaçları ve taktikler
+
+\part{Yüklemler ve Tümevarım}
+\input{bolumler/bolum06}   % Yüklemler mantığı: ∀, ∃, =
+\input{bolumler/bolum07}   % Doğal sayılar ve tümevarım
+\input{bolumler/bolum08}   % Kümeler, ilişkiler, fonksiyonlar
+\input{bolumler/bolum09}   % Tümevarımsal tipler
+
+\part{Mantığın Matematiği}
+\input{bolumler/bolum10}   % Sözdizimi ve anlambilim
+\input{bolumler/bolum11}   % Geçerlilik teoremi
+\input{bolumler/bolum12}   % Tamlık teoremi
+\input{bolumler/bolum13}   % Ardışık hesap ve kesme eleme
+
+\part{Tip Kuramı}
+\input{bolumler/bolum14}   % Basit tipli λ-hesabı
+\input{bolumler/bolum15}   % Bağımlı tipler ve Lean'in çekirdeği
+\input{bolumler/bolum16}   % Lean'in aksiyomları
+
+\part{Projeler}
+\input{bolumler/bolum17}   % Projeler ve Sonsöz: Cilt II'ye bakış
+
+\appendix
+\input{ekler/lean-basvuru}
+\input{ekler/sozluk}
+
+\backmatter
+\bibliographystyle{plainnat}
+\renewcommand{\bibname}{Kaynakça}
+\bibliography{kaynakca}
+
+\end{document}

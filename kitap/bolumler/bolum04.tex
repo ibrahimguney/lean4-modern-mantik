@@ -1,0 +1,626 @@
+% =====================================================================
+%  Bölüm 4 — Yapıcı ve Klasik Mantık
+% =====================================================================
+\chapter{Yapıcı ve Klasik Mantık}\label{bol:yapici-klasik}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Brouwer--Heyting--Kolmogorov (BHK) yorumunu ve ``kanıt bir
+        inşadır'' fikrini,
+  \item \lc{Classical.em} ve \lc{Classical.byContradiction} ile klasik
+        ispat yapmayı,
+  \item Üçüncü hâlin olanaksızlığı, çift değilleme eleme ve Peirce
+        yasasının birbirine denk olduğunu,
+  \item \lc{\#print axioms} ile bir ispatın klasik olup olmadığını
+        denetlemeyi,
+  \item Bir Kripke modeliyle $P \vee \neg P$'nin neden yapıcı olarak
+        ispatlanamadığını,
+  \item Glivenko teoremini, çift değilleme çevirisini ve karar
+        verilebilir önermeleri.
+\end{itemize}
+\end{bolumhedefleri}
+
+Önceki iki bölümde \Lean{}'in bazı önermeleri ispatlamamıza izin
+vermediğini gördük: Peirce yasası (Alıştırma~\ref{alis:peirce}),
+De Morgan'ın bir yönü, $\neg\neg P \to P$ ve $P \vee \neg P$. Bu bölüm
+bu sınırın ne olduğunu, neden var olduğunu ve nasıl aşılacağını
+anlatıyor.
+
+% ---------------------------------------------------------------------
+\section{İki kanıt anlayışı}\label{sec:iki-anlayis}
+
+\subsection{Yapıcı olmayan bir ispat}
+
+Şu teoremi ve onun ünlü ispatını ele alalım.
+
+\begin{teorem}{}{irrasyonel-us}
+$a^b$ rasyonel olacak şekilde $a$ ve $b$ irrasyonel sayıları vardır.
+\end{teorem}
+
+\noindent\textit{İspat.} $x = \sqrt{2}^{\sqrt{2}}$ sayısına bakalım.
+Bu sayı ya rasyoneldir ya değildir.
+\begin{itemize}
+  \item $x$ rasyonelse, $a = b = \sqrt{2}$ alırız. İşimiz biter.
+  \item $x$ rasyonel değilse, $a = x$ ve $b = \sqrt{2}$ alırız. O zaman
+        $a^b = \bigl(\sqrt{2}^{\sqrt{2}}\bigr)^{\sqrt{2}} = \sqrt{2}^{\,2} = 2$
+        olur ve bu rasyoneldir. \hfill\qedsymbol
+\end{itemize}
+
+İspat kısa, zarif ve kusursuzdur, ama tuhaf bir eksiği vardır: Sonunda
+$a$'nın ve $b$'nin \emph{ne olduğunu} hâlâ bilmiyoruz. İspat, ``ya
+$(\sqrt2, \sqrt2)$ ya da $(\sqrt2^{\sqrt2}, \sqrt2)$ çiftinin işe yaradığını''
+gösterir, ama hangisinin işe yaradığını söylemez. Bunu söyleyemez, çünkü
+ilk adımdaki ``ya rasyoneldir ya değildir'' cümlesi, üçüncü hâlin
+olanaksızlığının bir örneğidir ve hangisinin doğru olduğu hakkında hiçbir
+bilgi taşımaz.
+
+\begin{tarihce}[Tarihçe: Brouwer ve Hilbert]
+Hollandalı matematikçi L.\,E.\,J. Brouwer, 1908'de yayımladığı bir
+makalede mantık ilkelerinin, özellikle de üçüncü hâlin olanaksızlığının,
+sonsuz kümeler üzerinde güvenilir olmadığını ileri sürdü
+\citep{brouwer1908}. Brouwer'e göre matematiksel bir nesnenin var
+olduğunu söylemek, onu zihinde \emph{inşa edebilmek} demekti. Bu görüş
+\emph{sezgicilik} (İng.\ \emph{intuitionism}) adını aldı.
+
+David Hilbert bu programa sert biçimde karşı çıktı. Ona göre üçüncü hâlin
+olanaksızlığını matematikçinin elinden almak, gökbilimcinin elinden
+teleskobunu ya da boksörün elinden yumruklarını almak gibiydi. 1920'lerde
+yaşanan bu tartışma, matematiğin temelleri üzerine yirminci yüzyılın en
+ünlü tartışmalarından biri oldu. Bugün ise iki taraf barışık
+yaşıyor: Yapıcı mantık, hesaplanabilirliği gözeten bir \emph{alt sistem}
+olarak, klasik mantık ise onun bir \emph{uzantısı} olarak görülüyor.
+\end{tarihce}
+
+\subsection{BHK yorumu}
+
+Brouwer'in fikri, Arend Heyting ve Andrey Kolmogorov tarafından kesin bir
+biçime kavuşturuldu \citep{heyting1930, kolmogorov1932}. Bugün
+\emph{Brouwer--Heyting--Kolmogorov (BHK) yorumu} olarak bilinen bu
+yaklaşım, her bağlaç için bir kanıtın \emph{ne olduğunu} söyler
+(\cref{tab:bhk}).
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\centering\arraybackslash}p{1.7cm}
+                >{\raggedright\arraybackslash}p{6.2cm}
+                >{\raggedright\arraybackslash}p{3.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Önerme} & \tablobaslik{Bir kanıtı şudur…} & \tablobaslik{Lean'de} \\
+$P \wedge Q$      & $P$'nin bir kanıtı \emph{ve} $Q$'nun bir kanıtından oluşan bir çift & \lc{⟨hp, hq⟩} \\
+$P \vee Q$        & $P$'nin bir kanıtı \emph{ya da} $Q$'nun bir kanıtı, ve \textbf{hangisi olduğunu gösteren bir etiket} & \lc{Or.inl hp}, \lc{Or.inr hq} \\
+$P \to Q$         & $P$'nin her kanıtını $Q$'nun bir kanıtına dönüştüren bir \emph{yöntem} & \lc{fun hp => ...} \\
+$\neg P$          & $P$'nin her kanıtını bir çelişkiye dönüştüren bir yöntem & \lc{fun hp => ...} \\
+$\bot$            & kanıtı yoktur & --- \\
+\end{tabular}
+\caption{BHK yorumu. Önceki iki bölümde Lean'de yaptığımız her şey bu
+tabloya uyar.}
+\label{tab:bhk}
+\end{table}
+
+Tablonun kalın yazılmış satırı her şeyi açıklar. BHK yorumunda
+$P \vee \neg P$'nin bir kanıtı, ya $P$'nin ya $\neg P$'nin bir kanıtı
+olmalıdır, \emph{ve hangisi olduğu belli olmalıdır}. Her önerme için
+böyle bir kanıt vermek, matematikteki her sorunu çözebilen genel bir
+yöntem bulmak demektir. Böyle bir yöntem yoktur (bu olguyu
+\ciltiki{6}'da Turing'in sonuçlarıyla kesinleştireceğiz). Bu
+yüzden $P \vee \neg P$, BHK yorumunda genel bir yasa olamaz.
+
+\begin{onemlifikir}[Önemli Fikir: Yapıcı mantık daha az şey söylemez, daha çok şey söyler]
+Yapıcı bir ispat, klasik bir ispattan \emph{daha fazla bilgi} taşır.
+``$a^b$ rasyonel olan irrasyonel $a, b$ vardır'' cümlesinin yapıcı bir
+ispatı, bu sayıları bize \emph{verir}. Klasik ispat ise yalnızca
+var olduklarını söyler. Bu nedenle yapıcı mantıkta ispatlanan her şey
+klasik mantıkta da doğrudur, ama tersi geçerli değildir.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Lean'de klasik mantık}\label{sec:lean-klasik}
+
+\Lean{}'de klasik mantık yasaklanmamıştır; yalnızca \emph{açıkça
+istenmesi} gerekir. Kapı, \lc{Classical} ad alanındaki iki teoremdir:
+
+\leandosya[Klasik mantığın iki kapısı]{Bolum04}{em_check}
+
+\subsection{Çift değilleme eleme}
+
+\lc{Classical.em P}, \lc{P ∨ ¬P} türünde bir terimdir. Ona \leantac{cases}
+uyguladığımızda, iki durum açılır: $P$ doğru ya da $\neg P$ doğru. Bu
+\emph{klasik durum ayırma}, yapıcı mantıkta mümkün olmayan şeylerin
+kapısını açar:
+
+\leandosya[Çift değilleme eleme]{Bolum04}{cift_degil_eleme}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    durum/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                  minimum width=3.4cm, minimum height=0.9cm, align=center,
+                  font=\small},
+    ok/.style={-{Stealth[length=2.6mm]}, thick, #1},
+  ]
+  \node[durum=teoremframe] (em) at (0,0) {\lc{Classical.em P : P ∨ ¬P}};
+  \node[durum=ikincil] (a) at (-3.3,-1.7) {\lc{hp : P}};
+  \node[durum=vurgu]   (b) at (3.3,-1.7)  {\lc{hnp : ¬P}};
+  \node[durum=ikincil] (a2) at (-3.3,-3.3) {\lc{exact hp}};
+  \node[durum=vurgu]   (b2) at (3.3,-3.3)  {\lc{hnnp hnp : False}\\[-1pt]{\scriptsize\lc{absurd hnp hnnp}}};
+  \node[durum=bittiframe] (r) at (0,-4.9) {\lc{P} kanıtlandı};
+  \draw[ok=ikincil] (em) -- node[left=6pt, font=\leanfont\scriptsize\bfseries, text=ikincil]{inl} (a);
+  \draw[ok=vurgu]   (em) -- node[right=6pt, font=\leanfont\scriptsize\bfseries, text=vurgu]{inr} (b);
+  \draw[ok=ikincil] (a) -- (a2);  \draw[ok=vurgu] (b) -- (b2);
+  \draw[ok=bittiframe] (a2) -- (r); \draw[ok=bittiframe] (b2) -- (r);
+  \node[font=\baslikfont\scriptsize, text=teoremframe, align=center] at (0,0.95)
+       {klasik mantık burada devreye girer};
+\end{tikzpicture}
+\caption{\lc{Classical.em} ile durum ayırma. İkinci durumda elimizdeki
+\lc{¬¬P} ile \lc{¬P} çelişir.}
+\label{fig:klasik-durum}
+\end{figure}
+
+\subsection{Çelişki ile ispat}
+
+Klasik matematiğin en sık kullanılan yöntemlerinden biri \emph{çelişki
+ile ispattır} (Latince \emph{reductio ad absurdum}): ``$Q$'yu göstermek
+için $Q$'nun yanlış olduğunu varsayalım ve bir çelişkiye ulaşalım.''
+
+\leandosya[Çelişki ile ispat]{Bolum04}{celiski_ile_ispat}
+
+\begin{dikkat}[Dikkat: İki tür ``çelişki ile ispat'']
+Matematikçiler ``çelişki ile ispat'' derken iki farklı şeyi kastedebilir:
+\begin{enumerate}[label=(\alph*)]
+  \item \textbf{$\neg P$'yi göstermek için} $P$'yi varsayıp çelişkiye
+        ulaşmak. Bu, değillemenin \emph{tanımıdır} ($\neg$G kuralı) ve
+        tamamen yapıcıdır. $\sqrt{2}$'nin rasyonel \emph{olmadığının}
+        ispatı bu türdendir.
+  \item \textbf{$P$'yi göstermek için} $\neg P$'yi varsayıp çelişkiye
+        ulaşmak. Bu, aslında $\neg\neg P$'yi gösterip ardından çift
+        değillemeyi elemektir ve \emph{klasik} bir adımdır.
+\end{enumerate}
+\Lean{}'de (a) \leantac{intro} ile, (b) ise
+\lc{Classical.byContradiction} ile yapılır. İkisini ayırt etmek, bir
+ispatın gerçekten klasik mantığa ihtiyaç duyup duymadığını anlamanın
+ilk adımıdır.
+\end{dikkat}
+
+\subsection{Eksik kalan ispatlar}
+
+Önceki bölümlerde takıldığımız iki önermeyi artık ispatlayabiliriz:
+
+\leandosya[De Morgan, zor yön]{Bolum04}{demorgan_ve_klasik}
+\leandosya[Peirce yasası]{Bolum04}{peirce}
+
+\noindent İkisinde de yöntem aynıdır: \lc{Classical.em P} ile durum ayır,
+iki durumda da hedefe ulaş. Bu iki ispat, Bölüm~2'de açık bıraktığımız
+Peirce yasası sorusunun cevabıdır: Peirce yasası \emph{klasik} bir
+yasadır.
+
+% ---------------------------------------------------------------------
+\section{Üç ilke, tek sınır}\label{sec:uc-ilke}
+
+Şimdiye kadar klasik mantığa özgü üç ilkeyle karşılaştık. Bunları
+\emph{bütün önermeler için} söylenen birer önerme olarak
+tanımlayalım:
+
+\leandosya[Üç klasik ilke]{Bolum04}{ilkeler}
+
+\begin{teorem}{Klasik ilkelerin denkliği}{uc-ilke}
+Yapıcı mantıkta aşağıdaki üç ilke birbirine denktir:
+\begin{center}
+\begin{tabular}{rl}
+\textbf{EM} (üçüncü hâlin olanaksızlığı): & $\forall P,\; P \vee \neg P$ \\
+\textbf{DNE} (çift değilleme eleme):       & $\forall P,\; \neg\neg P \to P$ \\
+\textbf{Peirce yasası}:                    & $\forall P\, Q,\; ((P \to Q) \to P) \to P$
+\end{tabular}
+\end{center}
+Yani yapıcı mantığa bunlardan herhangi birini eklemek, ötekileri de
+eklemek demektir. Ortaya çıkan sistem klasik mantıktır.
+\end{teorem}
+
+\noindent İspatı bir döngü olarak kuracağız (\cref{fig:uc-ilke}):
+EM $\Rightarrow$ DNE $\Rightarrow$ Peirce $\Rightarrow$ EM.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    ilke/.style={draw=teoremframe, fill=teorembg, very thick, rounded corners=5pt,
+                 minimum width=2.6cm, minimum height=1.1cm, align=center,
+                 font=\baslikfont\bfseries},
+    ok/.style={-{Stealth[length=3mm]}, very thick, anarenk},
+    etiket/.style={font=\leanfont\scriptsize, text=anarenk, fill=white, inner sep=2pt},
+  ]
+  \node[ilke] (em)  at (90:2.3)  {EM\\[-1pt]\normalfont\scriptsize $P \vee \neg P$};
+  \node[ilke] (dne) at (-30:2.3) {DNE\\[-1pt]\normalfont\scriptsize $\neg\neg P \to P$};
+  \node[ilke] (pe)  at (210:2.3) {Peirce\\[-1pt]\normalfont\scriptsize $((P{\to}Q){\to}P){\to}P$};
+  \draw[ok] (em) to[bend left=22] node[etiket, right=2pt]{em\_dne} (dne);
+  \draw[ok] (dne) to[bend left=22] node[etiket, below=2pt]{dne\_peirce} (pe);
+  \draw[ok] (pe) to[bend left=22] node[etiket, left=2pt]{peirce\_em} (em);
+  \node[font=\baslikfont\small\bfseries, text=koyu, align=center] at (0,-0.1)
+       {hepsi\\yapıcı};
+\end{tikzpicture}
+\caption{Üç klasik ilkenin denkliği. Her ok, \emph{klasik mantık
+kullanmadan} ispatlanmış bir \Lean{} teoremidir.}
+\label{fig:uc-ilke}
+\end{figure}
+
+\leandosya[EM $\Rightarrow$ DNE]{Bolum04}{em_dne}
+\leandosya[DNE $\Rightarrow$ Peirce]{Bolum04}{dne_peirce}
+\leandosya[Peirce $\Rightarrow$ EM]{Bolum04}{peirce_em}
+
+\noindent Son ispattaki hileye dikkat edin: Peirce yasasındaki $Q$
+herhangi bir önerme olabileceği için \lc{False}'u seçtik. O zaman
+\lc{P ∨ ¬P → False}, yani \lc{¬(P ∨ ¬P)} elimize geçer ve
+\cref{sec:em-yanlis-olamaz}'deki ``fikir değiştirme'' hilesi işi
+bitirir. Döngü tamamlanınca denklikler hemen çıkar:
+
+\leandosya[Denklikler]{Bolum04}{uc_ilke_denk}
+
+\begin{dikkat}[Dikkat: ``Her $P$ için'' ifadesinin önemi]
+Teorem, ilkelerin \emph{bütün önermeler} için söylenmiş hâlleri
+hakkındadır. Tek bir $P$ için \lc{P ∨ ¬P}'den \lc{¬¬P → P} çıkar, ama
+\lc{¬¬P → P}'den \lc{P ∨ ¬P} çıkmaz. \lc{peirce\_em} ispatında Peirce
+yasasını $P$ için değil, \lc{P ∨ ¬P} önermesi için kullandığımıza dikkat
+edin. Alıştırma~\ref{alis:dne-em} bu konuyu inceliyor.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Bir ispat klasik mi? \texorpdfstring{\#print axioms}{\#print axioms}}\label{sec:print-axioms}
+
+Uzun bir ispatın bir yerinde klasik mantık kullanılıp kullanılmadığını
+gözle anlamak zordur. Bir teorem, klasik mantık kullanan başka bir
+teoremi çağırıyor olabilir. \Lean{} bu soruyu kesin olarak cevaplar:
+
+\leandosya[Aksiyom denetimi]{Bolum04}{print_axioms}
+
+\lc{em\_dne} teoremi, EM'yi bir \emph{varsayım} olarak alır; hiçbir
+aksiyom kullanmaz. \lc{cift\_degilleme\_eleme} ise \lc{Classical.em}'i
+çağırdığı için üç aksiyoma dayanır. Bu üç aksiyom, \Lean{}'in bütün
+klasik matematiğinin temelidir:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.3cm} X >{\centering\arraybackslash}p{1.4cm}}
+\rowcolor{tabloust}
+\tablobaslik{Aksiyom} & \tablobaslik{Kabaca ne söyler?} & \tablobaslik{Bölüm} \\
+\lc{propext}          & Denk önermeler eşittir: \lc{(P ↔ Q) → P = Q}. & \ref{bol:aksiyomlar} \\
+\lc{Quot.sound}       & Bölüm tiplerinde denk elemanlar eşittir; fonksiyon dışsallığı bundan türetilir. & \ref{bol:aksiyomlar} \\
+\lc{Classical.choice} & Boş olmayan her tipten bir eleman seçilebilir (seçim aksiyomu). & \ref{bol:aksiyomlar} \\
+\end{tabularx}
+\end{center}
+
+\lc{Classical.em}, \Lean{}'de bir aksiyom değil, \emph{teoremdir}: Bu üç
+aksiyomdan \emph{Diaconescu teoremi} ile türetilir \citep{diaconescu1975}.
+Yani \Lean{}'de klasik mantığın asıl kaynağı seçim aksiyomudur. Bu
+şaşırtıcı bağlantıyı \cref{bol:aksiyomlar}'da ayrıntılı olarak
+inceleyeceğiz.
+
+% ---------------------------------------------------------------------
+\section{Neden ispatlanamaz? Kripke modelleri}\label{sec:kripke-onizleme}
+
+Şimdiye kadar $P \vee \neg P$'yi yapıcı olarak ``ispatlayamadığımızı''
+söyledik. Ama bir şeyi ispatlayamamak, onun ispatlanamaz olduğunu
+göstermez; belki yeterince akıllıca bir ispat bulamamışızdır. Bir
+önermenin bir sistemde ispatlanamadığını göstermek için o sistemde
+\emph{geçerli olup da} önermenin \emph{yanlış olduğu} bir model
+bulmamız gerekir. Yapıcı mantık için bu modeller, Saul Kripke'nin
+1965'te tanıttığı modellerdir \citep{kripke1965}.
+
+\begin{tanim}{Kripke modeli (yapıcı mantık için)}{kripke}
+Bir \textbf{Kripke modeli}, şunlardan oluşur:
+\begin{itemize}
+  \item Bir \emph{bilgi durumları} kümesi $W$ ve bu durumlar
+        arasında bir sıralama $\leq$. ($w \leq v$: ``$v$, $w$'den daha
+        fazla bilgi içeren bir gelecek durumdur.'')
+  \item Her durumda hangi atomik önermelerin \emph{bilindiğini}
+        gösteren bir ilişki. Bir kez bilinen bir atom, sonraki bütün
+        durumlarda da bilinir (\emph{kalıcılık}).
+\end{itemize}
+Bileşik önermelerin bir $w$ durumunda bilinmesi ($w \Vdash \varphi$)
+şöyle tanımlanır:
+\begin{itemize}
+  \item $w \Vdash P \wedge Q$ \;ancak ve ancak\; $w \Vdash P$ ve $w \Vdash Q$,
+  \item $w \Vdash P \vee Q$ \;ancak ve ancak\; $w \Vdash P$ ya da $w \Vdash Q$,
+  \item $w \Vdash P \to Q$ \;ancak ve ancak\; $w$'den sonraki \emph{her}
+        $v$ durumunda, $v \Vdash P$ ise $v \Vdash Q$,
+  \item $w \Vdash \neg P$ \;ancak ve ancak\; $w$'den sonraki \emph{hiçbir}
+        durumda $P$ bilinmiyorsa.
+\end{itemize}
+\end{tanim}
+
+Bu modellerin arkasındaki sezgi, zaman içinde bilgi biriktiren bir
+matematikçidir. $\neg P$'yi bilmek, ``$P$'yi \emph{hiçbir zaman}
+öğrenmeyeceğim'' demektir; şu an $P$'yi bilmemek bunun için yetmez.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    dunya/.style={circle, draw=anarenk, very thick, fill=tanimbg,
+                  minimum size=1.5cm, font=\baslikfont\bfseries},
+    ok/.style={-{Stealth[length=3mm]}, very thick, anarenk},
+    bilgi/.style={font=\small, align=left, anchor=west},
+  ]
+  \node[dunya] (w0) at (0,0) {$w_0$};
+  \node[dunya, fill=bittibg, draw=bittiframe] (w1) at (0,3.2) {$w_1$};
+  \draw[ok] (w0) -- node[left=4pt, font=\small, text=anarenk]{$\leq$} (w1);
+
+  \node[bilgi] at (1.2,3.2) {%
+    $P$ \textcolor{bittiframe}{\textbf{bilinir}} (atom)};
+  \node[bilgi] at (1.2,0.45) {%
+    $P$ \textcolor{hataframe}{\textbf{bilinmez}}};
+  \node[bilgi] at (1.2,-0.15) {%
+    $\neg P$ \textcolor{hataframe}{\textbf{bilinmez}}: gelecekte ($w_1$) $P$ öğreniliyor};
+  \node[bilgi] at (1.2,-0.75) {%
+    $P \vee \neg P$ \textcolor{hataframe}{\textbf{bilinmez}}: iki taraf da bilinmiyor};
+  \node[bilgi] at (1.2,-1.35) {%
+    $\neg\neg P$ \textcolor{bittiframe}{\textbf{bilinir}}: hiçbir gelecek durumda $\neg P$ yok};
+  \draw[black!25, rounded corners=4pt] (-1.0,-1.8) rectangle (9.6,4.15);
+\end{tikzpicture}
+\caption{İki durumlu bir Kripke modeli. $w_0$ durumunda $\neg\neg P$
+bilinir ama $P$ bilinmez; $P \vee \neg P$ de bilinmez.}
+\label{fig:kripke-em}
+\end{figure}
+
+\Cref{fig:kripke-em}'deki modelde $w_0$ durumu, ``$P$'nin doğru olup
+olmadığını henüz bilmiyoruz, ama ileride öğreneceğiz'' durumudur. Bu
+durumda:
+
+\begin{itemize}
+  \item $P$ bilinmez (henüz öğrenilmedi).
+  \item $\neg P$ de bilinmez, çünkü gelecekteki $w_1$ durumunda $P$
+        öğreniliyor. ``$P$'yi hiçbir zaman öğrenmeyeceğim'' diyemeyiz.
+  \item Dolayısıyla $P \vee \neg P$ bilinmez.
+  \item Buna karşılık $\neg\neg P$ bilinir: $w_0$'dan sonraki hiçbir
+        durumda $\neg P$ bilinmiyor. O hâlde bu modelde
+        $\neg\neg P \to P$ de bilinmez.
+\end{itemize}
+
+\begin{teorem}{Kripke modellerine göre geçerlilik}{kripke-gecerlilik}
+Yapıcı önermeler mantığında ispatlanabilen her önerme, her Kripke
+modelinin her durumunda bilinir \citep{kripke1965}.
+\end{teorem}
+
+Bu teoremi kabul edersek sonuç hemen çıkar: $P \vee \neg P$, bir Kripke
+modelinin bir durumunda bilinmediğine göre, yapıcı olarak
+ispatlanamaz. Teoremin kendisini \ciltiki{2}'de, Kripke modellerini
+\Lean{}'de tanımladıktan sonra ispatlayacağız.
+
+% ---------------------------------------------------------------------
+\section{Klasik mantık yapıcı mantığın içinde: Glivenko ve Gödel}\label{sec:glivenko}
+
+Klasik mantık yapıcı mantıktan güçlüdür. Ama şaşırtıcı biçimde, klasik
+mantık yapıcı mantığın \emph{içine} gömülebilir. Bunun ilk örneğini
+\cref{sec:em-yanlis-olamaz}'te gördük: $P \vee \neg P$ yapıcı
+değildir, ama $\neg\neg(P \vee \neg P)$ yapıcıdır. Aynı olgu Peirce
+yasası için de geçerlidir:
+
+\leandosya[Peirce yasası, çift değilleme altında]{Bolum04}{glivenko_peirce}
+
+\noindent Bu bir rastlantı değildir.
+
+\begin{teorem}{Glivenko, 1929}{glivenko}
+Bir $\varphi$ önermesi \emph{klasik önermeler mantığında}
+ispatlanabiliyorsa, $\neg\neg\varphi$ önermesi \emph{yapıcı önermeler
+mantığında} ispatlanabilir \citep{glivenko1929}.
+\end{teorem}
+
+Glivenko teoremi, klasik önermeler mantığının her totolojisinin yapıcı
+mantıkta ``yanlış olamaz'' biçiminde zaten bulunduğunu söyler. Yüklemler
+mantığında ise $\neg\neg$'yi yalnızca başa koymak yetmez; değillemeleri
+önermenin içine yaymak gerekir. Bunu yapan dönüşüm, Gödel ve Gentzen'in
+birbirinden bağımsız olarak 1933'te buldukları \emph{çift değilleme
+çevirisidir} \citep{godel1933, gentzen1936}.
+
+\begin{tanim}{Gödel--Gentzen çevirisi (önermeler için)}{godel-gentzen}
+Her $\varphi$ önermesine bir $\varphi^N$ önermesi şöyle karşılık getirilir:
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{r@{\;\;:=\;\;}l@{\hspace{3em}}r@{\;\;:=\;\;}l}
+$P^N$                 & $\neg\neg P$ \quad ($P$ atomik) &
+$(\varphi \wedge \psi)^N$ & $\varphi^N \wedge \psi^N$ \\
+$\bot^N$              & $\bot$ &
+$(\varphi \to \psi)^N$    & $\varphi^N \to \psi^N$ \\
+$(\neg\varphi)^N$     & $\neg\varphi^N$ &
+$(\varphi \vee \psi)^N$   & $\neg(\neg\varphi^N \wedge \neg\psi^N)$ \\
+\end{tabular}
+\end{center}
+O zaman $\varphi$ klasik olarak ispatlanabilir ancak ve ancak $\varphi^N$
+yapıcı olarak ispatlanabilir.
+\end{tanim}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    bolge/.style={draw=#1, fill=#1!7, very thick, rounded corners=8pt},
+  ]
+  \draw[bolge=anarenk] (0,0) rectangle (11,4.4);
+  \node[anchor=north west, font=\baslikfont\bfseries, text=anarenk] at (0.3,4.25) {Klasik mantık};
+  \draw[bolge=ikincil] (0.6,0.5) rectangle (5.6,3.3);
+  \node[anchor=north west, font=\baslikfont\bfseries\small, text=ikincil] at (0.8,3.15) {Yapıcı mantık};
+  \node[draw=anarenk, fill=white, rounded corners=3pt, font=\small, inner sep=5pt] (phi) at (8.6,2.0) {$\varphi$};
+  \node[draw=ikincil, fill=white, rounded corners=3pt, font=\small, inner sep=5pt] (phin) at (3.1,1.9) {$\varphi^N$};
+  \draw[-{Stealth[length=3mm]}, very thick, vurgu] (phi) to[bend right=20] (phin);
+  \node[font=\baslikfont\scriptsize\bfseries, text=vurgu, fill=anarenk!7, inner sep=2pt] at (7.6,3.25) {çift değilleme çevirisi};
+  \node[font=\baslikfont\scriptsize, text=black!60, align=center, below=4pt of phi] {klasik olarak\\ispatlanabilir};
+  \node[font=\baslikfont\scriptsize, text=black!60, align=center, below=4pt of phin] {yapıcı olarak\\ispatlanabilir};
+\end{tikzpicture}
+\caption{Çift değilleme çevirisi, klasik mantığı yapıcı mantığın içine gömer.}
+\label{fig:cevirisi}
+\end{figure}
+
+\begin{onemlifikir}[Önemli Fikir: Klasik mantık tutarlıysa, yapıcı mantık da tutarlıdır — ve tersi]
+Çift değilleme çevirisi $\bot$'u $\bot$'a götürür. Dolayısıyla klasik
+mantıkta bir çelişki türetilebilseydi, yapıcı mantıkta da türetilebilirdi.
+Klasik mantığı kullanmak, yapıcı mantığa göre \emph{yeni bir tutarsızlık
+riski} taşımaz. Brouwer ile Hilbert arasındaki tartışmanın bugünkü
+barışçıl sonucunun teknik nedeni budur.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Karar verilebilir önermeler}\label{sec:decidable}
+
+Bazı önermeler için üçüncü hâlin olanaksızlığı yapıcı olarak doğrudur:
+\emph{doğru mu yanlış mı olduğunu hesaplayabildiğimiz} önermeler için.
+``$3 < 5$'' önermesinin doğru olup olmadığını bir bilgisayar programı
+bize söyleyebilir. Bu tür önermelere \emph{karar verilebilir} denir.
+
+\Lean{}'de bir önermenin karar verilebilir olması, \lc{Decidable P}
+türünde bir \emph{örneğin} (İng.\ \emph{instance}) bulunmasıdır. Bu örnek,
+$P$'nin doğru mu yanlış mı olduğunu hesaplayan bir algoritmadır.
+
+\leandosya[Karar verilebilirlik]{Bolum04}{decidable}
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.1cm}
+                >{\raggedright\arraybackslash}p{4.3cm}
+                >{\raggedright\arraybackslash}p{4.3cm}}
+\rowcolor{tabloust}
+\tablobaslik{} & \tablobaslik{\lc{Bool}} & \tablobaslik{\lc{Prop}} \\
+Elemanları         & yalnızca \lc{true} ve \lc{false}  & sonsuz sayıda önerme \\
+Ne anlatır?        & bir \emph{hesaplamanın} sonucunu  & bir \emph{iddiayı} \\
+``Ya ya da'' ilkesi & her zaman geçerli (iki eleman var) & yalnızca klasik mantıkla ya da \lc{Decidable} ile \\
+Köprü              & \multicolumn{2}{c}{\lc{decide : (P : Prop) → [Decidable P] → Bool}} \\
+\end{tabular}
+\caption{\lc{Bool} ile \lc{Prop} arasındaki fark.}
+\label{tab:bool-prop}
+\end{table}
+
+\leandosya[Karar verilebilir önermeler için DNE]{Bolum04}{decidable_dne}
+
+\noindent Bu teoremin \lc{cift\_degilleme\_eleme}'den farkı, köşeli
+parantez içindeki \lc{[Decidable P]} varsayımıdır. Bu varsayım
+sayesinde \lc{Classical.em} yerine \lc{Decidable.em} kullanılır. Doğal
+sayıların eşitliği, sıralaması, sonlu kümeler üzerindeki önermeler gibi
+pek çok somut matematiksel önerme karar verilebilirdir ve onlar için
+klasik akıl yürütme yapıcı olarak da geçerlidir.
+
+% ---------------------------------------------------------------------
+\section{Pratikte: Hangi mantıkla çalışmalı?}\label{sec:pratikte}
+
+\Lean{} kullanıcısı olarak bu tartışmadan çıkarmanız gereken pratik
+sonuçlar şunlardır:
+
+\begin{itemize}
+  \item \textbf{\Mathlib{} klasiktir.} \Lean{}'in matematik kütüphanesi
+        klasik mantığı serbestçe kullanır. Gerçek matematik yaparken
+        \lc{Classical.em}'den kaçınmanız gerekmez.
+  \item \textbf{Yapıcı ispat daha fazla şey verir.} Bir ispat klasik
+        mantık kullanmıyorsa, \Lean{} onu bir program olarak
+        \emph{çalıştırabilir}. Bir varlık ispatından, var olan nesneyi
+        hesaplayan bir program elde edebilirsiniz. Klasik ispatlar ise
+        \leankw{noncomputable} olarak işaretlenmek zorunda kalabilir.
+  \item \textbf{Önce yapıcı deneyin.} Bu kitabın Kısım~I ve II'sindeki
+        alıştırmaların çoğu yapıcıdır. Klasik mantığa ihtiyaç
+        duyduğunuzda, bunun nedenini anlamaya çalışın: Çoğu zaman
+        ispatın içinde bir ``hangisi?'' sorusu saklıdır.
+  \item \textbf{\lc{\#print axioms} dürüst bir tanıktır.} Bir teoremin
+        hangi ilkelere dayandığından emin değilseniz, sorun.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Taktik ve terim özeti}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{4.6cm} X}
+\rowcolor{tabloust}
+\tablobaslik{Araç} & \tablobaslik{Ne yapar?} \\
+\lc{Classical.em P}                 & \lc{P ∨ ¬P} (klasik). \leantac{cases} ile birlikte klasik durum ayırma. \\
+\lc{Classical.byContradiction}      & \lc{(¬P → False) → P}: çelişki ile ispat (klasik). \\
+\lc{Decidable.em P}                 & \lc{[Decidable P]} varken \lc{P ∨ ¬P} (yapıcı). \\
+\leantac{decide}                    & Karar verilebilir bir önermeyi hesaplayarak ispatlar. \\
+\lc{decide P}                       & Karar verilebilir \lc{P}'yi \lc{Bool} değerine çevirir. \\
+\lc{\textcolor{leancmd}{\bfseries\#print axioms} t} & \lc{t}'nin dayandığı aksiyomları listeler. \\
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Peirce yasası ve programlama.} Timothy Griffin 1990'da, Peirce
+yasasının Curry--Howard eşlemesi altında programlama dillerindeki
+\emph{call/cc} (``mevcut devamı yakala'') kontrol operatörünün tipine
+karşılık geldiğini gösterdi \citep{griffin1990}. Böylece klasik mantık
+da bir hesaplama anlamı kazandı: Klasik ispatlar, ``geri dönüp fikir
+değiştirebilen'' programlardır. \Cref{sec:em-yanlis-olamaz}'teki
+şeytan hikâyesi, Philip Wadler'ın bu fikri anlatmak için kullandığı
+benzetmeden uyarlanmıştır \citep{wadler2003}.
+
+\textbf{Yapıcı matematik.} Errett Bishop'un 1967 tarihli kitabı, gerçel
+analizin büyük bölümünün yapıcı olarak geliştirilebileceğini gösterdi
+\citep{bishop1967}. Yapıcı matematiğin felsefi ve teknik temelleri için
+\citet{troelstra1988} ve \citet{dummett2000} temel kaynaklardır.
+
+\textbf{Lean'de yapıcılık.} \Lean{}'in \lc{Prop} evreni
+\emph{kanıt-ilgisizdir} (\cref{bol:bagimli}): Bir önermenin iki
+kanıtı her zaman eşit sayılır. Bu tasarım, klasik aksiyomların hesaplanan
+programlara ``bulaşmasını'' engeller: \lc{Prop} içinde klasik akıl
+yürütme, \lc{Type} içindeki hesaplamaları bozmaz. Bu dengenin kesin
+ifadesi hâlâ etkin bir araştırma konusudur \citep{carneiro2019}.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item BHK yorumunda bir kanıt bir \emph{inşadır}. $P \vee Q$'nun kanıtı
+        hangi tarafın doğru olduğunu söylemelidir. Bu yüzden
+        $P \vee \neg P$ yapıcı olarak genel bir yasa değildir.
+  \item \Lean{}'de klasik mantık \lc{Classical.em} ve
+        \lc{Classical.byContradiction} ile açıkça çağrılır.
+  \item EM, DNE ve Peirce yasası yapıcı mantıkta birbirine denktir.
+        Herhangi birini eklemek klasik mantığı verir.
+  \item \lc{\#print axioms}, bir ispatın klasik olup olmadığını gösterir.
+        \lc{Classical.em}, seçim aksiyomundan türetilir.
+  \item Kripke modelleri, bir önermenin yapıcı olarak ispatlanamadığını
+        göstermenin aracıdır.
+  \item Glivenko teoremi ve çift değilleme çevirisi, klasik mantığı
+        yapıcı mantığın içine gömer.
+  \item Karar verilebilir önermeler için üçüncü hâl yapıcı olarak
+        geçerlidir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} (Klasik) \lc{(P → Q) → ¬P ∨ Q}. Bu, implikasyonun
+``maddi'' tanımıdır. (\lc{a4\_1})
+
+\alistirma{1} (Yapıcı) Bir önceki alıştırmanın tersi:
+\lc{¬P ∨ Q → (P → Q)}. Neden bu yön yapıcıdır? (\lc{a4\_2})
+
+\alistirma{2} (Klasik) \lc{¬(P → Q) → P ∧ ¬Q}. İki bileşenden hangisi
+klasik mantık gerektiriyor? \lc{\#print axioms} ile kendi
+ispatınızı denetleyin. (\lc{a4\_3})
+
+\alistirma{2} (Klasik) Kontrapozisyonun tersini terim modunda
+yazın: \lc{(¬Q → ¬P) → (P → Q)}. (\lc{a4\_4})
+
+\alistirma{2} (Klasik) \emph{Dummett ilkesi}: \lc{(P → Q) ∨ (Q → P)}.
+İki rastgele önermeden biri her zaman ötekini gerektirir! Bu ilkenin
+sezgisel olarak neden tuhaf olduğunu tartışın. (\lc{a4\_5})
+
+\alistirma{2} (Yapıcı) \lc{[Decidable P]} varsayımıyla De Morgan'ın zor
+yönünü ispatlayın. \lc{Decidable Q} varsayımı da gerekli midir?
+(\lc{a4\_6})
+
+\alistirma{3} (Yapıcı) Glivenko teoremini Dummett ilkesi için
+doğrulayın: \lc{¬¬((P → Q) ∨ (Q → P))}. (\lc{a4\_7})
+
+\alistirma{3}\label{alis:dne-em} (Yapıcı) Her önerme için çift
+değilleme elemeyi biliyorsak üçüncü hâli de biliriz:
+\lc{(∀ X : Prop, ¬¬X → X) → P ∨ ¬P}. Hangi \lc{X} için kullanmanız
+gerekti? (\lc{a4\_8})
+
+\alistirma{3} (Kâğıt-kalem) \Cref{fig:kripke-em}'deki modelde Peirce
+yasasının ($Q$ yerine $\bot$ alarak) $w_0$ durumunda bilinmediğini
+gösterin.
+
+\alistirma{3} (Kâğıt-kalem) Üç durumlu bir Kripke modeli kurarak
+Dummett ilkesinin yapıcı olarak ispatlanamadığını gösterin. İpucu:
+$w_0$'dan iki farklı yöne dallanan $w_1$ ve $w_2$ durumları düşünün.
+
+\alistirma{3} (Tartışma) Teorem~\ref{trm:irrasyonel-us}'in yapıcı bir ispatı
+var mıdır? İpucu: $a = \sqrt{2}$, $b = 2\log_2 3$ seçimini inceleyin.
+Bu seçimle ispatın hangi adımları yapıcıdır?
+\end{alistirmalar}

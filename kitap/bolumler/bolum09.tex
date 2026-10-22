@@ -1,0 +1,538 @@
+% =====================================================================
+%  Bölüm 9 — Tümevarımsal Tipler
+% =====================================================================
+\chapter{Tümevarımsal Tipler}\label{bol:tumevarimsal-tipler}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item \leankw{inductive} bildiriminin parçalarını: kurucular,
+        parametreler ve indeksler,
+  \item \lc{And}, \lc{Or}, \lc{True}, \lc{False}, \lc{Exists} ve
+        \lc{Eq}'nun birer tümevarımsal tip olduğunu, onları kendimiz
+        tanımlayarak,
+  \item \leantac{cases} taktiğinin her kurucu için bir durum açtığını ve
+        bunun eleme kurallarını nasıl ürettiğini,
+  \item Listeler ve ikili ağaçlar üzerinde özyineleme ve yapısal
+        tümevarımı,
+  \item Tümevarımsal yüklemleri ve \emph{kural tümevarımını},
+  \item Pozitiflik koşulunu ve neden gerekli olduğunu.
+\end{itemize}
+\end{bolumhedefleri}
+
+Bölüm~7'de doğal sayıları \leankw{inductive} ile tanımladık ve Peano
+aksiyomlarının bu tanımdan teorem olarak çıktığını gördük. Bu bölümde aynı
+fikri sonuna kadar götürüyoruz. Göreceğiz ki \Lean{}'in mantığında
+\emph{temel} olan çok az şey vardır: Fonksiyon tipleri ($\forall$, $\to$)
+ve tümevarımsal tipler. Bölüm~2'den beri kullandığımız \lc{∧}, \lc{∨},
+\lc{False}, \lc{∃} ve hatta eşitlik, hepsi \leankw{inductive} ile
+tanımlanmış sıradan tiplerdir.
+
+% ---------------------------------------------------------------------
+\section{\texorpdfstring{\texttt{inductive}}{inductive}'in anatomisi}\label{sec:inductive-anatomi}
+
+Bir tümevarımsal tip bildirimi, bir tipin adını ve o tipin elemanlarını
+kurmanın \emph{bütün} yollarını, yani \textbf{kurucuları} verir
+(\cref{fig:inductive-anatomi}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    parca/.style={font=\leanfont\small, inner sep=2pt},
+    etiket/.style={font=\baslikfont\scriptsize, align=center, text width=2.8cm},
+  ]
+  \node[parca, anchor=west] (l1) at (0,0)    {\textcolor{leankw}{\bfseries inductive} \textcolor{koyu}{Liste} \textcolor{leanhyp}{(α : Type)} \textcolor{leankw}{\bfseries where}};
+  \node[parca, anchor=west] (l2) at (0.4,-0.65) {| \textcolor{vurgu}{bos}  : Liste α};
+  \node[parca, anchor=west] (l3) at (0.4,-1.3) {| \textcolor{vurgu}{ekle} : \textcolor{ikincil}{α → Liste α} → Liste α};
+  \draw[koyu, thick, rounded corners=2pt] (1.6,0.22) rectangle (2.45,-0.22);
+  \draw[leanhyp, thick, rounded corners=2pt] (2.5,0.22) rectangle (3.95,-0.22);
+  \draw[vurgu, thick, rounded corners=2pt] (0.6,-0.43) rectangle (1.15,-0.87);
+  \draw[vurgu, thick, rounded corners=2pt] (0.6,-1.08) rectangle (1.25,-1.52);
+  \draw[ikincil, thick, rounded corners=2pt] (1.55,-1.08) rectangle (3.45,-1.52);
+  \node[etiket, text=koyu] (e1) at (2.0,1.25) {tipin adı};
+  \node[etiket, text=leanhyp] (e2) at (5.4,1.0) {\textbf{parametre}: bütün kurucularda sabit};
+  \node[etiket, text=vurgu] (e3) at (-2.3,-1.0) {\textbf{kurucular}: elemanları kurmanın tek yolları};
+  \node[etiket, text=ikincil] (e4) at (6.3,-1.3) {\textbf{alanlar}: kurucunun aldığı argümanlar; \lc{Liste α} geçtiği için \emph{özyinelemeli}};
+  \draw[koyu, -{Stealth[length=2mm]}] (e1) -- (2.02,0.25);
+  \draw[leanhyp, -{Stealth[length=2mm]}] (e2) -- (3.6,0.25);
+  \draw[vurgu, -{Stealth[length=2mm]}] (e3.east) -- (0.55,-0.65);
+  \draw[vurgu, -{Stealth[length=2mm]}] (e3.east) -- (0.55,-1.3);
+  \draw[ikincil, -{Stealth[length=2mm]}] (e4.west) -- (3.5,-1.3);
+\end{tikzpicture}
+\caption{Bir tümevarımsal tip bildiriminin parçaları.}
+\label{fig:inductive-anatomi}
+\end{figure}
+
+\noindent Yalnızca alansız kuruculardan oluşan en basit tipler
+\emph{numaralandırma} tipleridir:
+
+\leandosya[Numaralandırma tipi]{Bolum09}{renk}
+
+\noindent \lc{cases r <;> rfl} ispatı, üç durumun her birini ayrı ayrı
+hesaplar. Sonlu ve küçük tipler üzerindeki önermeler böyle
+``kaba kuvvetle'' ispatlanabilir.
+
+Bir kurucunun alanları olabilir. \lc{Belki} tipi, ``bir değer ya var ya
+yok'' durumunu temsil eder; programlamada sıfıra bölme gibi hataları
+güvenle ifade etmenin yoludur:
+
+\leandosya[Ya bir değer ya hiç]{Bolum09}{belki}
+
+% ---------------------------------------------------------------------
+\section{Mantık bağlaçları tümevarımsal tiplerdir}\label{sec:baglac-inductive}
+
+Şimdi bölümün ana fikrine geliyoruz. Bölüm~2--6'da kullandığımız bütün
+bağlaçları, \Lean{}'in kütüphanesine bakmadan kendimiz tanımlayabiliriz:
+
+\leandosya[Kendi bağlaçlarımız]{Bolum09}{baglaclar}
+
+\noindent Her tanım, ilgili bağlacın \textbf{giriş kurallarını} kurucu
+olarak listeler:
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\centering\arraybackslash}p{1.6cm}
+                >{\raggedright\arraybackslash}p{3.4cm}
+                >{\centering\arraybackslash}p{1.6cm}
+                >{\raggedright\arraybackslash}p{4.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Bağlaç} & \tablobaslik{Kurucular (giriş)} & \tablobaslik{Durum} & \tablobaslik{\texttt{cases} ne verir? (eleme)} \\
+$P \wedge Q$       & \lc{intro : P → Q → \_}             & 1 & iki kanıt: \lc{hp}, \lc{hq} \\
+$P \vee Q$         & \lc{sol : P → \_}, \lc{sag : Q → \_}  & 2 & ya \lc{hp} ya \lc{hq} \\
+$\top$             & \lc{tanik : \_}                      & 1 & hiçbir şey (bilgi yok) \\
+$\bot$             & (yok)                               & 0 & hedef hemen kapanır \\
+$\exists x,\,P\,x$ & \lc{intro (w) (h : P w)}            & 1 & bir tanık \lc{w} ve \lc{h : P w} \\
+$a = b$            & \lc{refl : a = a}                   & 1 & \lc{b} yerine \lc{a} konur \\
+\end{tabular}
+\caption{Mantık bağlaçları ve kurucuları. Giriş kuralları kuruculardır;
+eleme kuralları, kurucular üzerinde \leantac{cases} ile otomatik olarak
+elde edilir.}
+\label{tab:baglac-kurucu}
+\end{table}
+
+\begin{onemlifikir}[Önemli Fikir: Eleme kuralları kendiliğinden gelir]
+Doğal çıkarımda her bağlaç için giriş \emph{ve} eleme kurallarını ayrı
+ayrı yazmıştık. Tümevarımsal tiplerde ise yalnızca giriş kurallarını
+(kurucuları) yazarız; eleme kuralı, \Lean{}'in ürettiği özyineleyiciden
+kendiliğinden çıkar. \leantac{cases} ``bu kanıt hangi kurucuyla kurulmuş
+olabilir?'' diye sorar ve her olasılık için bir durum açar. Bölüm~5'te
+sözünü ettiğimiz giriş--eleme \emph{uyumu} (harmony), tümevarımsal
+tiplerde tasarım gereği sağlanır.
+\end{onemlifikir}
+
+\leandosya[Kendi bağlaçlarımızla ispatlar]{Bolum09}{baglac_ispat}
+
+\noindent \lc{Yanlis.elim'} ispatına dikkat edin: \lc{Yanlis}'ın hiç
+kurucusu olmadığı için \leantac{cases h} \emph{sıfır} durum açar ve
+ispat biter. Bölüm~3'teki ``ex falso'' ilkesinin tip kuramındaki açıklaması
+budur (\cref{fig:kurucular}). \Lean{}'in kendi tanımları da bizimkilerle
+aynıdır:
+
+\leandosya[\texttt{Or}'un tanımı]{Bolum09}{print_or}
+
+\subsection{Eşitlik de bir tümevarımsal tiptir}
+
+En şaşırtıcı örnek eşitliktir. \lc{a = b} önermesi, tek kurucusu
+\lc{refl : a = a} olan bir tiptir:
+
+\leandosya[Eşitliği tanımlamak]{Bolum09}{esit}
+
+\noindent Bu tanımda \lc{a} bir \emph{parametre}, ikinci argüman ise bir
+\emph{indekstir}. Fark önemlidir:
+
+\begin{tanim}{Parametre ve indeks}{parametre-indeks}
+Bir tümevarımsal tip bildiriminde, bütün kurucularda \emph{aynı} kalan
+argümanlara \textbf{parametre}, kurucudan kurucuya \emph{değişebilen}
+argümanlara \textbf{indeks} denir. Parametreler iki noktadan önce, indeksler
+tip imzasında (\lc{: α → Prop}) yazılır. İndeksli tiplere
+\textbf{tümevarımsal aileler} denir.
+\end{tanim}
+
+\lc{Esit a} bir ailedir: \lc{Esit a b} tipleri, \lc{b}'ye göre değişir.
+Ama ailenin tek kurucusu yalnızca \lc{Esit a a} tipinde bir eleman
+üretir. Bu yüzden \lc{h : Esit a b} üzerinde \leantac{cases} yaptığımızda
+\Lean{}, \lc{b}'nin \lc{a} olması gerektiğini anlar ve her yerde \lc{b}'yi
+\lc{a} ile değiştirir. Bölüm~6'daki yerine koyma kuralı ($=$E), bu
+eleme ilkesinin kendisidir.
+
+% ---------------------------------------------------------------------
+\section{Listeler}\label{sec:listeler}
+
+Liste, programlamanın en temel veri yapısıdır. Bir liste ya boştur ya da
+bir baş eleman ile bir kuyruk listeden oluşur:
+
+\leandosya[Listenin tanımı]{Bolum09}{liste_tanim}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    hucre/.style={draw=anarenk, fill=tanimbg, thick, minimum width=0.9cm,
+                  minimum height=0.75cm, font=\small},
+    isaret/.style={draw=anarenk, fill=white, thick, minimum width=0.5cm,
+                   minimum height=0.75cm},
+    ok/.style={-{Stealth[length=2.2mm]}, thick, leankw},
+  ]
+  \foreach \i/\v in {0/1, 1/2, 2/3} {
+    \node[hucre] (v\i) at ({2.6*\i},0) {$\v$};
+    \node[isaret, right=0pt of v\i] (p\i) {};
+    \node[font=\leanfont\scriptsize, text=leankw, above=2pt of v\i] {ekle};
+  }
+  \node[draw=vurgu, fill=teorembg, thick, font=\leanfont\small, minimum height=0.75cm] (b) at (7.8,0) {bos};
+  \draw[ok] (p0.center) -- (v1.west);
+  \draw[ok] (p1.center) -- (v2.west);
+  \draw[ok] (p2.center) -- (b.west);
+  \node[font=\leanfont\scriptsize, text=black!60, below=0.45cm of v1, anchor=north]
+       {ekle 1 (ekle 2 (ekle 3 bos))};
+\end{tikzpicture}
+\caption{\lc{[1, 2, 3]} listesi: her \lc{ekle} hücresi bir değer ve
+kuyruğa bir işaret taşır.}
+\label{fig:liste}
+\end{figure}
+
+\noindent Listeler üzerindeki fonksiyonlar, doğal sayılarda olduğu gibi
+özyinelemeyle tanımlanır. Aslında \lc{Dogal} tipi, elemanları önemsiz
+olan bir listedir: \lc{sifir} \lc{bos}'a, \lc{ard} da \lc{ekle}'ye karşılık
+gelir. Uzunluk fonksiyonu bu benzerliği tam olarak ortaya koyar.
+
+\leandosya[Liste fonksiyonları]{Bolum09}{liste_fonk}
+
+\subsection{Yapısal tümevarım}
+
+Bir liste özelliğini ispatlamak için \emph{yapısal tümevarım}
+kullanırız: Özelliği boş liste için gösteririz; ardından \lc{xs} için
+doğru olduğunu varsayıp \lc{ekle x xs} için gösteririz. Doğal sayılardaki
+asimetri burada da görülür: \lc{birlestir bos ys = ys} tanımdan çıkar,
+ama \lc{birlestir xs bos = xs} tümevarım ister.
+
+\leandosya[Boş listeyle birleştirme]{Bolum09}{birlestir_bos}
+\leandosya[Uzunluk ve birleştirme]{Bolum09}{uzunluk_birlestir}
+\leandosya[Birleştirmenin birleşme özelliği]{Bolum09}{birlestir_birlesme}
+
+\noindent Şimdi listelerin en ünlü teoremlerinden birine geliyoruz:
+Bir listeyi iki kez ters çevirmek onu değiştirmez. Önce bir önsav
+gerekir: Birleştirilmiş bir listenin tersi, terslerin \emph{ters sırada}
+birleştirilmesidir.
+
+\leandosya[Birleştirmenin tersi]{Bolum09}{ters_birlestir}
+\leandosya[İki kez ters çevirmek]{Bolum09}{ters_ters}
+
+\noindent \lc{ters\_ters} ispatındaki \leankw{calc} bloğu, kâğıt üzerinde
+yazacağımız eşitlik zincirinin aynısıdır. Birinci ve dördüncü adımlar
+\lc{rfl}'dir, yani yalnızca tanımları açar. İkinci adım önsavı, üçüncü
+adım tümevarım hipotezini kullanır.
+
+\begin{dikkat}[Dikkat: Programın doğruluğu bir teoremdir]
+\lc{ters\_ters}, bir \emph{programın} doğruluğu hakkında bir teoremdir.
+Yazılım testleri bir fonksiyonu sonlu sayıda girdiyle denetler; bu
+teorem ise \emph{bütün} listeler için doğruluğu kanıtlar. İspat
+asistanlarının yazılım doğrulamadaki gücü buradan gelir. Ama dikkat:
+Teorem yalnızca \emph{söylediği şeyi} kanıtlar. Hiçbir şey yapmayan
+\lc{fun xs => xs} fonksiyonu da \lc{ters\_ters}'i sağlar! Doğru
+özellikleri seçmek, doğrulamanın en zor kısmıdır.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{İkili ağaçlar}\label{sec:agaclar}
+
+Bir kurucunun \emph{birden fazla} özyinelemeli alanı olabilir. İkili
+ağaçlarda her düğüm, bir sol ve bir sağ alt ağaç taşır:
+
+\leandosya[İkili ağaç]{Bolum09}{agac}
+\leandosya[Boyut ve ayna]{Bolum09}{agac_fonk}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    d/.style={circle, draw=anarenk, fill=tanimbg, thick, minimum size=0.7cm, font=\small},
+    ypr/.style={rectangle, fill=black!25, minimum size=0.18cm, inner sep=0pt},
+    level distance=1.0cm,
+    level 1/.style={sibling distance=2.0cm},
+    level 2/.style={sibling distance=1.0cm},
+    edge from parent/.style={draw, black!45, thick},
+  ]
+  \node[d] at (0,0) {4}
+    child {node[d] {2}
+      child {node[d] {1} child {node[ypr] {}} child {node[ypr] {}}}
+      child {node[ypr] {}}}
+    child {node[d] {7}
+      child {node[ypr] {}}
+      child {node[ypr] {}}};
+  \node[font=\baslikfont\small\bfseries, text=anarenk] at (0,0.75) {$t$};
+
+  \draw[-{Stealth[length=3mm]}, very thick, vurgu] (2.6,-1.2) -- node[above, font=\leanfont\small, text=vurgu]{ayna} (4.6,-1.2);
+
+  \begin{scope}[xshift=7.2cm]
+  \node[d, draw=vurgu, fill=teorembg] at (0,0) {4}
+    child {node[d, draw=vurgu, fill=teorembg] {7}
+      child {node[ypr] {}}
+      child {node[ypr] {}}}
+    child {node[d, draw=vurgu, fill=teorembg] {2}
+      child {node[ypr] {}}
+      child {node[d, draw=vurgu, fill=teorembg] {1} child {node[ypr] {}} child {node[ypr] {}}}};
+  \node[font=\baslikfont\small\bfseries, text=vurgu] at (0,0.75) {\lc{ayna} $t$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Bir ağaç ve aynası. Gri kareler \lc{yaprak}'tır. Ayna, her
+düğümde sol ve sağ alt ağaçları yer değiştirir.}
+\label{fig:agac-ayna}
+\end{figure}
+
+\noindent Bir ağaç üzerinde tümevarım yaparken \lc{dugum} durumunda
+\emph{iki} tümevarım hipotezi elde ederiz: biri sol, biri sağ alt ağaç
+için.
+
+\leandosya[Aynanın aynası]{Bolum09}{ayna_ayna}
+\leandosya[Ayna boyutu korur]{Bolum09}{boyut_ayna}
+
+\begin{onemlifikir}[Önemli Fikir: Tümevarım ilkesi tipin şeklini izler]
+Her tümevarımsal tipin tümevarım ilkesi, o tipin tanımından mekanik
+olarak okunur: Her kurucu için bir durum vardır ve kurucunun her
+özyinelemeli alanı için bir tümevarım hipotezi gelir. Doğal sayılarda
+bir (\lc{ard}), listelerde bir (\lc{ekle}), ağaçlarda iki (\lc{dugum})
+hipotez vardır. Bölüm~7'deki domino resmi, ağaçlarda dallanan bir
+domino dizisine dönüşür.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Tümevarımsal yüklemler}\label{sec:tumevarimsal-yuklem}
+
+Tümevarımsal tipler yalnızca veri değil, \emph{önermeler} de
+tanımlayabilir. ``$n$ çifttir'' önermesini, bir sayının çift olduğunu
+kanıtlamanın kurallarını vererek tanımlayalım:
+
+\leandosya[Çift sayılar]{Bolum09}{cift_tanim}
+
+\noindent Bu tanım, iki çıkarım kuralına karşılık gelir. \lc{Cift 4}'ün
+bir kanıtı, bu kurallarla kurulmuş bir türetim ağacıdır
+(\cref{fig:cift-turetim}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tabular}{c@{\hspace{4em}}c@{\hspace{4em}}c}
+\begin{prooftree}
+  \infer0[\lc{sifir}]{\mathsf{Cift}\;0}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\mathsf{Cift}\;n}
+  \infer1[\lc{iki\_ekle}]{\mathsf{Cift}\;(n+2)}
+\end{prooftree}
+&
+\begin{prooftree}
+  \infer0[\lc{sifir}]{\mathsf{Cift}\;0}
+  \infer1[\lc{iki\_ekle}]{\mathsf{Cift}\;2}
+  \infer1[\lc{iki\_ekle}]{\mathsf{Cift}\;4}
+\end{prooftree}
+\\[10pt]
+\small kural 1 & \small kural 2 & \small \lc{Cift 4}'ün türetimi
+\end{tabular}
+\caption{\lc{Cift} yükleminin kuralları ve \lc{Cift 4}'ün türetimi.
+\lc{Cift 1}'in hiçbir türetimi yoktur: Ne kural 1'in ne de kural 2'nin
+sonucu 1'dir.}
+\label{fig:cift-turetim}
+\end{figure}
+
+\leandosya[Çiftlik ispatları]{Bolum09}{cift_ornek}
+
+\noindent \lc{bir\_cift\_degil} ispatında \leantac{cases h}, \lc{Cift 1}
+kanıtının hangi kuralla kurulmuş olabileceğini sorar. \lc{sifir} kuralı
+\lc{Cift 0} üretir; \lc{1 = 0} olmadığından elenir. \lc{iki\_ekle} kuralı
+\lc{Cift (n + 2)} üretir; \lc{1 = n + 2} olacak bir doğal sayı
+olmadığından o da elenir. Hiç durum kalmaz.
+
+\leandosya[Her $2n$ çifttir]{Bolum09}{cift_iki_kat}
+
+\subsection{Kural tümevarımı}
+
+Tersini göstermek, yani \lc{Cift n} ise \lc{n}'nin bir \lc{2 * k} olduğunu
+ispatlamak için, \lc{n} üzerinde değil, \lc{Cift n} \emph{kanıtı} üzerinde
+tümevarım yaparız. Buna \textbf{kural tümevarımı} denir: Türetim ağacının
+her kuralı için bir durum açılır.
+
+\leandosya[Kural tümevarımı]{Bolum09}{kural_tumevarimi}
+
+\noindent Kural tümevarımı, Kısım~III'ün temel aracı olacak.
+\cref{bol:gecerlilik}'de bir ispat sistemini tümevarımsal bir yüklem
+olarak tanımlayacak ve geçerlilik teoremini tam olarak bu yöntemle,
+türetimin son kuralına göre durum ayırarak ispatlayacağız.
+
+\subsection{Yansımalı-geçişli kapanış}
+
+Son örneğimiz, bilgisayar biliminin her yerinde karşımıza çıkan bir
+yapıdır. $R$ bir ``tek adım'' ilişkisi olsun (bir programın bir adım
+çalışması, bir oyunda bir hamle gibi). ``$a$'dan $c$'ye sıfır ya da daha
+fazla adımda ulaşılabilir'' ilişkisi, $R$'nin \emph{yansımalı-geçişli
+kapanışıdır}:
+
+\leandosya[Yansımalı-geçişli kapanış]{Bolum09}{kapanis}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    d/.style={circle, draw=anarenk, fill=tanimbg, thick, minimum size=0.75cm, font=\small},
+    ok/.style={-{Stealth[length=2.4mm]}, thick, #1},
+  ]
+  \foreach \i/\n in {0/a, 1/b, 2/c, 3/d} \node[d] (n\i) at ({2.2*\i},0) {$\n$};
+  \draw[ok=leanhyp] (n0) -- node[above, font=\scriptsize]{$R$} (n1);
+  \draw[ok=leanhyp] (n1) -- node[above, font=\scriptsize]{$R$} (n2);
+  \draw[ok=leanhyp] (n2) -- node[above, font=\scriptsize]{$R$} (n3);
+  \draw[ok=ikincil, dashed] (n0) to[bend right=30] node[below, font=\leanfont\scriptsize, text=ikincil]{Kapanis R a d} (n3);
+  \draw[ok=vurgu] (n0) to[loop above, looseness=6] node[above, font=\leanfont\scriptsize, text=vurgu]{refl} (n0);
+\end{tikzpicture}
+\caption{$R$-adımlarından oluşan bir yol. \lc{Kapanis R a d}, $a$'dan $d$'ye
+böyle bir yolun var olduğunu söyler; \lc{refl}, sıfır adımlık yoldur.}
+\label{fig:kapanis}
+\end{figure}
+
+\noindent \lc{Kapanis.gecisme} ispatı, iki yolun uç uca eklenebileceğini
+gösterir. Bu ispat da kural tümevarımıdır: İlk yolun uzunluğu üzerinde
+tümevarım yaparız. İspatın programlama karşılığı, iki bağlı listeyi
+birleştirmektir.
+
+% ---------------------------------------------------------------------
+\section{Pozitiflik koşulu}\label{sec:pozitiflik}
+
+\Lean{} her \leankw{inductive} bildirimini kabul etmez. Aşağıdaki tanımı
+düşünün:
+
+\begin{leankod}[Reddedilen bir tanım (derlenmez)]
+inductive Kotu where
+  | yap : (Kotu → False) → Kotu
+\end{leankod}
+
+\begin{leanhata}[Lean hata mesajı]
+(kernel) arg #1 of 'Kotu.yap' has a non positive occurrence of the datatypes being declared
+\end{leanhata}
+
+\noindent Bu tanım kabul edilseydi bir çelişki türetebilirdik. Kabaca:
+\lc{f : Kotu → False} fonksiyonunu ``\lc{yap g} verildiğinde
+\lc{g (yap g)} döndür'' diye tanımlayalım. O zaman \lc{f (yap f)} hesabı,
+\lc{f (yap f)}'ye döner ve sonsuza dek sürer; mantık olarak da
+\lc{f (yap f) : False} bir kanıt olur. Bu, Bölüm~6'daki berber
+paradoksunun ve Bölüm~8'deki Cantor köşegeninin bir başka yüzüdür.
+
+\begin{tanim}{Kesin pozitiflik}{pozitiflik}
+Bir tümevarımsal bildirimde, tanımlanan tip kurucuların argümanlarında
+yalnızca \textbf{kesin pozitif} konumlarda geçebilir: Hiçbir okun
+\emph{sol} tarafında bulunmamalıdır. \lc{ekle : α → Liste α → Liste α}
+geçerlidir; \lc{yap : (Kotu → False) → Kotu} geçersizdir.
+\end{tanim}
+
+\noindent Pozitiflik koşulu ve Bölüm~7'deki sona erme koşulu, \Lean{}'in
+mantığını tutarlı kılan iki önemli kısıttır. İkisi de aynı tehlikeye karşı
+korur: \emph{Kendine gönderme yaparak} bir çelişki üretmek.
+
+% ---------------------------------------------------------------------
+\section{Curry--Howard: tümevarımsal tipler}\label{sec:curry-howard-5}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.3cm}
+                >{\raggedright\arraybackslash}p{4.6cm}
+                >{\raggedright\arraybackslash}p{3.8cm}}
+\rowcolor{tabloust}
+\tablobaslik{Mantık} & \tablobaslik{Programlama} & \tablobaslik{Lean} \\
+$P \wedge Q$           & kayıt (çift)                       & \lc{structure}, \lc{And} \\
+$P \vee Q$             & etiketli birleşim                   & \lc{Or}, \lc{Sum} \\
+$\bot$                 & boş tip                            & \lc{False}, \lc{Empty} \\
+$\top$                 & birim tip                          & \lc{True}, \lc{Unit} \\
+$\exists x,\, P\,x$    & bağımlı çift                       & \lc{Exists}, \lc{Sigma} \\
+$a = b$                & özdeşlik tipi                      & \lc{Eq} \\
+tümevarımsal yüklem    & tümevarımsal aile                  & \lc{Cift}, \lc{Kapanis} \\
+kural tümevarımı       & türetim üzerinde özyineleme        & \leantac{induction h} \\
+\end{tabular}
+\end{center}
+
+% ---------------------------------------------------------------------
+\section{Taktik özeti}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{4.4cm} X}
+\rowcolor{tabloust}
+\tablobaslik{Taktik} & \tablobaslik{Ne yapar?} \\
+\leantac{cases h with | c₁ ... | c₂ ...} & Her kurucu için bir durum; imkânsız durumları eler. \\
+\leantac{induction t with ...}          & Yapısal tümevarım; her özyinelemeli alan için bir hipotez. \\
+\leantac{induction h with ...}          & Kural tümevarımı (\lc{h} bir tümevarımsal yüklemin kanıtı). \\
+\lc{t <;> rfl}                          & Sonlu durumların her birini hesaplayarak kapatır. \\
+\leankw{calc}                           & Eşitlik zinciri; adımlar \lc{rfl}, önsav ya da \leantac{rw} olabilir. \\
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Tümevarımsal aileler.} İndeksli tümevarımsal tipler, Peter Dybjer
+tarafından Martin-Löf tip kuramının bir uzantısı olarak kesin biçimde
+tanımlandı \citep{dybjer1994}. Coq ve \Lean{}'in tümevarımsal tipleri,
+Christine Paulin-Mohring'in İnşalar Hesabına eklediği tümevarımsal
+tanımlara dayanır \citep{paulin1993}. \Lean{}'in çekirdeğindeki
+tümevarımsal tiplerin kesin kuralları için \citet{carneiro2019}.
+
+\textbf{Pozitifliğin ötesi.} Kesin pozitiflik güvenlidir ama bazen
+gereğinden kısıtlayıcıdır. Karşılıklı (\emph{mutual}) ve iç içe
+(\emph{nested}) tümevarımsal tipler, \emph{tümevarımsal-özyinelemeli}
+tanımlar ve \emph{eşözyinelemeli} (\emph{coinductive}) tipler, bu
+sınırları genişleten araştırma konularıdır. Homotopi tip kuramının
+\emph{yüksek tümevarımsal tipleri}, kurucuların yalnızca elemanlar
+değil, elemanlar arasında eşitlikler de üretebildiği bir genellemedir
+\citep{hott2013}.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Bir \leankw{inductive} bildirimi, bir tipin bütün elemanlarını
+        kurmanın yollarını (kurucuları) listeler. Parametreler sabittir,
+        indeksler değişebilir.
+  \item \lc{And}, \lc{Or}, \lc{True}, \lc{False}, \lc{Exists} ve \lc{Eq}
+        tümevarımsal tiplerdir. Kurucular giriş kurallarıdır; eleme
+        kuralları \leantac{cases} ile kendiliğinden gelir.
+  \item Listeler ve ağaçlar üzerinde özyineleme ve yapısal tümevarım
+        yapılır; tümevarım ilkesi tipin şeklini izler.
+  \item Tümevarımsal yüklemler, kurallarla tanımlanan önermelerdir.
+        Kanıtları türetim ağaçlarıdır; üzerlerinde kural tümevarımı
+        yapılır.
+  \item Pozitiflik koşulu, kendine gönderme yoluyla çelişki üretilmesini
+        engeller.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} Kendi \lc{Ve} tipimizin sol elemesini ispatlayın. (\lc{a9\_1})
+
+\alistirma{1} Kendi \lc{Veya} tipimiz için durum ayırma ilkesini
+ispatlayın. (\lc{a9\_2})
+
+\alistirma{2} \lc{(∀ x, P x → Q x) → Var P → Var Q}. (\lc{a9\_3})
+
+\alistirma{2} Ters çevirme uzunluğu korur. İpucu: \lc{uzunluk\_birlestir}.
+(\lc{a9\_4})
+
+\alistirma{2} Bir ikili ağaçta yaprak sayısı, düğüm sayısından bir
+fazladır. (\lc{a9\_5})
+
+\alistirma{2} \lc{¬ Cift 3}. Kaç kez \leantac{cases} gerekti? Neden?
+(\lc{a9\_6})
+
+\alistirma{2} \emph{Ters çevirme}: \lc{Cift (n + 2) → Cift n}.
+(\lc{a9\_7})
+
+\alistirma{3} İki çift sayının toplamı çifttir. Kural tümevarımını hangi
+kanıt üzerinde yapmalısınız? (\lc{a9\_8})
+
+\alistirma{1} Tek bir \lc{R}-adımı kapanışın içindedir. (\lc{a9\_9})
+
+\alistirma{2} (Kâğıt-kalem) Doğal sayılar üzerinde ``$n$ tektir''
+yüklemini iki kuralla tanımlayın. \lc{Tek 5}'in türetim ağacını çizin.
+
+\alistirma{3} (Kâğıt-kalem) Bir \emph{palindrom}, tersinden okunuşu
+kendisine eşit olan listedir. Palindromları tümevarımsal bir yüklem
+olarak tanımlayan üç kural yazın. İpucu: boş liste, tek elemanlı liste
+ve ``\lc{x}, ortada bir palindrom, \lc{x}''.
+
+\alistirma{3} (Tartışma) \cref{sec:pozitiflik}'deki \lc{Kotu} tipi
+kabul edilseydi \lc{False}'un bir kanıtını nasıl yazardınız? Bu argümanı
+Cantor teoremiyle karşılaştırın.
+\end{alistirmalar}

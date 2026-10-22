@@ -1,0 +1,75 @@
+\chapter*{Önsöz}
+\addcontentsline{toc}{chapter}{Önsöz}
+\markboth{Önsöz}{Önsöz}
+
+Mantık, iki bin yılı aşkın bir süre boyunca kâğıt ve kalemle yapılan bir
+disiplindi. Aristoteles'in kıyasları, Frege'nin \emph{Begriffsschrift}'i,
+Gentzen'in doğal çıkarım sistemi ve Gödel'in eksiklik teoremleri hep bu
+gelenekte doğdu. Yirmi birinci yüzyılda ise mantığın kendisi değişmese de onu
+\emph{yapma biçimimiz} değişti: Bugün bir ispatı bilgisayara denetletebiliyor,
+mantık sistemlerini birer veri yapısı olarak tanımlayıp onlar hakkındaki
+teoremleri makinede doğrulayabiliyoruz.
+
+Bu kitap, bu dönüşümü Türkçe okura sıfırdan anlatmak amacıyla yazıldı. Araç
+olarak \Lean{} ispat asistanını kullanıyoruz \citep{demoura2021lean4}. \Lean{}
+hem bir programlama dili hem de bir ispat denetleyicisidir. İçine yazdığınız
+her ispatı, küçük ve güvenilir bir çekirdek adım adım denetler. Bir ispat
+\Lean{}'den geçtiyse, o ispatta mantıksal bir boşluk kalmamış demektir.
+
+\section*{Kitabın iki yüzü}
+
+Kitap iki farklı okur kitlesini birlikte gözetiyor:
+
+\begin{description}[font=\baslikfont\bfseries\color{anarenk}]
+  \item[Ders kitabı olarak] Kısım~I ve~II, matematik, bilgisayar mühendisliği
+  ve felsefe bölümlerinde bir dönemlik ``Mantık ve İspat'' dersine karşılık
+  gelir. Önceden programlama bilgisi gerekmez. Her kavram önce kâğıt üzerinde,
+  ardından \Lean{}'de, en sonunda da bir görselle anlatılır.
+  \item[El kitabı olarak] Kısım~III ve~IV, metamantık (geçerlilik, tamlık,
+  kesme eleme) ve tip kuramı ($\lambda$-hesabı, bağımlı tipler, \Lean{}'in
+  aksiyomları) konularında araştırmacıya başvuru kaynağı olmayı hedefler.
+  Bu bölümlerdeki \emph{Araştırma Notu} kutuları güncel literatüre ve açık
+  problemlere yönlendirir. Kısım~V'teki on iki proje ise okuru kendi
+  formalizasyon çalışmasına hazırlar.
+\end{description}
+
+\section*{İki cilt}
+
+Elinizdeki kitap, iki ciltlik bir dizinin ilk cildidir. \textbf{Cilt~I:
+Temeller}, sıfırdan başlayıp önermeler mantığının metateorisine ve
+\Lean{}'in kendi tip kuramına kadar ilerler; kendi başına tamamlanmış bir
+bütündür. \textbf{Cilt~II: İleri Konular} ise birinci mertebe mantığın
+formalizasyonu, kip mantığı, Gödel'in eksiklik teoremleri, küme kuramı,
+otomasyon, metaprogramlama ve yapay zekâ destekli teorem ispatını ele
+alacaktır. Cilt~I'de ileriye dönük göndermeler ``Cilt~II, Bölüm~$n$''
+biçiminde yazılmıştır; Cilt~II'nin planı, Cilt~I'in sonundaki
+\emph{Sonsöz}'de yer alır.
+
+\section*{Kitabın omurgası}
+
+Kitabı bir arada tutan tek bir fikir vardır: \textbf{Curry--Howard eşlemesi}.
+Bir önerme bir \emph{tür}, o önermenin ispatı ise o türden bir \emph{program}
+olarak görülebilir. ``$P$ ise $Q$'' önermesinin bir ispatı, $P$'nin
+kanıtını alıp $Q$'nun kanıtını üreten bir fonksiyondur. Bu bakış açısı ilk
+bölümlerde sezgisel olarak ortaya çıkar, Kısım~IV'te ise kesin bir matematiksel
+teoreme dönüşür.
+
+İkinci omurga, \textbf{yapıcı ve klasik mantık} arasındaki ayrımdır. \Lean{}
+varsayılan olarak yapıcıdır: Üçüncü hâlin olanaksızlığını kullanmak
+istediğinizde bunu açıkça söylemeniz gerekir. Bu durum, klasik ders
+kitaplarında gözden kaçan bir soruyu okurun önüne koyar: \emph{Bir şeyin
+yanlış olmadığını göstermek, doğru olduğunu göstermek midir?}
+
+\section*{Eşlik eden Lean projesi}
+
+Kitaptaki \Lean{} kodlarının tamamı, kitapla birlikte dağıtılan
+\lc{ModernMantik} projesinden alınır. Kitabın \LaTeX{} kaynağı kodu bu
+dosyalardan doğrudan okur; böylece kitapta basılı olan kod ile derlenen kod
+her zaman aynıdır. Proje, otomatik bir sürekli tümleştirme (CI) iş akışıyla
+her değişiklikte yeniden derlenir.
+
+\vspace{1em}
+\begin{flushright}
+\yazar\\
+\textit{Ekim 2026}
+\end{flushright}

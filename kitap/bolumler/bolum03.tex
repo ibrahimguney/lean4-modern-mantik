@@ -1,0 +1,619 @@
+% =====================================================================
+%  Bölüm 3 — Önermeler Mantığı II: Değilleme, Çelişki ve Denklik
+% =====================================================================
+\chapter{Önermeler Mantığı II: Değilleme, Çelişki ve Denklik}\label{bol:degilleme}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item \lc{True} ve \lc{False} önermelerini ve Curry--Howard'daki
+        karşılıklarını,
+  \item Değillemenin \Lean{}'de neden \lc{¬P := P → False} olarak
+        tanımlandığını,
+  \item Çelişkiden her şeyin çıktığını (\emph{ex falso quodlibet}) ve
+        \leantac{exfalso}, \lc{absurd}, \leantac{contradiction} araçlarını,
+  \item Denkliği (\lc{↔}), \lc{Iff.mp}, \lc{Iff.mpr} ve \leantac{rw} ile
+        yeniden yazmayı,
+  \item De Morgan yasalarının hangi yarısının yapıcı olarak ispatlanabildiğini
+        ve neden ötekinin ispatlanamadığını.
+\end{itemize}
+\end{bolumhedefleri}
+
+% ---------------------------------------------------------------------
+\section{İki uç: True ve False}\label{sec:true-false}
+
+Önermeler arasında iki özel önerme vardır. \lc{True} her zaman doğru olan,
+\lc{False} ise hiçbir zaman doğru olmayan önermedir. Mantık kitaplarında
+bunlar genellikle $\top$ (\emph{tepe}) ve $\bot$ (\emph{dip}) ile gösterilir.
+
+\begin{center}
+\begin{tabular}{c@{\hspace{5em}}c}
+\begin{prooftree}
+  \infer0[$\top$G]{\top}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\bot}
+  \infer1[$\bot$E]{P}
+\end{prooftree}
+\\[10pt]
+\small\textcolor{ikincil}{\bfseries giriş:} \leantac{trivial}, \lc{True.intro} &
+\small\textcolor{vurgu}{\bfseries eleme (ex falso):} \lc{False.elim}, \leantac{exfalso}
+\end{tabular}
+\end{center}
+
+\noindent İki kural birbirinin aynadaki görüntüsü gibidir:
+
+\begin{itemize}
+  \item $\top$'un \textbf{giriş} kuralının hiç öncülü yoktur: \lc{True}'yu
+        her zaman, hiçbir şey bilmeden kanıtlayabiliriz. Buna karşılık
+        \textbf{eleme} kuralı yoktur: \lc{True}'yu bilmek bize hiçbir bilgi
+        vermez.
+  \item $\bot$'un \textbf{giriş} kuralı yoktur: \lc{False}'u kanıtlamanın
+        doğrudan bir yolu yoktur. Buna karşılık \textbf{eleme} kuralı
+        çok güçlüdür: \lc{False}'un bir kanıtı elimize geçerse, \emph{her
+        önermeyi} kanıtlayabiliriz.
+\end{itemize}
+
+\leandosya[True'nun kanıtı]{Bolum03}{dogru}
+
+\subsection{Ex falso quodlibet}
+
+Latince ``yanlıştan ne istersen'' anlamına gelen bu ilke, $\bot$E
+kuralının adıdır.
+
+\leandosya[Ex falso]{Bolum03}{ex_falso}
+
+\noindent Daha ilginç bir ispat, \leantac{cases} taktiğini kullanır:
+
+\leandosya[Ex falso, durum ayırarak]{Bolum03}{ex_falso_cases}
+
+Neden işe yarıyor? \Cref{sec:veya}'te \leantac{cases}'in bir veya
+kanıtını \emph{iki} duruma ayırdığını görmüştük, çünkü \lc{P ∨ Q}'nun
+kanıtı iki biçimde kurulabilir (\lc{Or.inl} ve \lc{Or.inr}). \lc{False}'un
+kanıtı ise \emph{hiçbir} biçimde kurulamaz. Dolayısıyla \lc{h : False}
+üzerinde durum ayırınca \emph{sıfır} durum çıkar ve kapatılacak hedef
+kalmaz.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    tip/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                minimum width=2.6cm, minimum height=1.0cm,
+                font=\leanfont\small, align=center},
+    kur/.style={draw=#1, fill=white, thick, rounded corners=3pt,
+                font=\leanfont\scriptsize, inner sep=3pt},
+    ok/.style={-{Stealth[length=2.3mm]}, thick, #1},
+  ]
+  % Or
+  \node[tip=leanframe] (or) at (0,0) {P ∨ Q};
+  \node[kur=ikincil] (o1) at (-1.0,-1.5) {Or.inl};
+  \node[kur=ikincil] (o2) at (1.0,-1.5) {Or.inr};
+  \draw[ok=ikincil] (or) -- (o1); \draw[ok=ikincil] (or) -- (o2);
+  \node[font=\baslikfont\scriptsize, text=black!60] at (0,-2.3) {2 kurucu → 2 durum};
+  % True
+  \node[tip=bittiframe] (tr) at (5,0) {True};
+  \node[kur=bittiframe] (t1) at (5,-1.5) {True.intro};
+  \draw[ok=bittiframe] (tr) -- (t1);
+  \node[font=\baslikfont\scriptsize, text=black!60] at (5,-2.3) {1 kurucu → 1 durum};
+  % False
+  \node[tip=hataframe] (fa) at (10,0) {False};
+  \node[text=hataframe] at (10,-1.5) {\Large$\emptyset$};
+  \node[font=\baslikfont\scriptsize, text=black!60] at (10,-2.3) {0 kurucu → 0 durum};
+\end{tikzpicture}
+\caption{Bir önermenin \emph{kurucuları}, kanıtını inşa etmenin yollarıdır.
+\leantac{cases} her kurucu için bir durum açar. \lc{False}'un kurucusu
+yoktur.}
+\label{fig:kurucular}
+\end{figure}
+
+\begin{onemlifikir}[Önemli Fikir: True ve False birer tiptir]
+Curry--Howard eşlemesinde \lc{True}, tek elemanlı tipe (programlamada
+\emph{unit}), \lc{False} ise hiç elemanı olmayan \emph{boş tipe} karşılık
+gelir. Boş tipten başka bir tipe giden fonksiyonu yazmak kolaydır: Hiçbir
+girdi gelmeyeceği için hiçbir çıktı üretmemiz de gerekmez. Ex falso tam
+olarak budur. Bu tipler \cref{bol:tumevarimsal-tipler}'da \leankw{inductive}
+ile kendimiz tanımlayacağız.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Değilleme: \texorpdfstring{$\neg P$}{¬P} ``\texorpdfstring{$P$}{P} ise çelişki'' demektir}\label{sec:degilleme}
+
+\Lean{}'de değilleme yeni bir temel kavram değildir; implikasyon ve
+\lc{False} ile \emph{tanımlanır}:
+
+\leandosya[Değillemenin tanımı]{Bolum03}{not_tanim}
+
+\begin{tanim}{Değilleme}{degilleme}
+Bir $P$ önermesinin \textbf{değillemesi},
+\[
+  \neg P \;:=\; P \to \bot
+\]
+önermesidir. Yani ``$P$ değil'' demek, ``$P$ doğru olsaydı bir çelişkiye
+varırdık'' demektir.
+\end{tanim}
+
+Bu tanımın önemli bir sonucu var: Değilleme için ayrı kurallar
+öğrenmemize gerek yok, çünkü $\neg$ aslında $\to$'dur. $\neg$G kuralı
+$\to$G'nin, $\neg$E kuralı da $\to$E'nin özel hâlidir:
+
+\begin{center}
+\begin{tabular}{c@{\hspace{4em}}c}
+\begin{prooftree}
+  \hypo{[P]^{1}}
+  \ellipsis{}{\bot}
+  \infer1[$\neg$G$^{1}$]{\neg P}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\neg P}
+  \hypo{P}
+  \infer2[$\neg$E]{\bot}
+\end{prooftree}
+\\[10pt]
+\small\textcolor{ikincil}{\bfseries giriş:} \leantac{intro hp}, hedef \lc{False} olur &
+\small\textcolor{vurgu}{\bfseries eleme:} \lc{hnp hp : False}
+\end{tabular}
+\end{center}
+
+\subsection{Çelişmezlik ilkesi}
+
+Aristoteles'ten beri mantığın temel yasalarından biri sayılan
+\emph{çelişmezlik ilkesi}, bir önermenin hem doğru hem yanlış
+olamayacağını söyler: $\neg(P \wedge \neg P)$.
+
+\leandosya[Çelişmezlik ilkesi]{Bolum03}{degil_giris}
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[\texttt{intro h} sonrası]
+P : Prop
+h : P ∧ ¬P
+⊢ False
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{obtain} sonrası]
+P : Prop
+hp : P
+hnp : ¬P
+⊢ False
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+\leantac{intro h} adımına dikkat edin: Hedef \lc{¬(P ∧ ¬P)} idi ve
+görünürde bir ok yoktu. Ama \lc{¬X}, \lc{X → False}'un kısaltması
+olduğu için \leantac{intro} onu açabildi ve hedef \lc{False} oldu.
+Son adımda \lc{hnp : P → False} fonksiyonunu \lc{hp} argümanıyla
+çağırarak \lc{False}'u elde ettik.
+
+\leandosya[Çelişmezlik, terim modu]{Bolum03}{degil_giris_terim}
+
+\subsection{Çift değillemenin girişi}
+
+\leandosya[\texorpdfstring{$P \to \neg\neg P$}{P → ¬¬P}]{Bolum03}{cift_degil_giris}
+
+\noindent Bu ispatı açık açık yazarsak:
+\[
+  P \to \neg\neg P
+  \;=\; P \to (\neg P \to \bot)
+  \;=\; P \to ((P \to \bot) \to \bot).
+\]
+\leantac{intro hp hnp} iki oku birden açar. Bu teoremin \emph{tersi},
+yani $\neg\neg P \to P$, bu bölümde ispatlayamayacağımız ilk önemli
+önermedir.
+
+\begin{dikkat}[Dikkat: $\neg\neg P$ ile $P$ aynı şey değildir]
+Okulda öğrendiğimiz mantıkta ``değilin değili'' kendisidir. \Lean{}'in
+varsayılan mantığında ise $P$'den $\neg\neg P$ çıkar, ama tersi
+çıkmaz. $\neg\neg P$ yalnızca ``$P$'nin yanlış olduğunu gösteremezsin''
+der; $P$'nin bir kanıtını \emph{vermez}. Bu farkın ne kadar derin
+olduğunu \cref{bol:yapici-klasik}'te göreceğiz.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Çelişkiyle çalışmanın üç yolu}\label{sec:celiski}
+
+Bağlamda hem \lc{hp : P} hem \lc{hnp : ¬P} varsa, hedef ne olursa olsun
+ispat bitmiştir. \Lean{} bunu söylemek için üç farklı araç sunar:
+
+\leandosya[Aynı ispat, üç araçla]{Bolum03}{celiski_uc_yol}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.0cm} X}
+\rowcolor{tabloust}
+\tablobaslik{Araç} & \tablobaslik{Ne zaman kullanılır?} \\
+\leantac{exfalso}       & Hedefi \lc{False}'a çevirmek istediğinizde. Ardından çelişkiyi kendiniz kurarsınız. \\
+\lc{absurd hp hnp}      & Çelişkili iki terimi doğrudan elinizde tuttuğunuzda (terim modu). \\
+\leantac{contradiction} & Bağlamda açık bir çelişki olduğunda: \lc{P} ve \lc{¬P}, \lc{h : False}, ya da \lc{h : a ≠ a} gibi. \\
+\end{tabularx}
+\end{center}
+
+\leantac{contradiction} en kısa olanıdır, ama yalnızca çelişki bağlamda
+\emph{açıkça} duruyorsa çalışır. Çelişkiyi elde etmek için birkaç adım
+gerekiyorsa \leantac{exfalso} ile başlamak daha açık bir ispat verir.
+
+% ---------------------------------------------------------------------
+\section{Kontrapozisyon ve modus tollens}\label{sec:kontrapozisyon}
+
+``Yağmur yağarsa yer ıslanır'' doğruysa, ``yer ıslak değilse yağmur
+yağmamıştır'' da doğrudur. Bu, \emph{kontrapozisyon} ilkesidir:
+\[
+  (P \to Q) \to (\neg Q \to \neg P).
+\]
+
+\leandosya[Kontrapozisyon]{Bolum03}{kontrapozisyon}
+
+\noindent \leantac{intro hpq hnq hp} adımında \emph{üç} varsayım
+içeri alınıyor. Üçüncüsü, sonuçtaki \lc{¬P}'nin içinde saklı olan
+\lc{P}'dir. Bu adımdan sonra durum şöyledir:
+
+\begin{hedefdurumu}[\texttt{intro hpq hnq hp} sonrası]
+P Q : Prop
+hpq : P → Q
+hnq : ¬Q
+hp : P
+⊢ False
+\end{hedefdurumu}
+
+\noindent Terim modunda kontrapozisyon, yine bir fonksiyon bileşkesidir:
+\lc{hpq}'yu uygulayıp sonucu \lc{hnq}'ya veririz.
+
+\leandosya[Kontrapozisyon, terim modu]{Bolum03}{kontrapozisyon_terim}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kanit/.style={draw=leanframe, fill=leanbg, thick, circle,
+                  minimum size=0.95cm, font=\bfseries\color{leanframe}},
+    makine/.style={draw=leanhyp, fill=leanhyp!12, thick, rounded corners=3pt,
+                   minimum width=1.5cm, minimum height=0.9cm,
+                   font=\leanfont\bfseries\color{leanhyp}},
+    bos/.style={draw=hataframe, fill=hatabg, thick, circle,
+                minimum size=0.95cm, font=\bfseries\color{hataframe}},
+    ok/.style={-{Stealth[length=3mm]}, very thick, leansym},
+  ]
+  \node[kanit] (p) {$P$};
+  \node[makine, right=0.9cm of p] (f) {hpq};
+  \node[kanit, right=0.9cm of f] (q) {$Q$};
+  \node[makine, right=0.9cm of q] (g) {hnq};
+  \node[bos, right=0.9cm of g] (b) {$\bot$};
+  \draw[ok] (p) -- (f); \draw[ok] (f) -- (q);
+  \draw[ok] (q) -- (g); \draw[ok] (g) -- (b);
+  \draw[decorate, decoration={brace, amplitude=6pt, mirror}, thick, vurgu]
+    ([yshift=-0.75cm]p.west) -- ([yshift=-0.75cm]b.east)
+    node[midway, below=9pt, font=\leanfont\small, text=vurgu]
+    {fun hp => hnq (hpq hp)  :  P → False  =  ¬P};
+\end{tikzpicture}
+\caption{Kontrapozisyon: $P$'den $\bot$'a giden yol, $\neg P$'nin kanıtıdır.}
+\label{fig:kontrapozisyon}
+\end{figure}
+
+Kontrapozisyonun \emph{tersi}, yani $(\neg Q \to \neg P) \to (P \to Q)$,
+klasik mantıkta doğrudur ama yapıcı olarak ispatlanamaz. Bunu
+\cref{bol:yapici-klasik}'te ispatlayacağız.
+
+\leandosya[Modus tollens]{Bolum03}{modus_tollens}
+
+\noindent Burada daha önce ispatladığımız bir teoremi (\lc{kontrapozisyon})
+bir fonksiyon gibi çağırdık. Teoremler, bir kez ispatlandıktan sonra
+yeniden kullanılabilen fonksiyonlardır.
+
+% ---------------------------------------------------------------------
+\section{Denklik (\texorpdfstring{$\leftrightarrow$}{↔})}\label{sec:denklik}
+
+``$P$ ancak ve ancak $Q$'' önermesi, $P \to Q$ ile $Q \to P$'nin
+birlikte doğru olduğunu söyler. \Lean{}'de \lc{P ↔ Q}, bu iki implikasyonun
+bir çiftidir; dolayısıyla kuralları \lc{∧}'nınkilere çok benzer.
+
+\begin{center}
+\begin{tabular}{c@{\hspace{3em}}c@{\hspace{2em}}c}
+\begin{prooftree}
+  \hypo{[P]^1}
+  \ellipsis{}{Q}
+  \hypo{[Q]^2}
+  \ellipsis{}{P}
+  \infer2[$\leftrightarrow$G$^{1,2}$]{P \leftrightarrow Q}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{P \leftrightarrow Q}
+  \hypo{P}
+  \infer2[$\leftrightarrow$E$_1$]{Q}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{P \leftrightarrow Q}
+  \hypo{Q}
+  \infer2[$\leftrightarrow$E$_2$]{P}
+\end{prooftree}
+\\[10pt]
+\small\textcolor{ikincil}{\bfseries giriş:} \leantac{constructor}, \lc{⟨f, g⟩} &
+\multicolumn{2}{c}{\small\textcolor{vurgu}{\bfseries eleme:} \lc{h.mp}, \lc{h.mpr}, \leantac{rw [h]}}
+\end{tabular}
+\end{center}
+
+\leandosya[Denkliğe giriş]{Bolum03}{iff_giris}
+\leandosya[Denkliğe giriş, terim modu]{Bolum03}{iff_giris_terim}
+\leandosya[Denkliğin elemesi]{Bolum03}{iff_eleme}
+
+\noindent \lc{mp} adı \emph{modus ponens}'ten gelir; \lc{mpr} ise ``ters
+yönde modus ponens'' demektir.
+
+\subsection{Yeniden yazma: \texorpdfstring{\leantac{rw}}{rw}}
+
+Denk önermeler, \emph{her bağlamda} birbirinin yerine kullanılabilir.
+\leantac{rw [h]} taktiği, \lc{h : P ↔ Q} denkliğini kullanarak hedefteki
+her \lc{P}'yi \lc{Q} ile değiştirir:
+
+\leandosya[Yeniden yazma]{Bolum03}{iff_rw}
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[\texttt{rw [h]} öncesi]
+h : P ↔ Q
+hqr : Q → R
+⊢ P → R
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{rw [h]} sonrası]
+h : P ↔ Q
+hqr : Q → R
+⊢ Q → R
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+\noindent \leantac{rw} hem eşitliklerle (\lc{a = b}) hem denkliklerle
+(\lc{P ↔ Q}) çalışır. Eşitlikle yeniden yazmayı \cref{bol:yuklemler}'da
+ayrıntılı olarak göreceğiz. Denklikle yeniden yazma ise \Lean{}'in
+\emph{önerme dışsallığı} (\lc{propext}) aksiyomuna dayanır: Denk iki önerme
+\emph{eşittir}. Bu aksiyoma \cref{bol:aksiyomlar}'da döneceğiz.
+
+\subsection{Üçlü değilleme}
+
+İki değilleme bir taneye indirgenemez, ama üç değilleme bire indirgenir:
+
+\leandosya[Üçlü değilleme]{Bolum03}{uclu_degilleme}
+
+\noindent Bu ispat, daha önce ispatladığımız \lc{cift\_degilleme\_giris}
+teoremini yeniden kullanıyor. Sonuç şaşırtıcıdır: Yapıcı mantıkta
+değillemeler dizisi $\neg\neg\neg\neg\neg P$ gibi ne kadar uzarsa uzasın,
+yalnızca iki farklı önermeye indirgenir: $\neg P$ ya da $\neg\neg P$
+(ve elbette $P$'nin kendisi).
+
+% ---------------------------------------------------------------------
+\section{De Morgan yasaları: yapıcılığın sınırı}\label{sec:demorgan}
+
+Augustus De Morgan'ın adını taşıyan yasalar, değillemenin ve ile veya
+üzerine nasıl dağıldığını söyler. Klasik mantıkta dört yönün hepsi
+doğrudur:
+\[
+  \neg(P \vee Q) \leftrightarrow \neg P \wedge \neg Q
+  \qquad\qquad
+  \neg(P \wedge Q) \leftrightarrow \neg P \vee \neg Q
+\]
+
+\leandosya[De Morgan: veya'nın değillemesi]{Bolum03}{demorgan_veya}
+\leandosya[De Morgan: ve'nin değillemesi, kolay yön]{Bolum03}{demorgan_ve_kolay}
+
+\noindent Dördüncü yönü denediğimizde ise takılırız:
+
+\begin{leankod}[Takıldığımız yer (derlenmez)]
+theorem demorgan_ve_zor (P Q : Prop) : ¬(P ∧ Q) → ¬P ∨ ¬Q := by
+  intro h
+  -- h : ¬(P ∧ Q),  hedef: ⊢ ¬P ∨ ¬Q
+  -- Or.inl mi, Or.inr mi? Hangisini seçeceğimizi bilmiyoruz!
+  sorry
+\end{leankod}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    yon/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                minimum width=3.7cm, minimum height=0.85cm, align=center,
+                font=\small},
+    ok/.style={-{Stealth[length=2.6mm]}, very thick, #1},
+  ]
+  \node[yon=anarenk] (a1) at (0,0)   {$\neg(P \vee Q)$};
+  \node[yon=anarenk] (a2) at (7,0)   {$\neg P \wedge \neg Q$};
+  \node[yon=anarenk] (b1) at (0,-2.1){$\neg(P \wedge Q)$};
+  \node[yon=anarenk] (b2) at (7,-2.1){$\neg P \vee \neg Q$};
+
+  \draw[ok=bittiframe] ([yshift=4pt]a1.east) -- node[above, font=\baslikfont\scriptsize\bfseries, text=bittiframe]{yapıcı {\sembolfont ✓}} ([yshift=4pt]a2.west);
+  \draw[ok=bittiframe] ([yshift=-4pt]a2.west) -- node[below, font=\baslikfont\scriptsize\bfseries, text=bittiframe]{yapıcı {\sembolfont ✓}} ([yshift=-4pt]a1.east);
+  \draw[ok=bittiframe] ([yshift=-4pt]b2.west) -- node[below, font=\baslikfont\scriptsize\bfseries, text=bittiframe]{yapıcı {\sembolfont ✓}} ([yshift=-4pt]b1.east);
+  \draw[ok=hataframe, dashed] ([yshift=4pt]b1.east) -- node[above, font=\baslikfont\scriptsize\bfseries, text=hataframe]{yalnızca klasik} ([yshift=4pt]b2.west);
+\end{tikzpicture}
+\caption{De Morgan yasalarının dört yönü. Kesikli ok, yalnızca klasik
+mantıkla ispatlanabilen yöndür.}
+\label{fig:demorgan}
+\end{figure}
+
+Sorun şudur: Hedef bir \emph{veya} önermesidir ve onu kanıtlamanın tek
+yolu (\cref{sec:veya}), iki taraftan \emph{birinin} kanıtını vermektir.
+Elimizdeki tek bilgi ise ``$P$ ve $Q$ birlikte doğru olamaz''dır. Bu
+bilgi, \emph{hangisinin} yanlış olduğunu söylemez. Gerçek hayattan bir
+örnek:
+
+\begin{gunlukornek}
+``Bu bilgisayar programı hem hızlı hem doğru olamaz'' dediğimizi
+düşünelim. Bundan ``program ya yavaştır ya da yanlıştır'' sonucu çıkar
+mı? Klasik mantıkçı ``elbette'' der. Yapıcı mantıkçı ise şunu sorar:
+\emph{Hangisi?} Programın yavaş olduğunu mu kanıtlayacaksın, yoksa yanlış
+olduğunu mu? İkisinden birini gösteremiyorsan, ``ya o ya bu'' demeye
+hakkın yoktur.
+\end{gunlukornek}
+
+Bu ``hangisi?'' sorusu, yapıcı mantığın özüdür. Yine de elimiz boş
+değildir: Çift değilleme altında De Morgan'ın zor yönü yapıcı olarak
+ispatlanabilir (Alıştırma~\ref{alis:demorgan-cift}). Bir sonraki kesim,
+bu olgunun çok daha genel bir örneğini gösteriyor.
+
+% ---------------------------------------------------------------------
+\section{Üçüncü hâlin olanaksızlığı yanlış olamaz}\label{sec:em-yanlis-olamaz}
+
+Klasik mantığın en ünlü ilkesi, her önermenin ya doğru ya yanlış
+olduğunu söyleyen \emph{üçüncü hâlin olanaksızlığıdır} (Latince
+\emph{tertium non datur}): $P \vee \neg P$. Bu önermeyi de yapıcı olarak
+ispatlayamayız: $P$'yi mi yoksa $\neg P$'yi mi kanıtlayacağımızı bilmeden
+\lc{Or.inl} ile \lc{Or.inr} arasında seçim yapamayız. Ama şaşırtıcı bir
+şey yapabiliriz: Bu ilkenin \emph{yanlış olamayacağını} ispatlayabiliriz.
+
+\leandosya[\texorpdfstring{$\neg\neg(P \vee \neg P)$}{¬¬(P ∨ ¬P)}]{Bolum03}{em_cift_degil}
+
+Bu ispat, mantıkta bir tür ``hile'' içerir ve adım adım izlenmeye değer:
+
+\begin{enumerate}[adimlar]
+  \item \lc{h : ¬(P ∨ ¬P)} varsayıyoruz ve bir çelişki arıyoruz.
+  \item \leantac{apply h}: Çelişki elde etmenin bir yolu, \lc{h}'yi
+        çürütmek, yani \lc{P ∨ ¬P}'nin bir kanıtını vermek.
+  \item \leantac{apply Or.inr}: \emph{Cesur bir seçim yapıyoruz}:
+        $\neg P$ tarafını kanıtlayacağız.
+  \item \leantac{intro hp}: $\neg P$'yi kanıtlamak için $P$'yi varsayıp
+        çelişki arıyoruz.
+  \item \leantac{apply h}, \leantac{exact Or.inl hp}: Ama artık elimizde
+        $P$ var! Seçimimizi değiştirip \lc{P ∨ ¬P}'nin \emph{sol}
+        tarafını kanıtlıyor ve \lc{h} ile çelişki elde ediyoruz.
+\end{enumerate}
+
+\begin{gunlukornek}[Bir benzetme: şeytanın teklifi]
+Bu ispatın programlama karşılığı, mantıkçılar arasında ``şeytanın
+teklifi'' olarak anlatılan bir hikâyeye benzer. Şeytan der ki: ``Ya sana
+bir milyar lira vereceğim, ya da bir milyar lira ödersen dilediğin
+her şeyi yapacağım. Hangisini yapacağıma ben karar veririm.'' Ve ikinci
+seçeneği söyler. Yıllar sonra sen bir milyar lirayı biriktirip getirdiğinde,
+şeytan ``Fikrimi değiştirdim: birinci seçenek. İşte paran'' der ve az önce
+verdiğin parayı sana geri verir. İspattaki \lc{Or.inr}'den \lc{Or.inl}'ye
+geçiş tam olarak budur: Önce $\neg P$ diyor, $P$'nin kanıtı gelince
+o kanıtı kullanarak ``aslında $P$'' diyoruz.
+\end{gunlukornek}
+
+\leandosya[\texorpdfstring{$\neg\neg(P \vee \neg P)$}{¬¬(P ∨ ¬P)}, terim modu]{Bolum03}{em_cift_degil_terim}
+
+Elimizde artık iki gözlem var: \lc{P ∨ ¬P}'yi yapıcı olarak
+ispatlayamıyoruz, ama \lc{¬¬(P ∨ ¬P)}'yi ispatlayabiliyoruz. Arada kalan
+tek adım $\neg\neg X \to X$, yani \emph{çift değilleme eleme}dir. Bu adım,
+yapıcı mantık ile klasik mantığı ayıran sınırın kendisidir.
+\Cref{bol:yapici-klasik} tamamen bu sınıra ayrılmıştır.
+
+% ---------------------------------------------------------------------
+\section{Curry--Howard tablosuna eklemeler}\label{sec:curry-howard-2}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.7cm}
+                >{\raggedright\arraybackslash}p{4.0cm}
+                >{\raggedright\arraybackslash}p{5.0cm}}
+\rowcolor{tabloust}
+\tablobaslik{Mantık} & \tablobaslik{Programlama} & \tablobaslik{Lean'deki kanıt} \\
+$\top$              & tek elemanlı tip (\emph{unit}) & \lc{True.intro}, \leantac{trivial} \\
+$\bot$              & boş tip                         & --- (kanıt yoktur) \\
+$\bot$ eleme        & boş tipten fonksiyon            & \lc{False.elim h}, \leantac{cases h} \\
+$\neg P$            & $P$'den boş tipe fonksiyon      & \lc{fun hp => ...} (\lc{False} üretir) \\
+$P \leftrightarrow Q$ & iki yönlü dönüşüm çifti       & \lc{⟨f, g⟩} \\
+\end{tabular}
+\end{center}
+
+% ---------------------------------------------------------------------
+\section{Taktik özeti}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.1cm}
+                             >{\raggedright\arraybackslash}p{1.8cm}
+                             >{\raggedright\arraybackslash}X}
+\rowcolor{tabloust}
+\tablobaslik{Taktik / terim} & \tablobaslik{Kural} & \tablobaslik{Ne yapar?} \\
+\leantac{trivial}               & $\top$G & \lc{⊢ True} hedefini kapatır. \\
+\leantac{exfalso}               & $\bot$E & Hedefi \lc{False}'a çevirir. \\
+\lc{False.elim h}               & $\bot$E & \lc{h : False}'tan her şeyi üretir. \\
+\lc{absurd hp hnp}              & $\neg$E, $\bot$E & \lc{P} ve \lc{¬P}'den her şeyi üretir. \\
+\leantac{contradiction}         & ---     & Bağlamdaki açık çelişkiyi bulur. \\
+\leantac{intro hp} (hedef \lc{¬P}) & $\neg$G & \lc{hp : P} varsayar, hedef \lc{False} olur. \\
+\leantac{constructor} (hedef \lc{↔}) & $\leftrightarrow$G & İki yönü ayrı hedefler olarak açar. \\
+\lc{h.mp}, \lc{h.mpr}           & $\leftrightarrow$E & Denkliği bir yönde kullanır. \\
+\leantac{rw [h]}                & ---     & \lc{h : P ↔ Q} ile hedefteki \lc{P}'leri \lc{Q} yapar. \\
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Değillemenin tanımı.} $\neg P := P \to \bot$ tanımı, Heyting'in
+1930'da sezgici mantığı biçimselleştirirken yaptığı seçime dayanır
+\citep{heyting1930}. Bu tanım, değillemeyi bağımsız bir kavram olmaktan
+çıkarıp implikasyona indirger ve Curry--Howard eşlemesinin
+değillemeye de uzanmasını sağlar \citep{sorensen2006}.
+
+\textbf{İki değilleme sınırı.} Yapıcı önermeler mantığında
+$\neg\neg\neg P \leftrightarrow \neg P$ olduğundan, tek bir önerme
+değişkeninden yalnızca değilleme ile sonlu sayıda farklı önerme elde
+edilir. Tek değişkenli önermelerin tamamı ise sonsuz bir yapı oluşturur;
+bu yapı \emph{Rieger--Nishimura kafesi} olarak bilinir.
+
+\textbf{Paraconsistent mantıklar.} Ex falso ilkesi bütün mantıklarda
+kabul edilmez. \emph{Paraconsistent} (çelişkiye dayanıklı) mantıklar,
+çelişkili bilgiyle çalışan sistemlerde (ör. tutarsız veri tabanları)
+her şeyin türetilebilmesini engellemek için bu ilkeyi bırakır. Bu
+mantıklar kitabın kapsamı dışındadır.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item \lc{True} tek elemanlı, \lc{False} boş tiptir. \lc{False}'tan her
+        şey çıkar (\emph{ex falso}).
+  \item \lc{¬P}, \lc{P → False}'un kısaltmasıdır. Değillemeyi kanıtlamak
+        için \leantac{intro}, kullanmak için fonksiyon uygulaması yeter.
+  \item Çelişki üç yoldan kullanılır: \leantac{exfalso}, \lc{absurd},
+        \leantac{contradiction}.
+  \item \lc{P ↔ Q} iki implikasyonun çiftidir; \lc{h.mp}, \lc{h.mpr} ve
+        \leantac{rw} ile kullanılır.
+  \item Yapıcı mantıkta $P \to \neg\neg P$ doğrudur, tersi değil. De
+        Morgan'ın bir yönü, $P \vee \neg P$ ve $\neg\neg P \to P$
+        yapıcı olarak ispatlanamaz; ama $\neg\neg(P \vee \neg P)$
+        ispatlanabilir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} \lc{¬False} önermesini ispatlayın. Bu önermenin
+\lc{False → False}'tan farkı var mı? (\lc{a3\_1})
+
+\alistirma{1} \lc{P → True} önermesini ispatlayın. (\lc{a3\_2})
+
+\alistirma{1} \lc{P → ¬P → Q} önermesini önce \leantac{exfalso}, sonra
+\lc{absurd} ile ispatlayın. (\lc{a3\_3})
+
+\alistirma{1} Denkliğin yansıma özelliğini ispatlayın: \lc{P ↔ P}.
+(\lc{a3\_4})
+
+\alistirma{2} Denkliğin simetrisini (\lc{a3\_5}) ve geçişliliğini
+(\lc{a3\_6}) ispatlayın.
+
+\alistirma{2} \emph{Disjunktif kıyas}: \lc{P ∨ Q → ¬P → Q}.
+``Ya çay ya kahve içeceğim; çay içmeyeceğim; o hâlde kahve içeceğim.''
+(\lc{a3\_7})
+
+\alistirma{2} Hiçbir önerme kendi değillemesine denk olamaz:
+\lc{¬(P ↔ ¬P)}. İpucu: Önce \leantac{have} ile \lc{¬P}'yi elde edin.
+Bu alıştırmanın \emph{yalancı paradoksu} (``Bu cümle yanlıştır'') ile
+ilişkisini tartışın. (\lc{a3\_8})
+
+\alistirma{2} \lc{¬(P → Q) → ¬Q} önermesini ispatlayın. (\lc{a3\_9})
+
+\alistirma{2} Çift değillemenin implikasyona dağıldığını ispatlayın:
+\lc{¬¬(P → Q) → ¬¬P → ¬¬Q}. (\lc{a3\_10})
+
+\alistirma{3}\label{alis:demorgan-cift} De Morgan'ın zor yönünün çift
+değilleme altında yapıcı olduğunu ispatlayın:
+\lc{¬(P ∧ Q) → ¬¬(¬P ∨ ¬Q)}. İpucu: \lc{em\_yanlis\_olamaz}
+ispatındaki ``fikir değiştirme'' hilesini kullanın. (\lc{a3\_11})
+
+\alistirma{3}\label{alis:peirce-cift} Bölüm~2'deki Peirce yasasının
+çift değilleme altında yapıcı olduğunu ispatlayın:
+\lc{¬¬(((P → Q) → P) → P)}. (\lc{a3\_12})
+
+\alistirma{3} (Kâğıt-kalem) \lc{em\_yanlis\_olamaz} ispatının doğal
+çıkarım ağacını çizin. \lc{h} varsayımı ağaçta kaç kez kullanılıyor?
+Bu ispatı, varsayımı yalnızca bir kez kullanan bir ispatla
+değiştirmek mümkün müdür? Tartışın.
+\end{alistirmalar}

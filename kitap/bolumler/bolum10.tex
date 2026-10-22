@@ -1,0 +1,521 @@
+% =====================================================================
+%  Bölüm 10 — Önermeler Mantığının Sözdizimi ve Anlambilimi
+% =====================================================================
+\chapter{Sözdizimi ve Anlambilim}\label{bol:sozdizim}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item \emph{Nesne dili} ile \emph{üst dil} ayrımını ve Kısım~III'ün
+        neden bu ayrıma dayandığını,
+  \item Önermeler mantığının formüllerini \Lean{}'de bir tümevarımsal
+        tip olarak tanımlamayı,
+  \item Formüller üzerinde yapısal özyinelemeyi: boyut, atomlar,
+        yerine koyma,
+  \item Değerlemeleri ve Tarski'nin doğruluk tanımını,
+  \item Totoloji, sağlanabilirlik ve mantıksal sonuç ($\models$)
+        kavramlarını,
+  \item Doğruluk tablolarına dayanan bir karar yöntemini ve sınırlarını,
+  \item Doğruluk tablosu anlambiliminin \emph{klasik} olduğunu.
+\end{itemize}
+\end{bolumhedefleri}
+
+% ---------------------------------------------------------------------
+\section{Kısım III'e giriş: mantık hakkında mantık}\label{sec:kisim3-giris}
+
+Şimdiye kadar mantığı \emph{kullandık}: \Lean{}'de önermeler yazdık ve
+onları ispatladık. Kısım~III'te mantığın kendisini bir matematiksel
+\emph{nesne} olarak inceleyeceğiz. Soracağımız sorular, mantık
+\emph{içinde} değil, mantık \emph{hakkında} sorulardır:
+
+\begin{itemize}
+  \item İspatlayabildiğimiz her şey doğru mudur? (\emph{geçerlilik},
+        \cref{bol:gecerlilik})
+  \item Doğru olan her şeyi ispatlayabilir miyiz? (\emph{tamlık},
+        \cref{bol:tamlik})
+  \item Her ispat dolaysız bir ispata dönüştürülebilir mi?
+        (\emph{kesme eleme}, \cref{bol:ardisik})
+\end{itemize}
+
+\noindent Bu sorulara verilen cevaplara \emph{metamantık} denir.
+\Cref{fig:buyuk-resim}, Kısım~III'ün büyük resmini gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!8, very thick, rounded corners=6pt,
+                 text width=4.2cm, align=center, inner sep=8pt},
+    ok/.style={-{Stealth[length=3mm]}, very thick, #1},
+  ]
+  \node[kutu=anarenk] (s) at (0,0)
+    {{\baslikfont\bfseries\color{anarenk} SÖZDİZİMİ}\\[3pt]
+     $\Gamma \vdash A$\\[2pt]
+     {\small ``$A$, $\Gamma$'dan \emph{türetilebilir}''}\\[2pt]
+     {\scriptsize çıkarım kuralları, ispat ağaçları}};
+  \node[kutu=ikincil] (a) at (10,0)
+    {{\baslikfont\bfseries\color{ikincil} ANLAMBİLİM}\\[3pt]
+     $\Gamma \models A$\\[2pt]
+     {\small ``$A$, $\Gamma$'nın \emph{mantıksal sonucudur}''}\\[2pt]
+     {\scriptsize değerlemeler, doğruluk tabloları}};
+  \draw[ok=teoremframe] ([yshift=0.55cm]s.east) -- node[above, font=\baslikfont\small\bfseries, text=teoremframe]{Geçerlilik (Bölüm 11)} ([yshift=0.55cm]a.west);
+  \draw[ok=vurgu] ([yshift=-0.55cm]a.west) -- node[below, font=\baslikfont\small\bfseries, text=vurgu]{Tamlık (Bölüm 12)} ([yshift=-0.55cm]s.east);
+  \node[font=\baslikfont\scriptsize, text=black!60] at (5,1.3) {ispatlanabilen her şey doğrudur};
+  \node[font=\baslikfont\scriptsize, text=black!60] at (5,-1.3) {doğru olan her şey ispatlanabilir};
+  \node[font=\baslikfont\small\bfseries, text=koyu] at (5,-2.4) {Bu bölüm: iki tarafın da tanımları};
+\end{tikzpicture}
+\caption{Kısım III'ün büyük resmi. Sözdizimi ile anlambilim, mantığın
+iki yüzüdür; geçerlilik ve tamlık teoremleri bu iki yüzü birbirine bağlar.}
+\label{fig:buyuk-resim}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\section{Nesne dili ve üst dil}\label{sec:nesne-ust}
+
+Mantık hakkında konuşurken iki dili birbirinden ayırmak zorundayız:
+
+\begin{tanim}{Nesne dili ve üst dil}{nesne-ust}
+\textbf{Nesne dili}, incelediğimiz mantık sistemidir: formülleri,
+bağlaçları, çıkarım kuralları. \textbf{Üst dil} ise nesne dili hakkında
+konuşmak ve onun özelliklerini ispatlamak için kullandığımız dildir.
+\end{tanim}
+
+\noindent Kâğıt üzerindeki mantık kitaplarında iki dil de aynı sembollerle
+yazıldığı için karışıklık kolayca ortaya çıkar. ``$A \to B$ ispatlanabilirse
+ve $A$ ispatlanabilirse $B$ ispatlanabilir'' cümlesindeki ilk ``$\to$''
+nesne dilinin bir bağlacıdır; ``ise''ler ise üst dilin parçasıdır.
+
+\Lean{}'de bu ayrım kendiliğinden ortaya çıkar (\cref{fig:nesne-ust}).
+Üst dil \Lean{}'in kendisidir: \lc{Prop}, \lc{∀}, \lc{→}. Nesne dili ise
+\Lean{}'de tanımlayacağımız bir \emph{veri tipidir}: \lc{Formul}. Bir
+formül, bir liste ya da bir ağaç gibi sıradan bir veridir; onu
+hesaplayabilir, dönüştürebilir ve onun hakkında teoremler
+ispatlayabiliriz.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    katman/.style={draw=#1, fill=#1!6, very thick, rounded corners=8pt},
+  ]
+  \draw[katman=anarenk] (0,0) rectangle (11.4,4.2);
+  \node[anchor=north west, font=\baslikfont\bfseries, text=anarenk] at (0.2,4.1) {ÜST DİL: Lean};
+  \node[anchor=north west, font=\small, text=black!70, align=left] at (0.2,3.55)
+       {\lc{Prop}, \lc{∀}, \lc{∃}, \lc{→}, \lc{theorem}\\[1pt] \lc{Totoloji A}, \lc{Sonuc Γ A}};
+  \draw[katman=ikincil] (5.2,0.4) rectangle (11.0,3.3);
+  \node[anchor=north west, font=\baslikfont\bfseries, text=ikincil] at (5.4,3.2) {NESNE DİLİ: \lc{Formul}};
+  \node[anchor=north west, font=\small, align=left] at (5.4,2.6)
+       {\lc{atom 0}, \lc{bot}\\[2pt]
+        $p \oise q$, \quad $p \ove q$, \quad $p \oveya {\sim}p$\\[2pt]
+        {\scriptsize sıradan veri: hesaplanır, dönüştürülür}};
+  \draw[-{Stealth[length=3mm]}, very thick, vurgu] (3.4,1.2) -- node[above, font=\baslikfont\scriptsize\bfseries, text=vurgu, align=center]{hakkında\\teorem} (5.1,1.2);
+  \node[font=\leanfont\scriptsize, align=left, anchor=west] at (0.2,1.2)
+       {theorem peirce\_totoloji :\\\quad Totoloji peirce};
+\end{tikzpicture}
+\caption{Üst dil (\Lean{}) ile nesne dili (\lc{Formul} tipi). Nesne
+dilinin formülleri, üst dilde birer veridir.}
+\label{fig:nesne-ust}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\section{Formüllerin sözdizimi}\label{sec:formul-sozdizim}
+
+Önermeler mantığının formülleri, kâğıt üzerinde genellikle şöyle bir
+\emph{dilbilgisiyle} tanımlanır:
+\[
+  A, B \;::=\; p_n \;\mid\; \bot \;\mid\; A \wedge B \;\mid\; A \vee B \;\mid\; A \to B
+\]
+``Bir formül ya bir atomdur, ya $\bot$'dur, ya da iki formülün
+bağlaçla birleştirilmesidir.'' Bu tanımın \Lean{}'deki karşılığı,
+harfi harfine bir tümevarımsal tiptir:
+
+\leandosya[Formüller]{Bolum10}{formul_tanim}
+
+\noindent Atomları doğal sayılarla adlandırıyoruz: $p_0, p_1, p_2, \ldots$
+Değillemeyi ayrı bir kurucu olarak eklemiyoruz; Bölüm~3'teki gibi
+$\neg A := A \to \bot$ olarak tanımlıyoruz. Okunabilirlik için nesne
+dilinin bağlaçlarına \Lean{}'in kendi bağlaçlarından \emph{farklı}
+semboller veriyoruz:
+
+\leandosya[Gösterim ve tanımlanmış bağlaçlar]{Bolum10}{gosterim}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\centering\arraybackslash}p{2.4cm}
+                >{\centering\arraybackslash}p{2.6cm}
+                >{\raggedright\arraybackslash}p{6.4cm}}
+\rowcolor{tabloust}
+\tablobaslik{Nesne dili} & \tablobaslik{Üst dil (Lean)} & \tablobaslik{Fark} \\
+$A \ove B$     & \lc{P ∧ Q}  & biri bir \lc{Formul} (veri), öteki bir \lc{Prop} \\
+$A \oveya B$   & \lc{P ∨ Q}  & aynı \\
+$A \oise B$    & \lc{P → Q}  & aynı \\
+${\sim}A$      & \lc{¬P}     & aynı \\
+\end{tabular}
+\end{center}
+
+\begin{dikkat}[Dikkat: Formüller önerme değildir]
+$p \ove q$ yazdığımızda bir \emph{önerme} değil, bir \emph{veri} (bir
+sözdizim ağacı) kurarız. Bu ağaç kendi başına ne doğrudur ne yanlış;
+\lc{Formul} tipinin bir elemanıdır, tıpkı \lc{[1, 2, 3]}'ün bir liste
+olması gibi. Bir formülün doğru olup olmadığını sorabilmek için önce ona
+bir \emph{anlam} vermemiz gerekir (\cref{sec:anlambilim}).
+\end{dikkat}
+
+\subsection{Sözdizim ağaçları}
+
+Bir formül, aslında bir ağaçtır. Parantezler ve öncelik kuralları
+yalnızca bu ağacı tek satıra yazmanın yollarıdır
+(\cref{fig:sozdizim-agaci}).
+
+\leandosya[Örnek formüller]{Bolum10}{ornek_formul}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    baglac/.style={circle, draw=leansym, fill=leansym!10, thick,
+                   minimum size=0.8cm, font=\small},
+    atom/.style={rectangle, rounded corners=3pt, draw=leanhyp, fill=leanhyp!10,
+                 thick, minimum size=0.6cm, font=\small},
+    level distance=1.05cm,
+    level 1/.style={sibling distance=3.0cm},
+    level 2/.style={sibling distance=1.9cm},
+    level 3/.style={sibling distance=1.2cm},
+    edge from parent/.style={draw, black!45, thick},
+  ]
+  \node[baglac] {$\Rightarrow$}
+    child {node[baglac] {$\Rightarrow$}
+      child {node[baglac] {$\Rightarrow$}
+        child {node[atom] {$p$}}
+        child {node[atom] {$q$}}}
+      child {node[atom] {$p$}}}
+    child {node[atom] {$p$}};
+  \node[font=\small, anchor=west, align=left] at (2.8,-1.2)
+       {$((p \oise q) \oise p) \oise p$\\[3pt]
+        {\scriptsize Peirce yasası: 3 bağlaç, 4 atom geçişi}};
+\end{tikzpicture}
+\caption{Peirce yasasının sözdizim ağacı. Her iç düğüm bir bağlaç,
+her yaprak bir atomdur.}
+\label{fig:sozdizim-agaci}
+\end{figure}
+
+\subsection{Formüller üzerinde özyineleme}
+
+\lc{Formul} bir tümevarımsal tip olduğu için, Bölüm~9'daki ağaçlar
+gibi, üzerinde fonksiyonlar özyinelemeyle tanımlanır ve özellikler
+yapısal tümevarımla ispatlanır. Her kurucu için bir durum vardır;
+ikili bağlaçlarda iki tümevarım hipotezi gelir.
+
+\leandosya[Formüller üzerinde özyineleme]{Bolum10}{formul_ozyineleme}
+
+% ---------------------------------------------------------------------
+\section{Anlambilim: doğruluk}\label{sec:anlambilim}
+
+Bir formüle anlam vermek, atomlarının doğru mu yanlış mı olduğunu
+söylemekle başlar.
+
+\begin{tanim}{Değerleme ve doğruluk değeri}{degerleme}
+Bir \textbf{değerleme}, her atoma bir doğruluk değeri veren bir
+fonksiyondur: $v : \mathbb{N} \to \{\mathsf{true}, \mathsf{false}\}$.
+Bir $A$ formülünün $v$ altındaki \textbf{doğruluk değeri} $\lBrack A
+\rBrack_v$, formülün yapısı üzerinde özyinelemeyle tanımlanır:
+\begin{align*}
+\lBrack p_n \rBrack_v &= v(n) &
+\lBrack A \ove B \rBrack_v &= \lBrack A \rBrack_v \;\&\&\; \lBrack B \rBrack_v \\
+\lBrack \bot \rBrack_v &= \mathsf{false} &
+\lBrack A \oveya B \rBrack_v &= \lBrack A \rBrack_v \;\|\; \lBrack B \rBrack_v \\
+& & \lBrack A \oise B \rBrack_v &= \mathord{!}\lBrack A \rBrack_v \;\|\; \lBrack B \rBrack_v
+\end{align*}
+\end{tanim}
+
+\leandosya[Tarski'nin doğruluk tanımı]{Bolum10}{deger}
+
+\noindent Bu tanımın ilginç bir yanı vardır: Nesne dilindeki ``ve''nin
+anlamını üst dildeki ``ve'' (\lc{\&\&}) ile veriyoruz. Bu bir kısır döngü
+değildir; çünkü üst dilin ``ve''sini zaten anlıyoruz ve onu, henüz anlamı
+olmayan bir sembole ($\ove$) anlam vermek için kullanıyoruz.
+
+\begin{tarihce}[Tarihçe: Tarski ve doğruluk]
+Polonyalı mantıkçı Alfred Tarski 1933'te yayımladığı ünlü çalışmasında,
+biçimsel bir dilde ``doğruluk'' kavramının nasıl tanımlanabileceğini
+gösterdi \citep{tarski1933}. Tarski'nin anahtar fikri, nesne dili ile
+üst dili kesin biçimde ayırmaktı: Bir dilin doğruluk kavramı, o dilin
+\emph{kendi içinde} değil, daha güçlü bir üst dilde tanımlanmalıdır. Bu
+kısıtlama, yalancı paradoksunu (``Bu cümle yanlıştır'') engeller.
+Tarski'nin \emph{doğruluğun tanımlanamazlığı teoremi}, Gödel'in eksiklik
+teoremiyle birlikte \ciltiki{4}'ün konusudur.
+\end{tarihce}
+
+\leandosya[Değillemenin değeri]{Bolum10}{deger_degil}
+
+\subsection{Doğruluk tabloları}
+
+Bir formülün doğruluk tablosu, atomlarına verilebilecek bütün değerler
+için \lc{deger}'in sonucunu listeler. \Cref{fig:peirce-tablo}, Peirce
+yasasının tablosunu gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \matrix[matrix of nodes, nodes={minimum width=1.9cm, minimum height=0.68cm,
+          anchor=center, font=\small}, column sep=0pt, row sep=0pt,
+          row 1/.style={nodes={fill=tabloust, text=white, font=\baslikfont\bfseries\scriptsize}}] (t) {
+    $p$ & $q$ & $p \oise q$ & $(p \oise q) \oise p$ & Peirce \\
+    1 & 1 & 1 & 1 & |[fill=bittibg, text=bittiframe]| \textbf{1} \\
+    1 & 0 & 0 & 1 & |[fill=bittibg, text=bittiframe]| \textbf{1} \\
+    0 & 1 & 1 & 0 & |[fill=bittibg, text=bittiframe]| \textbf{1} \\
+    0 & 0 & 1 & 0 & |[fill=bittibg, text=bittiframe]| \textbf{1} \\
+  };
+  \draw[black!25] (t.north west) rectangle (t.south east);
+  \draw[black!25] (t-1-3.north west) -- (t-5-3.south west);
+\end{tikzpicture}
+\caption{Peirce yasası $((p \oise q) \oise p) \oise p$'nin doğruluk
+tablosu. Son sütun her satırda 1'dir: Formül bir totolojidir.}
+\label{fig:peirce-tablo}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\section{Totoloji ve mantıksal sonuç}\label{sec:totoloji}
+
+\begin{tanim}{Totoloji, sağlanabilirlik, mantıksal sonuç}{totoloji}
+\begin{itemize}
+  \item $A$ bir \textbf{totolojidir} ($\models A$): her $v$ için
+        $\lBrack A \rBrack_v = \mathsf{true}$.
+  \item $A$ \textbf{sağlanabilirdir}: en az bir $v$ için
+        $\lBrack A \rBrack_v = \mathsf{true}$.
+  \item $A$, $\Gamma$'nın \textbf{mantıksal sonucudur} ($\Gamma \models A$):
+        $\Gamma$'daki bütün formülleri doğru yapan her $v$, $A$'yı da
+        doğru yapar.
+\end{itemize}
+\end{tanim}
+
+\leandosya[Tanımlar]{Bolum10}{totoloji_tanim}
+
+\noindent Bu tanımlar \emph{üst dilde} birer önermedir: \lc{Totoloji A}
+bir \lc{Prop}'tur ve onu \Lean{}'de ispatlayabiliriz. Bir totolojiyi
+ispatlamanın en doğrudan yolu, değerleme üzerinde durum ayırmaktır;
+bu, doğruluk tablosunu satır satır kontrol etmenin ta kendisidir:
+
+\leandosya[Totolojiler]{Bolum10}{totoloji_ornek}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \draw[black!30, thick, fill=white, rounded corners=8pt] (0,0) rectangle (8.6,4.0);
+  \node[anchor=north west, font=\baslikfont\small\bfseries, text=black!70] at (0.15,3.95) {bütün değerlemeler};
+  \draw[ikincil, very thick, fill=ikincil!10] (5.0,2.0) ellipse (2.8cm and 1.55cm);
+  \node[font=\baslikfont\small\bfseries, text=ikincil] at (6.9,3.15) {$A$ doğru};
+  \draw[anarenk, very thick, fill=anarenk!15] (4.6,1.85) ellipse (1.55cm and 0.95cm);
+  \node[font=\baslikfont\small\bfseries, text=anarenk] at (4.6,1.85) {$\Gamma$ doğru};
+  \node[font=\small, anchor=west, align=left] at (9.0,2.4)
+       {$\Gamma \models A$:\\$\Gamma$'yı doğrulayan\\her değerleme\\$A$'yı da doğrular};
+\end{tikzpicture}
+\caption{Mantıksal sonuç: $\Gamma$'nın modelleri, $A$'nın modellerinin
+içindedir.}
+\label{fig:sonuc}
+\end{figure}
+
+\noindent Mantıksal sonuç ilişkisinin bir örneği, modus ponens
+kuralının anlambilimsel karşılığıdır:
+
+\leandosya[Anlambilimsel modus ponens]{Bolum10}{sonuc_ornek}
+
+\noindent Bir varsayım eklemek bir mantıksal sonucu bozmaz. Bu özelliğe
+\emph{tekdüzelik} (İng.\ \emph{monotonicity}) denir:
+
+\leandosya[Tekdüzelik]{Bolum10}{zayiflatma}
+
+% ---------------------------------------------------------------------
+\section{Bir karar yöntemi}\label{sec:karar-yontemi}
+
+Bir formülün totoloji olup olmadığını \emph{hesaplayarak} anlayabiliriz:
+İçinde geçen atomlara verilebilecek bütün değerleri tek tek deneriz.
+$n$ atom için $2^n$ değerleme vardır:
+
+\leandosya[Doğruluk tablosu yöntemi]{Bolum10}{karar}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    d/.style={circle, draw=anarenk, fill=tanimbg, thick, minimum size=0.55cm, font=\scriptsize},
+    y/.style={rectangle, rounded corners=2pt, draw=#1, fill=#1!12, thick, font=\scriptsize, minimum width=1.0cm},
+    level distance=1.1cm,
+    level 1/.style={sibling distance=4.2cm},
+    level 2/.style={sibling distance=2.1cm},
+    edge from parent/.style={draw, black!45, thick},
+  ]
+  \node[d] {$p$}
+    child {node[d] {$q$}
+      child {node[y=bittiframe] {$\mathsf{T}$} edge from parent node[left, font=\scriptsize]{1}}
+      child {node[y=bittiframe] {$\mathsf{T}$} edge from parent node[right, font=\scriptsize]{0}}
+      edge from parent node[left=2pt, font=\scriptsize]{$p = 1$}}
+    child {node[d] {$q$}
+      child {node[y=bittiframe] {$\mathsf{T}$} edge from parent node[left, font=\scriptsize]{1}}
+      child {node[y=bittiframe] {$\mathsf{T}$} edge from parent node[right, font=\scriptsize]{0}}
+      edge from parent node[right=2pt, font=\scriptsize]{$p = 0$}};
+  \node[font=\small, anchor=west, align=left] at (4.6,-1.1)
+       {$n$ atom $\Rightarrow$ $2^n$ yaprak\\[2pt]
+        {\scriptsize 10 atom: 1024 değerleme}\\
+        {\scriptsize 50 atom: $\approx 10^{15}$ değerleme}};
+\end{tikzpicture}
+\caption{Doğruluk tablosu yöntemi bütün değerlemeleri dener. Peirce
+yasası için 4 yaprağın hepsi ``doğru''dur. Yöntemin maliyeti atom
+sayısıyla üstel olarak büyür.}
+\label{fig:karar-agaci}
+\end{figure}
+
+\noindent \lc{totolojiMi} fonksiyonu yalnızca \lc{0, 1, …, n} atomlarını
+dener; sonsuz sayıdaki öteki atomların değerlerini görmezden gelir. Bunun
+neden yeterli olduğunu bir sonraki kesimde ispatlayacağız: Bir formülün
+değeri yalnızca içinde geçen atomlara bağlıdır.
+
+\begin{dikkat}[Dikkat: \#eval bir ispat değildir]
+\lc{\textcolor{leancmd}{\bfseries\#eval} totolojiMi peirce} \lc{true}
+sonucunu verir; ama bu, \lc{Totoloji peirce} önermesinin bir \emph{ispatı}
+değildir. \lc{totolojiMi}'nin kendisi bir programdır ve hatalı olabilir.
+Programı bir ispata dönüştürmek için onun \emph{doğruluğunu} ispatlamak
+gerekir: \lc{totolojiMi A = true → Totoloji A}. Bu ispat, kendi
+ispatlarını yapan karar yöntemlerinin (\emph{yansıma} tekniğinin)
+temelidir; \ciltiki{6}'da tamamlayacağız.
+\end{dikkat}
+
+\begin{arastirmanotu}[Araştırma Notu: SAT ve P = NP]
+Bir formülün \emph{sağlanabilir} olup olmadığını belirleme problemi
+(SAT), Stephen Cook'un 1971'de gösterdiği gibi \emph{NP-tam} ilk problemdir
+\citep{cook1971}. Doğruluk tablosu yöntemi üstel zaman alır; bundan
+temelde daha iyi bir algoritmanın var olup olmadığı, bilgisayar biliminin
+en ünlü açık problemi olan P = NP sorusuna denktir. Yine de modern
+SAT çözücüleri, milyonlarca değişkenli endüstriyel formülleri
+pratikte çözebilmektedir; bu konuya \ciltiki{6}'da döneceğiz.
+\end{arastirmanotu}
+
+% ---------------------------------------------------------------------
+\section{İki önemli önsav}\label{sec:yerellik}
+
+\subsection{Yerellik}
+
+\begin{teorem}{Yerellik}{yerellik}
+İki değerleme bir $A$ formülünde geçen bütün atomlarda aynı değeri
+veriyorsa, $A$'ya da aynı değeri verir.
+\end{teorem}
+
+\leandosya[Yerellik]{Bolum10}{yerellik}
+
+\noindent İspat, formülün yapısı üzerinde tümevarımdır. Her ikili bağlaç
+durumunda, alt formüllerin atomları ana formülün atomlarının bir
+alt kümesi olduğu için tümevarım hipotezleri uygulanabilir. Üç ikili
+bağlacın durumları neredeyse aynıdır; bu tekrar, \ciltiki{7}'de
+kendi taktiklerimizi yazmamız için iyi bir neden olacak.
+
+\subsection{Yerine koyma}
+
+Bir totolojide atomların yerine \emph{herhangi} formüller koyarsak yine
+bir totoloji elde ederiz. Örneğin $p \oise p$ bir totoloji olduğuna göre
+$(q \ove r) \oise (q \ove r)$ de bir totolojidir.
+
+\leandosya[Yerine koyma]{Bolum10}{yerine_koy}
+
+\noindent \lc{deger\_yerineKoy} önsavı, yerine koymanın anlamını tam
+olarak söyler: $\sigma$ ile yerine koyduktan sonra $v$ altında
+değerlendirmek, ``her atomu $\sigma$'daki formülün $v$ altındaki
+değerine götüren'' yeni bir değerleme altında değerlendirmekle aynıdır.
+
+% ---------------------------------------------------------------------
+\section{Doğruluk tabloları klasiktir}\label{sec:klasik-anlambilim}
+
+\lc{\textcolor{leancmd}{\bfseries\#eval} totolojiMi ucuncuHal} ve
+\lc{totolojiMi peirce} sonuçları \lc{true}'dur. Oysa Bölüm~4'te bu iki
+formülün \emph{yapıcı} olarak ispatlanamadığını görmüştük. Bu bir çelişki
+değildir; bize anlambilimimiz hakkında önemli bir şey söyler:
+
+\begin{onemlifikir}[Önemli Fikir: Her mantığın kendi anlambilimi vardır]
+Doğruluk değerlerinin yalnızca iki eleman (\lc{true}, \lc{false})
+içeren bir kümeden geldiği anlambilim, \emph{klasik} mantığın
+anlambilimidir. Bu anlambilimde her formül ya doğru ya yanlıştır;
+dolayısıyla $p \oveya {\sim}p$ her zaman doğrudur. Yapıcı mantığın
+anlambilimi ise Bölüm~4'te önizlediğimiz Kripke modelleridir;
+\ciltiki{2}'de onları da \Lean{}'de tanımlayacağız. Geçerlilik ve
+tamlık teoremleri her zaman \emph{bir ispat sistemi} ile \emph{bir
+anlambilim} arasındaki ilişki hakkındadır.
+\end{onemlifikir}
+
+\noindent Bu yüzden Bölüm~11 ve 12'de inceleyeceğimiz ispat sistemi,
+klasik doğal çıkarım olacaktır: Bölüm~5'teki kural kataloğu ve RAA kuralı.
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Formalizasyonda sözdizimi.} Önermeler mantığında değişken
+bağlama olmadığı için sözdizimi basittir. Yüklemler mantığında ise
+niceleyicilerin bağladığı değişkenleri temsil etmek zordur; Bölüm~6'daki
+değişken yakalama sorunu formalizasyonda ciddi bir mühendislik
+problemine dönüşür. Yaygın çözümler de Bruijn indeksleri, ``yerel
+adsız'' (\emph{locally nameless}) temsil ve nominal tekniklerdir.
+Lean~4'teki Foundation projesi, Gödel teoremlerini formalize ederken
+yerel adsız temsili kullanır \citep{saitou2026, foundation}.
+
+\textbf{Derin ve sığ gömme.} Bu bölümde nesne dilini bir veri tipi
+olarak tanımladık; buna \emph{derin gömme} (İng.\ \emph{deep embedding})
+denir. Önceki bölümlerde ise mantığı doğrudan \Lean{}'in \lc{Prop}'u
+içinde kullanıyorduk; buna \emph{sığ gömme} (\emph{shallow embedding})
+denir. Derin gömme, mantık \emph{hakkında} teorem ispatlamamızı sağlar;
+sığ gömme ise mantık \emph{içinde} ispat yapmayı kolaylaştırır.
+
+\textbf{İleri okuma.} Önermeler mantığının anlambilimi ve metamantığı
+için \citet{vandalen2013}; formalizasyon odaklı bir sunum için
+\citet{harrison2009}.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Nesne dili incelenen mantıktır; üst dil, onun hakkında konuşulan
+        dildir. \Lean{}'de üst dil \Lean{}'in kendisi, nesne dili ise
+        \lc{Formul} veri tipidir.
+  \item Formüller tümevarımsal bir tiptir; üzerlerinde özyineleme ve
+        yapısal tümevarım yapılır.
+  \item Bir değerleme atomlara doğruluk değeri verir; \lc{deger},
+        Tarski'nin doğruluk tanımıdır.
+  \item Totoloji, sağlanabilirlik ve mantıksal sonuç ($\Gamma \models A$)
+        üst dilde tanımlanan önermelerdir.
+  \item Doğruluk tablosu yöntemi totolojileri hesaplayarak bulur, ama
+        maliyeti üsteldir. \lc{\#eval} bir ispat değildir.
+  \item Yerellik ve yerine koyma önsavları, yapısal tümevarımla ispatlanır.
+  \item İki değerli anlambilim klasiktir; yapıcı mantığın anlambilimi
+        Kripke modelleridir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} ${\sim}A$'nın boyutu, $A$'nın boyutundan bir fazladır.
+(\lc{a10\_1})
+
+\alistirma{2} $p \ove q \oise q \ove p$ bir totolojidir. (\lc{a10\_2})
+
+\alistirma{2} $p \ove q \models p$. (\lc{a10\_3})
+
+\alistirma{2} $\Gamma \models A$ ise $\Gamma \models A \oveya B$.
+(\lc{a10\_4})
+
+\alistirma{2} Bir totoloji her $\Gamma$'nın mantıksal sonucudur.
+(\lc{a10\_5})
+
+\alistirma{3} Anlambilimsel modus ponens: $\Gamma \models A \oise B$ ve
+$\Gamma \models A$ ise $\Gamma \models B$. (\lc{a10\_6})
+
+\alistirma{3} \textbf{Anlambilimsel çıkarım teoremi}: $A, \Gamma \models B$
+ise $\Gamma \models A \oise B$. Bu teorem, Bölüm~5'teki $\to$G kuralının
+anlambilimsel karşılığıdır. (\lc{a10\_7})
+
+\alistirma{2} $\bot$ sağlanabilir değildir. (\lc{a10\_8})
+
+\alistirma{1} \lc{\#eval} ile aşağıdaki formüllerin totoloji olup
+olmadığını denetleyin: $(p \oise q) \oise ({\sim}q \oise {\sim}p)$,
+$({\sim}q \oise {\sim}p) \oise (p \oise q)$, $(p \oise q) \oveya (q \oise p)$.
+Hangileri Bölüm~4'e göre yapıcı olarak ispatlanamaz?
+
+\alistirma{2} (Kâğıt-kalem) $\{\oise, \bot\}$ bağlaçlarının tek başına
+yeterli olduğunu gösterin: $A \ove B$ ve $A \oveya B$'yi, yalnızca $\oise$
+ve $\bot$ kullanarak, bütün değerlemelerde aynı değeri alan formüllerle
+ifade edin.
+
+\alistirma{3} (Proje) \lc{totolojiMi A = true → Totoloji A} önermesini
+ispatlayın. İpucu: Önce \lc{tumDegerlemeler n}'nin, \lc{0, …, n-1}
+atomlarında her olası değer birleşimini içerdiğini gösterin; sonra
+yerellik önsavını kullanın.
+\end{alistirmalar}

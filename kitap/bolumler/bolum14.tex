@@ -1,0 +1,604 @@
+% =====================================================================
+%  Bölüm 14 — Basit Tipli λ-Hesabı ve Curry–Howard
+% =====================================================================
+\chapter{Basit Tipli $λ$-Hesabı ve Curry--Howard}\label{bol:lambda}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Tipsiz $\lambda$-terimlerini, bağlı değişkenleri ve de~Bruijn
+        indislerini,
+  \item Yerine koymayı ve ``yakalama'' sorununu,
+  \item $\beta$-indirgemeyi, normal biçimleri, indirgeme stratejilerini ve
+        normal biçimi olmayan $\Omega$ terimini,
+  \item Church sayılarıyla $\lambda$-hesabında hesaplamayı,
+  \item Basit tipleri, S--K--I kombinatörlerini ve bir tip denetleyiciyi,
+  \item Curry--Howard eşlemesinin kesin ifadesini ve \Lean{}'deki
+        ispatını.
+\end{itemize}
+\end{bolumhedefleri}
+
+Kitabın ilk bölümünden beri bir iddiayı tekrarlıyoruz: \Lean{}'de bir
+ispat bir programdır, bir önerme ise bir tiptir. Bölüm~2'de bunu
+gözlemledik, Bölüm~5'te doğal çıkarım kurallarıyla somutlaştırdık.
+Kısım~IV'ün bu ilk bölümünde iddiayı bir \emph{teorem} hâline
+getiriyoruz. Bunun için önce \Lean{}'in arkasındaki hesaplama modelini,
+Alonzo Church'ün $\lambda$-hesabını, sıfırdan kuracağız. Sonra ona tipler
+ekleyecek ve tiplenebilen her terimin Bölüm~11'deki doğal çıkarım
+sisteminde bir türetim olduğunu ispatlayacağız.
+
+% ---------------------------------------------------------------------
+\section{$λ$-terimleri}\label{sec:lambda-terimler}
+
+$\lambda$-hesabında yalnızca üç tür ifade vardır:
+\[
+  t \;::=\; x \;\mid\; \lambda x.\, t \;\mid\; t\; u
+\]
+Bir \emph{değişken}, bir \emph{soyutlama} ($x$'i alıp $t$'yi döndüren
+fonksiyon) ve bir \emph{uygulama} ($t$ fonksiyonunu $u$'ya uygulamak).
+Sayılar, mantıksal değerler, listeler, özyineleme yoktur. Yine de bu
+dilde hesaplanabilen her şey ifade edilebilir. \Lean{}'deki \leankw{fun}
+\lc{x => t}, $\lambda x.\, t$'nin ta kendisidir.
+
+\begin{tarihce}[Tarihçe: Church, Kleene ve Rosser]
+Alonzo Church $\lambda$-hesabını 1930'ların başında matematiğin temelleri
+için bir mantık sistemi olarak tasarladı. Öğrencileri Stephen Kleene ve
+J.~Barkley Rosser 1935'te bu ilk sistemin tutarsız olduğunu gösterdi.
+Church bunun üzerine sistemin mantık kısmını bırakıp yalnızca
+\emph{hesaplama} kısmını, bugünkü tipsiz $\lambda$-hesabını korudu. 1936'da
+bu hesabın Turing makineleriyle aynı gücü taşıdığı anlaşıldı
+\citep{turing1936}. Tutarlı bir mantık elde etmek için Church 1940'ta
+\emph{basit tip kuramını} önerdi \citep{church1940}. \Lean{}'in tip kuramı,
+bu sistemin çok geliştirilmiş bir torunudur. Kapsamlı başvuru kaynağı
+\citet{barendregt1984}'tür.
+\end{tarihce}
+
+\subsection{Bağlı değişkenler ve de Bruijn indisleri}
+
+$\lambda x.\, x$ ile $\lambda y.\, y$ aynı fonksiyondur. Bağlı
+değişkenin adı önemsizdir (\emph{$\alpha$-denklik}). Kâğıt üzerinde bunu
+``adları gerektiğinde değiştiririz'' diyerek geçiştiririz. Bir
+bilgisayarda ise adlarla çalışmak sürekli hataya açıktır. Nicolaas
+de~Bruijn'in çözümü adları tamamen atmaktır \citep{debruijn1972}: Her
+değişkenin yerine, onu bağlayan $\lambda$'nın \emph{kaç $\lambda$ dışarıda}
+olduğunu yazarız (\cref{fig:de-bruijn}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    d/.style={font=\large},
+    ok/.style={-{Stealth[length=2mm]}, thick, #1},
+  ]
+  \node[d, anchor=base, inner sep=1pt] (l1) at (0.00,0) {$\lambda$};
+  \node[d, anchor=base, inner sep=1pt] (bx) at (0.48,0) {$x$};
+  \node[d, anchor=base, inner sep=1pt] (d1) at (0.87,0) {$.$};
+  \node[d, anchor=base, inner sep=1pt] (l2) at (1.42,0) {$\lambda$};
+  \node[d, anchor=base, inner sep=1pt] (by) at (1.91,0) {$y$};
+  \node[d, anchor=base, inner sep=1pt] (d2) at (2.29,0) {$.$};
+  \node[d, anchor=base, inner sep=1pt] (x1) at (3.00,0) {$x$};
+  \node[d, anchor=base, inner sep=1pt] (p1) at (3.60,0) {$($};
+  \node[d, anchor=base, inner sep=1pt] (y1) at (3.97,0) {$y$};
+  \node[d, anchor=base, inner sep=1pt] (x2) at (4.50,0) {$x$};
+  \node[d, anchor=base, inner sep=1pt] (p2) at (4.91,0) {$)$};
+  \node[d, anchor=west] (b) at (7.0,0.12)
+    {$\lambda\, .\; \lambda\, .\;\; \textcolor{anarenk}{\mathbf{1}}\;\; (\textcolor{ikincil}{\mathbf{0}}\;\; \textcolor{anarenk}{\mathbf{1}})$};
+  \draw[ok=anarenk] (x1.north) to[out=110,in=70,looseness=1.1] (bx.north);
+  \draw[ok=ikincil] (y1.north) to[out=105,in=75,looseness=1.0] (by.north);
+  \draw[ok=anarenk] (x2.north) to[out=100,in=60,looseness=1.3] (bx.north);
+  \node[font=\baslikfont\scriptsize, text=black!55] at (2.4,-0.65) {adlı gösterim};
+  \node[font=\baslikfont\scriptsize, text=black!55] at (8.9,-0.65) {de~Bruijn gösterimi};
+  \draw[-{Stealth[length=3mm]}, very thick, black!25] (5.4,0.12) -- (6.7,0.12);
+  \node[font=\baslikfont\scriptsize, text=black!60, align=center] at (8.9,0.95)
+       {\lc{lam (lam (app (var 1)}\\\lc{(app (var 0) (var 1))))}};
+\end{tikzpicture}
+\caption{De Bruijn indisleri. Her değişken, kendisini bağlayan
+$\lambda$'ya olan ``uzaklığıyla'' yazılır: $y$ en yakın $\lambda$'dır (0),
+$x$ bir dıştaki (1). $\alpha$-denk terimlerin de~Bruijn gösterimleri
+\emph{aynıdır}.}
+\label{fig:de-bruijn}
+\end{figure}
+
+\leandosya[$\lambda$-terimleri]{Bolum14}{terim}
+
+\noindent \lc{Terim} tipinin \leankw{deriving} \lc{DecidableEq} ile
+karar verilebilir eşitliğe sahip olması de~Bruijn gösteriminin bir
+armağanıdır. İki terimin $\alpha$-denk olup olmadığını sormak, artık
+yalnızca sözdizimsel eşitliği sormaktır.
+
+% ---------------------------------------------------------------------
+\section{Yerine koyma}\label{sec:yerine-koyma}
+
+Hesaplamanın tek kuralı, bir fonksiyonu argümanına uygulamaktır:
+\[
+  (\lambda x.\, t)\; s \;\longrightarrow_\beta\; t[x := s].
+\]
+$t[x := s]$, $t$'deki serbest $x$'lerin yerine $s$ koymaktır. Bölüm~10'da
+formüllerde yerine koymayı tanımlamıştık (\lc{yerineKoy}). Orada bağlayıcı
+yoktu ve iş kolaydı. Burada ise bir tuzak var:
+\[
+  (\lambda x.\, \lambda y.\, x)\; y
+  \;\longrightarrow\; \lambda y.\, y \quad\text{\textcolor{hataframe}{(yanlış!)}}
+\]
+Dışarıdaki serbest $y$, içerideki $\lambda y$ tarafından \emph{yakalandı}.
+Sonuç, sabit fonksiyon olması gerekirken özdeşlik fonksiyonu oldu. Doğrusu
+$\lambda y'.\, y$'dir. De Bruijn gösteriminde bu sorun, $s$ bir
+bağlayıcının altına girdiğinde serbest indislerini \emph{kaydırarak}
+çözülür:
+
+\leandosya[Kaydırma ve yerine koyma]{Bolum14}{yerine}
+
+\noindent \lc{yerine k s t}'nin üç durumu vardır: \lc{k}'dan küçük
+indisler $t$'nin içinde bağlıdır, dokunulmaz. \lc{k} indisi yerine
+konacak değişkendir; oraya, aradaki \lc{k} bağlayıcı kadar kaydırılmış
+\lc{s} gelir. \lc{k}'dan büyük indisler ise dışarıdaki serbest
+değişkenlerdir; aradaki bir $\lambda$ ortadan kalktığı için bir azalırlar.
+Bu küçük indis aritmetiği, adlı gösterimdeki bütün ``değişken adı
+değiştirme'' işinin yerini tutar.
+
+\leandosya[Sıfır kaydırma]{Bolum14}{kaydir_sifir}
+
+\begin{dikkat}[Dikkat: Bağlayıcılar formalizasyonun en zor kısmıdır]
+Bir mantık ya da programlama dilini formalize ederken en çok zaman alan iş,
+çoğu zaman asıl teorem değil, \lc{kaydir} ve \lc{yerine} hakkındaki onlarca
+küçük önsavdır. Örneğin ``kaydırmak ile yerine koymak sıra değiştirir''
+türünden önsavlar. 2005'teki \emph{POPLmark} yarışması, ispat
+asistanlarını tam olarak bu sorun üzerinden karşılaştırmayı amaçladı
+\citep{aydemir2005}. Bu bölümde bu önsavlardan yalnızca gerektiği kadarını
+ispatlıyoruz.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{$β$-indirgeme ve normal biçimler}\label{sec:beta}
+
+Tek adımlık $\beta$-indirgeme, \Lean{}'de dört kurallı bir tümevarımsal
+bağıntıdır. Bir $\beta$-adımı terimin \emph{herhangi bir yerinde}
+atılabilir. Buna bir terimin içindeki bir alt terim de, bir $\lambda$'nın
+gövdesi de dahildir:
+
+\leandosya[$\beta$-indirgeme]{Bolum14}{adim}
+
+\begin{tanim}{Normal biçim}{normal-bicim}
+Hiçbir $\beta$-adımı atılamayan bir terim \textbf{normal biçimdedir}.
+$t \to^* u$ ve $u$ normal biçimdeyse, $u$'ya $t$'nin \textbf{normal
+biçimi} denir.
+\end{tanim}
+
+\leandosya[İlk örnekler]{Bolum14}{ornek_adim}
+
+\noindent Normal biçim, bir hesaplamanın \emph{sonucudur}. Ama her terimin
+bir sonucu yoktur. En ünlü örnek, kendisini kendisine uygulayan
+$\Omega = (\lambda x.\, x\,x)(\lambda x.\, x\,x)$'dır. Bu terim tek bir
+adımda kendisine indirgenir (\cref{fig:omega}). Sonsuz bir döngüdür.
+
+\leandosya[$\Omega$: normal biçimi olmayan terim]{Bolum14}{omega}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    ter/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                font=\small, inner sep=5pt},
+  ]
+  \node[ter=hataframe] (o) at (0,0) {$(\lambda x.\, x\,x)\;(\lambda x.\, x\,x)$};
+  \draw[-{Stealth[length=3mm]}, very thick, hataframe]
+       (o.north east) .. controls +(1.6,1.4) and +(-1.6,1.4) .. (o.north west)
+       node[pos=0.5, above, font=\baslikfont\scriptsize\bfseries]{$\beta$};
+  \node[ter=ikincil] (k) at (7.0,0.9) {$K\; I\; \Omega$};
+  \node[ter=ikincil] (i) at (7.0,-1.0) {$I$};
+  \draw[-{Stealth[length=3mm]}, thick, ikincil] (k) -- node[right, font=\baslikfont\scriptsize]{normal sıra: 2 adım} (i);
+  \draw[-{Stealth[length=3mm]}, thick, hataframe] (k.north east) .. controls +(1.2,1.0) and +(1.6,0.2) .. (k.east)
+       node[pos=0.55, right, font=\baslikfont\scriptsize, text=hataframe, align=left]{uygulayıcı sıra:\\sonsuz döngü};
+\end{tikzpicture}
+\caption{Solda: $\Omega$ kendisine indirgenir ve başka hiçbir şeye
+indirgenmez (\lc{omega\_tek}). Sağda: $K\,I\,\Omega$'nın normal biçimi
+$I$'dır. Ama önce argümanı ($\Omega$'yı) hesaplamaya çalışan bir strateji
+bu normal biçimi asla bulamaz.}
+\label{fig:omega}
+\end{figure}
+
+\subsection{İndirgeme stratejileri}
+
+Bir terimde birden fazla indirgenebilir ifade (\emph{redeks}) olabilir.
+Hangisini önce indirgeyeceğimiz bir \emph{strateji} meselesidir.
+\Cref{fig:omega}'nin sağ tarafı, seçimin önemli olabileceğini gösteriyor.
+Programlama dilleri açısından bu seçim, \emph{değerle çağırma}
+(\emph{call-by-value}) ile \emph{adla çağırma} (\emph{call-by-name})
+arasındaki farktır.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.2cm}
+                >{\raggedright\arraybackslash}p{4.6cm}
+                >{\raggedright\arraybackslash}p{4.4cm}}
+\rowcolor{tabloust}
+\tablobaslik{Strateji} & \tablobaslik{Kural} & \tablobaslik{Nerede?} \\
+normal sıra & en soldaki, en dıştaki redeks & Haskell (tembel), \lc{adim?} \\
+uygulayıcı sıra & önce argümanlar normalleştirilir & çoğu dil, \Lean{}'in derlenmiş kodu \\
+\end{tabular}
+\end{center}
+
+\begin{teorem}{Normalleştirme (Curry--Feys)}{normal-sira}
+Bir terimin normal biçimi varsa, normal sıra stratejisi onu bulur.
+\end{teorem}
+
+\noindent Bu teorem, aşağıdaki normalleştiricinin neden normal sırayı
+kullandığını açıklıyor. \lc{adim?} bir adım atar ya da terim normal
+biçimdeyse \lc{none} döndürür. \lc{normallestir} ise en fazla \lc{n} adım
+atar. Sonlanmayan terimler yüzünden yakıt (\emph{fuel}) parametresi
+gereklidir: \Lean{}'de her fonksiyonun sonlanması gerekir, $\lambda$-hesabında
+ise gerekmez.
+
+\leandosya[Bir normalleştirici]{Bolum14}{normallestir}
+
+\noindent İkinci \leankw{\#eval}, $S\,K\,K$'nın normal biçiminin $I$
+olduğunu söylüyor. Bu, kombinatör mantığının ünlü bir gözlemidir:
+$I$ aslında gereksizdir, $S$ ve $K$ yeterlidir.
+
+\begin{teorem}{Church--Rosser}{church-rosser}
+$t \to^* u_1$ ve $t \to^* u_2$ ise, $u_1 \to^* w$ ve $u_2 \to^* w$
+olacak biçimde bir $w$ vardır. Dolayısıyla bir terimin \emph{en fazla bir}
+normal biçimi vardır.
+\end{teorem}
+
+\noindent Church--Rosser teoremi (\emph{birleşebilirlik}), hesaplamanın
+sonucunun stratejiye bağlı olmadığını garanti eder. Strateji yalnızca
+sonuca \emph{ulaşıp ulaşmadığımızı} etkiler. İspatı Tait ve Martin-Löf'ün
+``paralel indirgeme'' yöntemiyle yapılır ve bu bölümün sonundaki
+projelerden biridir.
+
+% ---------------------------------------------------------------------
+\section{$λ$-hesabında hesaplama: Church sayıları}\label{sec:church}
+
+Sayı olmayan bir dilde sayıları nasıl ifade ederiz? Church'ün fikri, $n$
+sayısını ``bir fonksiyonu $n$ kez uygulamak'' eylemiyle özdeşleştirmektir:
+\[
+  \overline{n} \;=\; \lambda f.\,\lambda x.\; \underbrace{f\,(f\,(\cdots(f}_{n}\; x)\cdots)).
+\]
+Toplama ``önce $n$ kez, sonra $m$ kez daha uygulamak'', çarpma ise ``$n$
+kez uygulamayı $m$ kez tekrarlamak''tır:
+
+\leandosya[Church sayıları]{Bolum14}{church}
+
+\noindent Son satırdaki \leankw{example}, \lc{decide} ile kanıtlanıyor:
+\Lean{} $1 + 1$'i $\lambda$-hesabında gerçekten \emph{hesaplıyor} ve
+sonucun \lc{church 2} olduğunu denetliyor. Aynı fikri \Lean{}'in kendi
+$\lambda$-hesabıyla, yani sığ gömmeyle de ifade edebiliriz:
+
+\leandosya[Lean'in kendi $\lambda$'sıyla Church sayıları]{Bolum14}{sig_church}
+
+\noindent Buradaki \lc{ChurchSayi} tipinin \lc{Type 1}'de yaşaması
+dikkat çekicidir. Bir Church sayısı \emph{her} \lc{α} tipi için çalışır,
+bu yüzden \lc{Type}'tan bir üst evrene çıkar. Evrenler Bölüm~15'in
+konusudur.
+
+% ---------------------------------------------------------------------
+\section{Basit tipler}\label{sec:basit-tipler}
+
+Tipsiz $\lambda$-hesabı çok güçlüdür. Her şey her şeye uygulanabilir, $\Omega$
+gibi anlamsız döngüler kurulabilir. Church'ün 1940'taki çözümü, her
+terime bir \emph{tip} vermek ve yalnızca tiplerin uyduğu uygulamalara
+izin vermekti. Basit tipler, temel tiplerden ok ile kurulur:
+\[
+  A, B \;::=\; \alpha_n \;\mid\; A \Rightarrow B .
+\]
+Tipleme bağıntısı $\Gamma \vdash t : A$, ``$\Gamma$ bağlamında $t$'nin tipi
+$A$'dır'' diye okunur. De Bruijn gösteriminde bağlam bir tip
+listesidir. \lc{var n}'nin tipi listenin \lc{n}'inci elemanıdır.
+
+\leandosya[Basit tipler ve tipleme]{Bolum14}{tip}
+
+\noindent \Cref{fig:tipleme-kurallari}'de üç tipleme kuralı, Bölüm~11'deki
+doğal çıkarım kurallarıyla yan yana duruyor. Benzerlik bir tesadüf
+değildir. Bu bölümün geri kalanı, bu benzerliği bir teoreme
+dönüştürmektir.
+
+\begin{figure}[htbp]
+\centering
+\setlength{\tabcolsep}{10pt}
+\renewcommand{\arraystretch}{2.8}
+\begin{tabular}{r c c}
+& \textcolor{anarenk}{\baslikfont\bfseries Tipleme} & \textcolor{ikincil}{\baslikfont\bfseries Doğal çıkarım} \\
+\baslikfont\scriptsize değişken &
+\begin{prooftree}
+  \hypo{\Gamma(n) = A}
+  \infer1{\Gamma \vdash \mathtt{var}\;n : A}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{A \in \Gamma}
+  \infer1[Var]{\Gamma \vdash A}
+\end{prooftree}
+\\
+\baslikfont\scriptsize soyutlama &
+\begin{prooftree}
+  \hypo{A, \Gamma \vdash t : B}
+  \infer1{\Gamma \vdash \lambda.\,t : A \Rightarrow B}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{A, \Gamma \vdash B}
+  \infer1[$\to$G]{\Gamma \vdash A \oise B}
+\end{prooftree}
+\\
+\baslikfont\scriptsize uygulama &
+\begin{prooftree}
+  \hypo{\Gamma \vdash t : A \Rightarrow B}
+  \hypo{\Gamma \vdash u : A}
+  \infer2{\Gamma \vdash t\;u : B}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma \vdash A \oise B}
+  \hypo{\Gamma \vdash A}
+  \infer2[$\to$E]{\Gamma \vdash B}
+\end{prooftree}
+\\
+\end{tabular}
+\caption{Basit tipli $\lambda$-hesabının kuralları (solda) ve doğal
+çıkarımın $\to$ parçası (sağda). Terimleri silerseniz, soldaki kurallar
+sağdakilere dönüşür.}
+\label{fig:tipleme-kurallari}
+\end{figure}
+
+\subsection{Kombinatörler ve Hilbert sistemleri}
+
+Üç kombinatörün tipleri tanıdık gelmeli:
+
+\leandosya[S, K ve I'nın tipleri]{Bolum14}{ski_tip}
+
+\noindent $K$'nın tipi $A \Rightarrow B \Rightarrow A$, $S$'ninki ise
+$(A \Rightarrow B \Rightarrow C) \Rightarrow (A \Rightarrow B)
+\Rightarrow A \Rightarrow C$'dir. Bunlar, önermeler mantığının
+\emph{Hilbert tarzı} aksiyom sisteminin iki aksiyomudur. Hilbert
+sisteminin tek kuralı modus ponenstir ve uygulamaya karşılık gelir.
+Yukarıda gördüğümüz $S\,K\,K = I$ eşitliği, Hilbert sistemindeki ünlü
+$\vdash A \oise A$ türetiminin ta kendisidir. Curry ve Feys bu gözlemi
+1958'de yaptılar \citep{curry1958}. Curry--Howard eşlemesinin ilk yarısı
+budur.
+
+% ---------------------------------------------------------------------
+\section{$Ω$ tiplenemez}\label{sec:omega-tip}
+
+$\lambda x.\, x\,x$ terimine bir tip vermeye çalışalım. $x$'in tipi $A$
+olsun. $x\,x$ uygulamasının anlamlı olması için $x$'in bir ok tipi
+olması gerekir: $A = A \Rightarrow B$. Ama hiçbir sonlu tip kendisini
+içeren bir ok tipine eşit olamaz:
+
+\leandosya[$\lambda x.\, x\,x$ tiplenemez]{Bolum14}{omega_tip}
+
+\noindent Bu küçük gözlemin büyük bir sonucu vardır:
+
+\begin{teorem}{Güçlü normalleşme (Tait, 1967)}{guclu-normallesme}
+Basit tipli $\lambda$-hesabında tiplenebilen her terim \emph{güçlü
+normalleşir}: Hangi stratejiyle indirgenirse indirgensin, her indirgeme
+dizisi sonludur.
+\end{teorem}
+
+\noindent İspatın ana fikri, Tait'in \emph{indirgenebilirlik} (ya da
+\emph{mantıksal bağıntılar}) yöntemidir \citep{tait1967}. Her tip için
+``iyi davranan terimler'' kümesi tip üzerinde özyinelemeyle tanımlanır,
+sonra her tiplenebilir terimin kendi tipinin kümesinde olduğu gösterilir.
+Bu yöntemin \Lean{}'deki formalizasyonu \cref{bol:proje}'deki projelerden
+biridir. Bir uyarı: Basit tipli $\lambda$-hesabı her terimin sonlandığı
+bir dil olduğu için artık Turing-tam \emph{değildir}. \Lean{}'in her
+fonksiyonun sonlanmasını istemesinin, ama karşılığında mantık olarak
+tutarlı kalmasının nedeni budur.
+
+\begin{onemlifikir}[Önemli Fikir: Tipler tutarlılık getirir]
+Tipsiz $\lambda$-hesabının mantık olarak tutarsız olması ile $\Omega$ gibi
+sonlanmayan terimlerin varlığı aynı olgunun iki yüzüdür. Bir mantıkta her
+önermenin bir ``kanıtı'' olabiliyorsa mantık işe yaramaz. Sonsuz bir döngü
+ise herhangi bir tipe ``sahipmiş gibi'' davranabilir. Tipler döngüleri
+yasaklayarak mantığı kurtarır. Kitabın başından beri \Lean{}'in bazı
+tanımlarımızı reddetmesinin (sonlanma denetimi, Bölüm~7; pozitiflik
+koşulu, Bölüm~9) altında bu ilke yatar.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Bir tip denetleyici}\label{sec:tip-denetleyici}
+
+Şimdiye kadar kullandığımız tipleme \emph{Curry tarzıdır}: Terimlerde
+tip yazılmaz, bir terimin birden çok tipi olabilir ($I$, her $A$ için
+$A \Rightarrow A$ tipindedir). \emph{Church tarzında} ise her $\lambda$,
+bağladığı değişkenin tipini taşır: $\lambda x{:}A.\, t$. \Lean{}'in kendisi
+Church tarzındadır. \leankw{fun} \lc{(x : Nat) => x + 1} yazarız. Church
+tarzında tip bulmak bir \emph{algoritmadır}:
+
+\leandosya[Church tarzı terimler ve tip çıkarımı]{Bolum14}{denetleyici}
+
+\noindent Bir tip denetleyicinin en önemli özelliği \emph{doğru}
+olmasıdır. Denetleyici bir tip bulduğunda, o tip tipleme kurallarına göre
+gerçekten geçerli olmalıdır:
+
+\leandosya[Denetleyici doğrudur]{Bolum14}{denetleyici_dogru}
+
+\noindent Bu küçük teorem, ispat asistanlarının güvenilirliği hakkındaki
+büyük bir sorunun minyatürüdür. \Lean{}'e bir ispatı kabul ettiren şey,
+çekirdeğindeki tip denetleyicidir. Peki o denetleyicinin kendisi doğru
+mu? Lean4Lean projesi, \Lean{}'in tip denetleyicisini \Lean{}'de yeniden
+yazıp doğruluğunu \Lean{}'de ispatlamayı hedefler \citep{carneiro2026}.
+
+% ---------------------------------------------------------------------
+\section{Curry--Howard eşlemesi}\label{sec:curry-howard}
+
+Artık bölümün ana teoremine hazırız. Her tipi bir formüle çeviriyoruz:
+Temel tipler atomlara, ok tipi ise $\oise$'ya gider. Sonra tiplenebilen
+her terimin, Bölüm~11'deki \lc{Turetilir} sisteminde bir türetime
+dönüştüğünü gösteriyoruz:
+
+\leandosya[Curry--Howard teoremi]{Bolum14}{curry_howard}
+
+\begin{teorem}{Curry--Howard (basit tipler)}{curry-howard}
+$\Gamma \vdash t : A$ ise $\Gamma^\circ \vdash A^\circ$. Burada $^\circ$,
+tiplerin formüllere çevirisidir. Tersine, $\to$'lu bir formülün her
+sezgici doğal çıkarım türetimi, o formüle karşılık gelen tipte bir
+terimdir.
+\end{teorem}
+
+\noindent İspatın üç satırı, \cref{fig:tipleme-kurallari}'deki üç
+satırdır. Teoremin ters yönü (türetimden terim üretmek) de aynı kolaylıkla
+ispatlanabilir. Ama hedefteki sistemin RAA'sız olması gerekir. Çünkü
+Peirce yasasının tipinde hiçbir terim yoktur. \Cref{tab:curry-howard},
+eşlemenin kitapta karşılaştığımız bütün katmanlarını özetliyor.
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{5.2cm}
+                >{\raggedright\arraybackslash}p{5.2cm}
+                >{\centering\arraybackslash}p{1.4cm}}
+\rowcolor{tabloust}
+\tablobaslik{Mantık} & \tablobaslik{Programlama} & \tablobaslik{Bölüm} \\
+önerme $A$                     & tip $A$ & 2 \\
+$A$'nın ispatı                 & $A$ tipinde bir terim & 2 \\
+$A \to B$                      & fonksiyon tipi & 2, 14 \\
+$\to$G (varsayımı boşaltma)    & $\lambda$-soyutlama & 5, 14 \\
+$\to$E (modus ponens)          & uygulama & 5, 14 \\
+$A \wedge B$, $A \vee B$       & çarpım (yapı), toplam (seçenek) tipi & 3, 9 \\
+$\forall x,\, P\,x$, $\exists x,\, P\,x$ & bağımlı fonksiyon, bağımlı çift & 6, 15 \\
+dolambaç (giriş + eleme)       & redeks $(\lambda x.\,t)\,s$ & 5, 14 \\
+türetim normalleştirme         & program çalıştırma ($\beta$) & 5, 14 \\
+tutarlılık                     & güçlü normalleşme & 14 \\
+Hilbert aksiyomları K, S       & kombinatörler K, S & 14 \\
+klasik mantık (Peirce)         & devamlar, \lc{call/cc} \citep{griffin1990} & 4 \\
+\end{tabular}
+\caption{Curry--Howard eşlemesinin katmanları \citep{howard1980,wadler2015}.}
+\label{tab:curry-howard}
+\end{table}
+
+\noindent Teoremin hemen bir sonucu vardır: Bir tipte kapalı bir terim
+varsa, o tipin formülü bir totolojidir. Bu, bazı tiplerin \emph{boş}
+olduğunu göstermenin bir yoludur:
+
+\leandosya[Boş tipler]{Bolum14}{sonuclar}
+
+\begin{figure}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{12pt}
+\begin{tabular}{c c c}
+\textcolor{anarenk}{\baslikfont\small\bfseries Program} & & \textcolor{ikincil}{\baslikfont\small\bfseries İspat} \\[6pt]
+\fcolorbox{anarenk}{tanimbg}{$(\lambda x{:}A.\; t)\; s$} &
+\raisebox{-0.2em}{$\longleftrightarrow$} &
+\begin{prooftree}
+  \hypo{[A]}
+  \ellipsis{$t$}{B}
+  \infer1[$\to$G]{A \oise B}
+  \hypo{}
+  \ellipsis{$s$}{A}
+  \infer2[$\to$E]{B}
+\end{prooftree}
+\\[10pt]
+$\Big\downarrow\;\textcolor{anarenk}{\beta}$ & &
+$\Big\downarrow\;\textcolor{ikincil}{\text{\baslikfont\scriptsize normalleştir}}$
+\\[10pt]
+\fcolorbox{anarenk}{tanimbg}{$t[x := s]$} &
+\raisebox{-0.2em}{$\longleftrightarrow$} &
+\begin{prooftree}
+  \hypo{}
+  \ellipsis{$s$}{A}
+  \ellipsis{$t$}{B}
+\end{prooftree}
+\\
+\end{tabular}
+\caption{Hesaplama = ispat normalleştirme. Solda bir $\beta$-adımı, sağda
+ona karşılık gelen dolambaç eleme: $\to$G'nin hemen ardından gelen
+$\to$E silinir ve $A$'nın varsayıldığı yerlere $s$'nin türetimi
+yerleştirilir.}
+\label{fig:beta-dolambac}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Bağlayıcılarla çalışmak.} De~Bruijn indisleri bu bölümde
+kullandığımız ``yerel'' çözümdür. Araştırma literatüründe başka
+yaklaşımlar da vardır: \emph{yerel adsız} (\emph{locally nameless})
+gösterim, \emph{nominal} teknikler, \emph{yüksek mertebe soyut sözdizim}
+(HOAS) ve yerine koyma önsavlarını otomatik üreten araçlar (Coq için
+Autosubst gibi). POPLmark yarışması \citep{aydemir2005} bu yaklaşımları
+karşılaştırmak için hâlâ bir ölçüttür.
+
+\textbf{Tip denetleyicilerin doğrulanması.} Coq'un çekirdeğinin
+doğruluğu MetaCoq projesinde Coq'un kendisi içinde ele alındı. \Lean{}
+için benzer çalışma Lean4Lean'dir \citep{carneiro2026}. Bu çalışma
+\Lean{}'in tip kuramının (tutarlılık hariç) önemli özelliklerini \Lean{}'de
+formalize eder ve \Lean{}'in çekirdeğinden bağımsız bir ikinci tip
+denetleyici sunar.
+
+\textbf{Curry--Howard'ın ötesi.} Eşleme yalnızca $\to$ ile sınırlı
+değildir. Bağımlı tipler yüklemler mantığına (Bölüm~15), doğrusal tipler
+doğrusal mantığa \citep{girard1987}, devamlar klasik mantığa
+\citep{griffin1990}, kip tipleri ise kip mantığına karşılık gelir. Wadler'in
+``Propositions as Types'' makalesi \citep{wadler2015} bu öykünün okunabilir
+bir özetidir.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item $\lambda$-hesabının üç yapısı vardır: değişken, soyutlama,
+        uygulama. De~Bruijn indisleri, bağlı değişken adlarını ortadan
+        kaldırarak $\alpha$-denkliği sözdizimsel eşitliğe indirger.
+  \item Yerine koyma, yakalamayı önlemek için serbest indislerin
+        kaydırılmasını gerektirir. Bağlayıcılar formalizasyonun en zor
+        kısmıdır.
+  \item $\beta$-indirgeme hesaplamanın tek kuralıdır. $\Omega$'nın normal
+        biçimi yoktur. Normal sıra, varsa normal biçimi bulur.
+        Church--Rosser teoremi normal biçimin tekliğini garanti eder.
+  \item Church sayıları, sayıların bile yalnızca fonksiyonlarla ifade
+        edilebildiğini gösterir.
+  \item Basit tipler $\Omega$ gibi terimleri yasaklar. Tiplenebilen her
+        terim güçlü normalleşir.
+  \item Church tarzı terimler için tip bulmak bir algoritmadır, ve bu
+        algoritmanın doğruluğu \Lean{}'de ispatlanabilir.
+  \item Curry--Howard: Tiplenebilen her terim, tipinin bir doğal çıkarım
+        türetimidir. $\beta$-indirgeme, türetimlerdeki dolambaçların
+        elenmesidir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} $K$ normal biçimdedir. (\lc{a14\_1})
+
+\alistirma{1} $I\,(I\,s) \to^* s$. (\lc{a14\_2})
+
+\alistirma{2} Bileşke kombinatörü $B = \lambda f.\,\lambda g.\,\lambda x.\,
+f\,(g\,x)$'in tipi $(B \Rightarrow C) \Rightarrow (A \Rightarrow B)
+\Rightarrow A \Rightarrow C$'dir. Bu tip hangi mantık yasasına karşılık
+geliyor? (\lc{a14\_3})
+
+\alistirma{2} Her Church sayısı $(A \Rightarrow A) \Rightarrow A \Rightarrow
+A$ tipindedir. Önce \lc{tekrarla} için bir önsav ispatlayın. (\lc{a14\_4})
+
+\alistirma{2} Bir temel tipte kapalı terim yoktur. (\lc{a14\_5})
+
+\alistirma{2} Curry tarzında bir terimin tipi tek değildir. Church tarzında
+neden tektir? (\lc{a14\_6})
+
+\alistirma{2} $(\alpha_0 \Rightarrow \alpha_1) \Rightarrow \alpha_0$
+tipinde kapalı terim yoktur. (\lc{a14\_7})
+
+\alistirma{3} $\Omega$ hiçbir bağlamda tiplenemez. (\lc{a14\_8})
+
+\alistirma{1} (Kâğıt-kalem) $\lambda x.\,\lambda y.\,\lambda z.\, x\,z\,(y\,z)$
+terimini de~Bruijn gösterimine çevirin ve \lc{S} tanımıyla
+karşılaştırın.
+
+\alistirma{2} (Kâğıt-kalem) $K\,I\,\Omega$ terimini normal sırayla adım
+adım indirgeyin. \lc{\#eval normallestir 10 (app (app K I) Omega)} ile
+denetleyin.
+
+\alistirma{3} (Proje) \lc{adim? t = some u} ise \lc{Adim t u} olduğunu
+ispatlayın. İpucu: \lc{t} üzerinde tümevarım; \lc{app} durumunda
+\lc{t}'nin bir \lc{lam} olup olmadığına göre ayırın.
+
+\alistirma{3} (Proje) \emph{Tip korunumu}: \lc{Tiplenir Γ t A} ve
+\lc{Adim t u} ise \lc{Tiplenir Γ u A}. Önce \lc{kaydir} için bir
+zayıflatma önsavı, sonra \lc{yerine} için bir yerine koyma önsavı
+gerekecek.
+
+\alistirma{3} (Araştırma) Curry--Howard'ın ters yönünü ispatlayın: Bölüm~11'deki
+sistemin yalnızca \lc{varsayim}, \lc{iseG}, \lc{iseE} kurallarını kullanan
+bir \lc{TuretilirOk} parçasını tanımlayın ve her türetimden bir terim
+üretin.
+\end{alistirmalar}

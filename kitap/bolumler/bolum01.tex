@@ -1,0 +1,561 @@
+% =====================================================================
+%  Bölüm 1 — Mantık Nedir, İspat Asistanı Nedir?
+% =====================================================================
+\chapter{Mantık Nedir, İspat Asistanı Nedir?}\label{bol:giris}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Bir çıkarımın \emph{geçerli} olmasının ne demek olduğunu ve
+        geçerlilik ile doğruluk arasındaki farkı,
+  \item Mantığın Aristoteles'ten yapay zekâya uzanan kısa tarihini,
+  \item Bir ispat asistanının nasıl çalıştığını ve neden güvenilir olduğunu,
+  \item \Lean{}'i kurmayı, \lc{\textcolor{leancmd}{\bfseries\#check}} ve
+        \lc{\textcolor{leancmd}{\bfseries\#eval}} komutlarını kullanmayı,
+  \item İlk teoreminizi yazmayı ve \Lean{}'in hata mesajlarını okumayı.
+\end{itemize}
+\end{bolumhedefleri}
+
+% ---------------------------------------------------------------------
+\section{Mantık nedir?}\label{sec:mantik-nedir}
+
+Mantık, \emph{doğru akıl yürütmenin} bilimidir. Daha kesin söylersek, mantık
+hangi sonuçların hangi öncüllerden \emph{zorunlu olarak} çıktığını inceler.
+Bu tanımdaki kilit kelime ``zorunlu olarak''dır. Mantık, öncüllerin doğru
+olup olmadığıyla ilgilenmez; öncüller doğru \emph{olsaydı} sonucun da doğru
+olmak zorunda olup olmadığıyla ilgilenir.
+
+\begin{tanim}{Çıkarım ve geçerlilik}{cikarim}
+Bir \textbf{çıkarım}, bir öncüller kümesi ile bir sonuçtan oluşur.
+Öncüllerin hepsinin doğru olduğu her durumda sonuç da doğruysa,
+çıkarım \textbf{geçerlidir}. Geçerli olup öncülleri de gerçekten doğru
+olan bir çıkarıma \textbf{sağlam} çıkarım denir.
+\end{tanim}
+
+\begin{ornek}{Geçerlilik ve doğruluk birbirinden bağımsızdır}{gecerlilik}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{0.44\linewidth} p{0.44\linewidth}}
+\textbf{(a) Geçerli ve sağlam}
+& \textbf{(b) Geçerli ama sağlam değil} \\
+Bütün insanlar ölümlüdür. & Bütün kuşlar uçar. \\
+Sokrates bir insandır. & Penguen bir kuştur. \\
+\cmidrule(r){1-1}\cmidrule(l){2-2}
+O hâlde Sokrates ölümlüdür. & O hâlde penguen uçar. \\
+\end{tabular}
+\end{center}
+İki çıkarımın \emph{biçimi} aynıdır: ``Bütün $A$'lar $B$'dir; $x$ bir
+$A$'dır; o hâlde $x$ bir $B$'dir.'' Bu biçim geçerlidir. (b)'deki sonucun
+yanlış olması mantığın değil, ilk öncülün suçudur.
+\end{ornek}
+
+Bu örnek, modern mantığın temel fikrini gösteriyor: \textbf{geçerlilik,
+içerikle değil biçimle ilgilidir}. Sokrates'in ya da penguenin ne olduğunu
+bilmemize gerek yoktur; yalnızca çıkarımın iskeletine bakarız. Bu iskeleti
+sembollerle yazdığımızda mantık \emph{formal} (biçimsel) mantık olur:
+\[
+  \frac{\forall x\,(A(x) \to B(x)) \qquad A(s)}{B(s)}
+\]
+Kesrin üstündekiler öncüller, altındaki sonuçtur. Kitap boyunca bu gösterimi
+çok kullanacağız.
+
+\begin{onemlifikir}
+Biçimsel mantıkta bir çıkarımın geçerliliğini denetlemek \emph{mekanik} bir
+iştir: Sembollerin anlamını bilmeden, yalnızca kurallara bakarak yapılabilir.
+Mekanik olan her iş, bir bilgisayara yaptırılabilir. İspat asistanlarının
+varlık nedeni budur.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Kısa bir tarihçe}\label{sec:tarihce}
+
+\Cref{fig:zaman-cizelgesi}, bu kitapta karşılaşacağımız fikirlerin
+tarihsel sırasını gösteriyor. Dikkat edilirse çizelge üç döneme ayrılıyor:
+mantığın \emph{doğuşu}, mantığın \emph{matematikleşmesi} ve mantığın
+\emph{makineleşmesi}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    olay/.style={font=\baslikfont\scriptsize, align=center, text width=2.3cm},
+    yil/.style={font=\baslikfont\scriptsize\bfseries},
+    nokta/.style={circle, fill=#1, inner sep=2.2pt},
+  ]
+  % Dönem şeritleri
+  \fill[ornekbg]    (0,-0.25) rectangle (2.2,0.25);
+  \fill[tanimbg]    (2.2,-0.25) rectangle (8.2,0.25);
+  \fill[fikirbg]    (8.2,-0.25) rectangle (14.6,0.25);
+  \draw[-{Stealth[length=3mm]}, very thick, koyu] (0,0) -- (14.9,0);
+  \node[font=\baslikfont\scriptsize\bfseries, text=ornekframe] at (1.1,-3.0) {Doğuş};
+  \node[font=\baslikfont\scriptsize\bfseries, text=anarenk]    at (5.2,-3.0) {Matematikleşme};
+  \node[font=\baslikfont\scriptsize\bfseries, text=ikincil]    at (11.4,-3.0) {Makineleşme};
+
+  % Olaylar: (x, yıl, metin, yukarı/aşağı, renk)
+  \foreach \x/\y/\t/\d/\c in {
+      0.6/MÖ 350/Aristoteles:\\kıyaslar/1/ornekframe,
+      2.6/1854/Boole:\\düşünce cebiri/-1/anarenk,
+      3.6/1879/Frege:\\Begriffsschrift/1/anarenk,
+      4.8/1910/Russell–Whitehead:\\Principia/-1/anarenk,
+      5.9/1931/Gödel:\\eksiklik/1/anarenk,
+      7.0/1935/Gentzen:\\doğal çıkarım/-1/anarenk,
+      8.0/1940/Church:\\tip kuramı/1/anarenk,
+      9.1/1967/de Bruijn:\\Automath/-1/ikincil,
+      10.0/1969/Howard:\\formüller = tipler/1/ikincil,
+      11.0/1988/Coquand–Huet:\\CoC/-1/ikincil,
+      12.0/2015/Lean/1/ikincil,
+      13.0/2021/Lean 4/-1/ikincil,
+      14.2/2024+/YZ destekli\\ispatçılar/1/vurgu}
+  {
+    \node[nokta=\c] at (\x,0) {};
+    \draw[\c, thin] (\x,0) -- (\x,{0.85*\d});
+    \node[yil, text=\c] at (\x,{1.05*\d}) {\y};
+    \node[olay, text width=1.5cm] at (\x,{1.62*\d+0.38*min(\d,0)}) {\t};
+  }
+\end{tikzpicture}
+\caption{Bu kitaptaki fikirlerin kısa tarihi. Yıllar, ilgili eserin
+yayımlandığı ya da sistemin duyurulduğu yıllardır; Howard'ın notları 1969'da
+dolaşıma girmiş, 1980'de yayımlanmıştır.}
+\label{fig:zaman-cizelgesi}
+\end{figure}
+
+\begin{tarihce}[Tarihçe: Frege ve kavram yazısı]
+Gottlob Frege 1879'da yayımladığı \emph{Begriffsschrift} (Kavram Yazısı)
+adlı küçük kitapta, niceleyicileri (\emph{her}, \emph{bazı}) içeren ilk
+tam biçimsel mantık dilini kurdu \citep{frege1879}. Frege'nin amacı,
+aritmetiğin tamamen mantıktan türetilebileceğini göstermekti. Bu program
+Russell paradoksuyla sarsıldı; ancak Frege'nin kurduğu dil, bugün
+kullandığımız yüklemler mantığının doğrudan atasıdır.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{Neden bilgisayarla ispat?}\label{sec:neden}
+
+Matematikçiler binlerce yıldır ispatlarını kâğıt üzerinde yazıp birbirlerine
+denetletiyorlar. Bu sistem şaşırtıcı derecede iyi çalışır, ama kusursuz
+değildir. İspatlar uzadıkça ve karmaşıklaştıkça, hakemlerin her adımı
+denetlemesi olanaksızlaşır. Yirminci yüzyılın sonunda bu sorun somut olarak
+ortaya çıktı:
+
+\begin{itemize}
+  \item \textbf{Dört renk teoremi} (1976), ilk kez büyük ölçüde bilgisayar
+  hesabına dayanan bir ispatla kanıtlandı. İspatın tamamı daha sonra Coq
+  ispat asistanında baştan sona formalize edildi.
+  \item \textbf{Kepler sanısı}nın ispatı o kadar karmaşıktı ki hakemler
+  doğruluğundan ``yüzde doksan dokuz emin'' olabildiklerini bildirdi. Bunun
+  üzerine başlatılan \emph{Flyspeck} projesi, ispatı HOL Light ve Isabelle
+  ispat asistanlarında tamamen doğruladı.
+\end{itemize}
+
+Bugün ispat asistanları üç farklı amaca hizmet ediyor:
+
+\begin{center}
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                 text width=4.1cm, minimum height=2.4cm, align=center,
+                 font=\small},
+  ]
+  \node[kutu=anarenk] (a) at (0,0)
+    {\baslikfont\bfseries\color{anarenk} Matematiği doğrulamak\\[3pt]
+     \normalfont Uzun ve karmaşık ispatların her adımını denetlemek};
+  \node[kutu=ikincil] (b) at (4.7,0)
+    {\baslikfont\bfseries\color{ikincil} Yazılımı doğrulamak\\[3pt]
+     \normalfont Derleyicilerin, işletim sistemlerinin, şifreleme
+     kodlarının doğruluğunu ispatlamak};
+  \node[kutu=vurgu] (c) at (9.4,0)
+    {\baslikfont\bfseries\color{vurgu} Öğrenmek ve öğretmek\\[3pt]
+     \normalfont Her adımı anında geri bildirimle öğrenmek};
+\end{tikzpicture}
+\end{center}
+
+Bu kitap üçüncü amaçla başlıyor, birinciye doğru ilerliyor. İkinci amaç
+(yazılım doğrulama) kitabın kapsamı dışında kalsa da, öğreneceğiniz her
+teknik orada da doğrudan kullanılabilir.
+
+% ---------------------------------------------------------------------
+\section{Bir ispat asistanı nasıl çalışır?}\label{sec:nasil-calisir}
+
+Bir ispat asistanına ``bu teorem doğrudur'' dediğinizde, size
+\emph{güvenmez}. Sizden bir ispat ister ve o ispatı adım adım denetler.
+\Lean{}'de bu süreç iki katmanda gerçekleşir (\cref{fig:lean-katmanlar}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    katman/.style={draw=#1, fill=#1!10, thick, rounded corners=4pt,
+                   minimum width=3.0cm, minimum height=1.5cm, align=center,
+                   font=\baslikfont\small},
+    ok/.style={-{Stealth[length=3mm]}, very thick, koyu!70},
+    aciklama/.style={font=\scriptsize, text=black!65, align=center,
+                     text width=3.0cm},
+  ]
+  \node[katman=ornekframe] (k) at (0,0) {\bfseries Siz\\ \small taktikler, terimler};
+  \node[katman=anarenk]    (e) at (4.9,0) {\bfseries Elaboratör\\ \small büyük, akıllı};
+  \node[katman=teoremframe](c) at (9.8,0) {\bfseries Çekirdek\\ \small küçük, güvenilir};
+  \node[circle, draw=bittiframe, fill=bittibg, very thick, minimum size=1.1cm,
+        font=\sembolfont\Large\bfseries\color{bittiframe}] (t) at (12.6,0) {✓};
+
+  \draw[ok] (k) -- node[above, font=\scriptsize]{kaynak kod} (e);
+  \draw[ok] (e) -- node[above, font=\scriptsize]{ispat terimi} (c);
+  \draw[ok] (c) -- (t);
+
+  \node[aciklama, below=0.25cm of k] {Okunabilir, kısa ispatlar yazarsınız.};
+  \node[aciklama, below=0.25cm of e] {Taktikleri çalıştırır, eksikleri
+        tamamlar, ayrıntılı bir ispat terimi üretir.};
+  \node[aciklama, below=0.25cm of c] {Yalnızca terimin türünü denetler.
+        Hata yaparsa bunu \emph{yakalar}.};
+
+  \draw[decorate, decoration={brace, amplitude=6pt, mirror}, thick, black!40]
+    ([yshift=-1.75cm]e.south west) -- ([yshift=-1.75cm]e.south east)
+    node[midway, below=8pt, font=\scriptsize, text=black!60, align=center]
+    {hata yapabilir\\(ama zarar veremez)};
+\end{tikzpicture}
+\caption{\Lean{}'in iki katmanlı mimarisi. Güven yalnızca küçük çekirdeğe
+dayanır.}
+\label{fig:lean-katmanlar}
+\end{figure}
+
+Bu tasarımın özü şudur: Elaboratör çok büyük ve karmaşık bir programdır,
+dolayısıyla içinde hata olabilir. Ama elaboratörün ürettiği her ispat
+terimi, ayrıca küçük bir \emph{çekirdek} tarafından denetlenir. Çekirdek
+yanlış bir ispatı kabul etmedikçe, elaboratördeki bir hata yanlış bir
+teoremin ``ispatlanmasına'' yol açamaz.
+
+\begin{tanim}{de Bruijn ölçütü}{debruijn}
+Bir ispat asistanının ürettiği ispatlar, \textbf{küçük ve bağımsız bir
+denetleyici} tarafından yeniden doğrulanabiliyorsa, o sistem \textbf{de
+Bruijn ölçütünü} sağlar. Böylece sisteme duyulan güven, yalnızca bu küçük
+denetleyiciye duyulan güvene indirgenir.
+\end{tanim}
+
+\begin{tarihce}[Tarihçe: Automath]
+Hollandalı matematikçi Nicolaas Govert de Bruijn, 1967'de başlattığı
+\emph{Automath} projesiyle matematiksel metinleri bilgisayarda denetlemenin
+ilk ciddi örneğini verdi \citep{debruijn1970}. Automath ekibi 1970'lerde
+Landau'nun \emph{Grundlagen der Analysis} kitabının tamamını formalize etti.
+Automath'ta ortaya çıkan ``önermeleri tür olarak görme'' fikri, Howard'ın
+çalışmalarıyla birlikte bu kitabın omurgasını oluşturan Curry--Howard
+eşlemesinin kaynaklarından biridir.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{Lean 4'ü kurmak}\label{sec:kurulum}
+
+\Lean{}'i denemek için hiçbir şey kurmanız gerekmez: Lean'in resmî sitesindeki
+\emph{çevrimiçi editör}, tarayıcıda çalışır. Ancak kitaptaki projeyle
+çalışmak için yerel bir kurulum öneriyoruz.
+
+\begin{enumerate}[adimlar]
+  \item \textbf{Visual Studio Code}'u kurun.
+  \item VS Code'un eklenti mağazasından \textbf{Lean 4} eklentisini kurun.
+  \item Eklentinin karşılama sayfasındaki adımları izleyin. Eklenti, Lean'in
+        sürüm yöneticisi \lc{elan}'ı ve derleme aracı \lc{lake}'i sizin
+        için kurar.
+  \item Kitabın eşlik eden projesini indirip klasörünü VS Code'da açın ve
+        bir terminalde şu komutu çalıştırın:
+\begin{center}
+\lc{lake build}
+\end{center}
+  \item \lc{ModernMantik/Bolum01.lean} dosyasını açın. Sağ tarafta
+        \emph{Lean Infoview} paneli görünmelidir.
+\end{enumerate}
+
+\begin{dikkat}[Dikkat: Kurulum adımları değişebilir]
+\Lean{} ve araçları hızla gelişiyor. Yukarıdaki adımlar bu kitabın yazıldığı
+dönemde geçerlidir. Bir adım beklediğiniz gibi çalışmazsa, Lean'in resmî
+sitesindeki güncel kurulum sayfasına başvurun. Eşlik eden projenin
+\lc{lean-toolchain} dosyası, kitabın test edildiği Lean sürümünü belirtir.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{İlk adımlar: \#check ve \#eval}\label{sec:check-eval}
+
+\Lean{} hem bir programlama dili hem de bir ispat dilidir. Bu ikili yapıyı
+en iyi iki komutla görebiliriz: \lc{\textcolor{leancmd}{\bfseries\#eval}}
+bir ifadeyi \emph{hesaplar}, \lc{\textcolor{leancmd}{\bfseries\#check}} ise
+bir ifadenin \emph{türünü} söyler.
+
+\leandosya[İlk komutlar]{Bolum01}{check_eval}
+
+Son satır önemli bir şeyi gösteriyor: \lc{2 + 2 = 5} \emph{yanlış} bir
+önermedir, ama \Lean{} onu itirazsız kabul eder ve türünün \leantype{Prop}
+olduğunu söyler. Çünkü \leantype{Prop}, \emph{önermelerin} türüdür, yani
+doğru ya da yanlış olabilen ifadelerin. Bir ifadenin önerme olması, doğru
+olduğu anlamına gelmez.
+
+\begin{onemlifikir}[Önemli Fikir: Bir önerme ile onun kanıtı farklı şeylerdir]
+\lc{2 + 2 = 4} ve \lc{2 + 2 = 5} ifadelerinin ikisi de birer önermedir;
+ikisinin de türü \leantype{Prop}'tur. Aralarındaki fark şudur: Birincisinin
+bir \emph{kanıtını} inşa edebiliriz, ikincisinin edemeyiz. \Lean{}'de bir
+önermenin doğru olduğunu söylemek, o önermenin bir kanıtını sunmak demektir.
+\end{onemlifikir}
+
+\Cref{tab:tur-benzetmesi}, bu fikrin \Lean{}'de nasıl yazıldığını
+gösteriyor. Sol sütundaki tanıdık ifadelerle sağ sütundakiler arasında
+yapısal bir benzerlik var.
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{4.2cm}
+                >{\raggedright\arraybackslash}p{4.2cm}}
+\rowcolor{tabloust}
+\tablobaslik{Veri dünyası} & \tablobaslik{Mantık dünyası} \\
+\lc{Nat} bir türdür                & \lc{P} bir önermedir (\lc{P : Prop}) \\
+\lc{3 : Nat}                      & \lc{hp : P} \\
+``3, bir doğal sayıdır''           & ``\lc{hp}, $P$'nin bir kanıtıdır'' \\
+\lc{Nat} boş değildir              & $P$ doğrudur \\
+\end{tabular}
+\caption{Türler ve önermeler arasındaki benzerlik. Bu tablo, Curry--Howard
+eşlemesinin ilk görünümüdür.}
+\label{tab:tur-benzetmesi}
+\end{table}
+
+Benzetmenin son satırı en derin olanıdır. Bir türün bir elemanını
+gösterebiliyorsak o tür ``dolu''dur; bir önermenin bir kanıtını
+gösterebiliyorsak o önerme doğrudur. Bu fikri \cref{bol:onermeler1}'de
+adım adım geliştirecek, \cref{bol:lambda}'te ise kesin bir teoreme
+dönüştüreceğiz.
+
+% ---------------------------------------------------------------------
+\section{İlk teorem}\label{sec:ilk-teorem}
+
+Şimdi ilk teoremimizi yazalım. Teoremimiz şunu söylüyor: \emph{Elimizde
+$P$'nin bir kanıtı varsa, $P$ doğrudur.} Bu, olabilecek en basit teoremdir;
+ama \Lean{}'in bir teoremi nasıl okuduğunu bütün parçalarıyla gösterir.
+
+\leandosya[İlk teorem]{Bolum01}{ilk_teorem}
+
+\Cref{fig:teorem-anatomisi}, bu tek satırın anatomisini gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    parca/.style={font=\leanfont\normalsize, inner sep=2pt},
+    etiket/.style={font=\baslikfont\scriptsize, align=center, text width=2.6cm},
+  ]
+  \node[parca, text=leankw]   (a) at (0,0)    {\bfseries theorem};
+  \node[parca]                (b) at (2.05,0) {ilk\_teorem};
+  \node[parca]                (c) at (4.35,0) {(P : \textcolor{leantype}{\bfseries Prop})};
+  \node[parca]                (d) at (6.85,0) {(\textcolor{leanhyp}{\bfseries hp} : P)};
+  \node[parca]                (e) at (8.45,0) {: P};
+  \node[parca]                (f) at (9.75,0) {:= \textcolor{leanhyp}{\bfseries hp}};
+
+  \foreach \n/\r in {a/leankw, b/koyu, c/leantype, d/leanhyp, e/vurgu, f/ikincil}
+    \draw[\r, thick, rounded corners=2pt] (\n.south west) rectangle (\n.north east);
+
+  \node[etiket, text=leankw]   (ea) at (0,-1.35)   {anahtar kelime};
+  \node[etiket, text=koyu]     (eb) at (2.05,1.35) {teoremin adı};
+  \node[etiket, text=leantype] (ec) at (4.35,-1.35){``$P$ bir önerme olsun''};
+  \node[etiket, text=leanhyp]  (ed) at (6.85,1.35) {varsayım: ``\lc{hp}, $P$'nin kanıtı''};
+  \node[etiket, text=vurgu]    (ee) at (8.45,-1.35){iddia: ``$P$ doğrudur''};
+  \node[etiket, text=ikincil]  (ef) at (10.2,1.35) {ispat: ``kanıt şudur: \lc{hp}''};
+
+  \foreach \n/\m/\r in {a/ea/leankw, b/eb/koyu, c/ec/leantype,
+                        d/ed/leanhyp, e/ee/vurgu, f/ef/ikincil}
+    \draw[\r, -{Stealth[length=2mm]}] (\m) -- (\n);
+\end{tikzpicture}
+\caption{Bir \Lean{} teoreminin parçaları.}
+\label{fig:teorem-anatomisi}
+\end{figure}
+
+Okunuşu şöyledir: ``$P$ bir önerme olsun ve elimizde $P$'nin \lc{hp} adlı
+bir kanıtı bulunsun. O zaman $P$ doğrudur; kanıtı da \lc{hp}'nin
+kendisidir.'' İki noktanın ardından gelen \lc{:=} işareti ``ispatı şudur''
+diye okunur.
+
+\subsection{Taktik modu}
+
+Yukarıdaki ispat bir \emph{terimdir}: kanıtı doğrudan yazdık. Daha uzun
+ispatlarda kanıtı tek seferde yazmak zordur. Bunun yerine \leankw{by}
+anahtar kelimesiyle \emph{taktik moduna} geçer, ispatı adım adım inşa
+ederiz:
+
+\leandosya[Aynı teorem, taktik moduyla]{Bolum01}{ilk_teorem_taktik}
+
+Taktik modunda \Lean{}, imlecin bulunduğu her noktada \emph{hedef durumunu}
+Infoview panelinde gösterir (\cref{fig:infoview}). \leankw{by} kelimesinden
+hemen sonra durum şöyledir:
+
+\begin{hedefdurumu}[\texttt{by} sonrası]
+P : Prop
+hp : P
+⊢ P
+\end{hedefdurumu}
+
+\noindent \lc{⊢} işaretinin üstündekiler elimizdekilerdir (\emph{bağlam}),
+altındaki ise kanıtlamamız gereken şeydir (\emph{hedef}). \leantac{exact hp}
+taktiği ``hedefin kanıtı tam olarak \lc{hp}'dir'' der ve ispatı bitirir:
+
+\ispatbitti
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\leanfont\scriptsize]
+  % Editör penceresi
+  \draw[black!30, fill=white, rounded corners=4pt] (0,0) rectangle (7.6,4.2);
+  \fill[black!8, rounded corners=4pt] (0,3.75) rectangle (7.6,4.2);
+  \fill[black!8] (0,3.75) rectangle (7.6,3.95);
+  \foreach \x/\c in {0.25/hataframe, 0.5/hedefframe, 0.75/bittiframe}
+    \fill[fill=\c!80] (\x,3.975) circle (0.07);
+  \node[anchor=west, font=\baslikfont\scriptsize, text=black!60] at (1.0,3.975) {Bolum01.lean};
+  % Kod satırları
+  \foreach \i/\t in {
+     1/{\textcolor{leankw}{\bfseries theorem} ilk\_teorem' (P : \textcolor{leantype}{\bfseries Prop})},
+     2/{\hspace{3.2em}(\textcolor{leanhyp}{\bfseries hp} : P) : P := \textcolor{leankw}{\bfseries by}},
+     3/{\hspace{1em}\textcolor{leantac}{\bfseries exact} \textcolor{leanhyp}{\bfseries hp}}}
+  {
+    \node[anchor=west, text=black!35] at (0.15,{3.5-0.42*\i}) {\i};
+    \node[anchor=west] at (0.55,{3.5-0.42*\i}) {\t};
+  }
+  % İmleç
+  \fill[anarenk] (1.42,1.98) rectangle (1.46,2.28);
+  \node[anchor=west, font=\baslikfont\tiny, text=anarenk] at (1.65,1.72) {imleç burada};
+
+  % Infoview
+  \draw[black!30, fill=hedefbg!60, rounded corners=4pt] (8.0,0) rectangle (13.4,4.2);
+  \fill[hedefframe!30, rounded corners=4pt] (8.0,3.75) rectangle (13.4,4.2);
+  \fill[hedefframe!30] (8.0,3.75) rectangle (13.4,3.95);
+  \node[anchor=west, font=\baslikfont\scriptsize\bfseries, text=black!70] at (8.15,3.975) {Lean Infoview};
+  \node[anchor=west, font=\baslikfont\scriptsize\bfseries] at (8.2,3.3) {{\sembolfont ▾} Tactic state};
+  \node[anchor=west, text=black!60] at (8.3,2.85) {1 goal};
+  \node[anchor=west] at (8.3,2.4) {P : \textcolor{leantype}{Prop}};
+  \node[anchor=west] at (8.3,2.0) {\textcolor{leanhyp}{hp} : P};
+  \node[anchor=west] at (8.3,1.55) {\textcolor{leansym}{⊢} P};
+  \draw[hedefframe, thick, rounded corners=2pt] (8.2,1.3) rectangle (9.4,1.8);
+  \node[anchor=west, font=\baslikfont\tiny, text=hedefframe!80!black] at (9.5,1.55) {hedef};
+  \draw[black!40, decorate, decoration={brace, amplitude=4pt}]
+       (10.3,2.6) -- (10.3,1.85) node[midway, right=5pt, font=\baslikfont\tiny, text=black!60] {bağlam};
+
+  \draw[-{Stealth[length=2.5mm]}, thick, anarenk, dashed] (3.1,2.13) to[bend left=18] (8.15,2.6);
+\end{tikzpicture}
+\caption{VS Code'da editör ve Lean Infoview paneli. İmleç \leantac{exact}
+satırına gelmeden önceki hedef durumu sağda görünür.}
+\label{fig:infoview}
+\end{figure}
+
+\subsection{Hesaplamayla ispat}
+
+Bazı önermeler doğrudan hesaplanarak doğrulanabilir. \lc{rfl} (yansıma,
+İng.\ \emph{reflexivity}) ``iki taraf hesaplandığında aynıdır'' demektir:
+
+\leandosya[Hesaplamayla ispat]{Bolum01}{rfl_ornek}
+
+Aynı şeyi \lc{2 + 2 = 5} için denerseniz \Lean{} itiraz eder; çünkü iki taraf
+hesaplandığında aynı değildir. Bir önermenin doğru olmasının ``\Lean{}'in
+kanıtı kabul etmesi'' anlamına geldiğini burada açıkça görüyoruz.
+
+% ---------------------------------------------------------------------
+\section{Hata mesajlarını okumak ve \texttt{sorry}}\label{sec:hatalar}
+
+İspat asistanıyla çalışmanın büyük kısmı, hata mesajlarını okumaktan oluşur.
+Bunda utanılacak bir şey yoktur: Her hata mesajı, \Lean{}'in sizinle
+konuştuğu bir andır. Bilerek yanlış bir ispat yazalım:
+
+\begin{leankod}[Yanlış bir ispat (derlenmez)]
+theorem yanlis (P Q : Prop) (hp : P) : Q := hp
+\end{leankod}
+
+\Lean{} \lc{hp}'nin altını kırmızıyla çizer ve aşağıdakine benzer bir mesaj
+gösterir. (Mesajın tam ifadesi \Lean{} sürümüne göre biraz değişebilir.)
+
+\begin{leanhata}[Lean hata mesajı]
+type mismatch
+  hp
+has type
+  P : Prop
+but is expected to have type
+  Q : Prop
+\end{leanhata}
+
+Okunuşu: ``\lc{hp} ifadesinin türü $P$, ama burada $Q$ türünden bir şey
+beklenmektedir.'' Mantık diliyle: ``Sen bana $P$'nin kanıtını verdin, ama
+ben $Q$'nun kanıtını istedim.'' \Lean{}, $P$'den $Q$'nun çıkacağına dair
+hiçbir gerekçe göremediği için ispatı reddeder. Haklıdır da: $P$ doğru,
+$Q$ yanlış olabilir.
+
+\paragraph{sorry: ``Buraya sonra döneceğim''}
+Bir ispatın bir kısmını henüz yazamıyorsanız, o kısmın yerine \leantac{sorry}
+yazabilirsiniz. \Lean{} dosyanın geri kalanını denetlemeye devam eder,
+ama \leantac{sorry} içeren her teoremi bir uyarıyla işaretler:
+
+\begin{leankod}[Yarım kalmış bir ispat]
+theorem henuz_bitmedi (P Q : Prop) (hp : P) : P ∧ Q := by
+  sorry
+\end{leankod}
+
+\begin{dikkat}
+\leantac{sorry}, bir ispatı \emph{kapatmaz}; yalnızca ertelemeyi sağlar.
+\leantac{sorry} içeren bir teorem kanıtlanmış sayılmaz. Bir teoremin
+gerçekten kanıtlanıp kanıtlanmadığını \lc{\textcolor{leancmd}{\bfseries\#print axioms}}
+komutuyla denetleyebilirsiniz: \leantac{sorry} kullanılmışsa listede
+\lc{sorryAx} görünür. Bu komuta \cref{bol:aksiyomlar}'da yeniden döneceğiz.
+\end{dikkat}
+
+Kitabın alıştırma dosyalarının hepsi bu yöntemle hazırlanmıştır: Teoremin
+ifadesi verilir, ispatın yerinde \leantac{sorry} durur. Sizin göreviniz
+\leantac{sorry}'yi gerçek bir ispatla değiştirmektir.
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Lean'in kısa geçmişi.} Lean, Leonardo de Moura tarafından Microsoft
+Research'te başlatıldı; ilk sistem tanımı 2015'te yayımlandı
+\citep{demoura2015lean}. \Lean{}, öncüllerinden farklı olarak büyük ölçüde
+\emph{kendi dilinde} yazılmıştır; böylece kullanıcılar dili kendi taktikleri
+ve notasyonlarıyla genişletebilir \citep{demoura2021lean4}. Topluluk
+tarafından geliştirilen matematik kütüphanesi \Mathlib{}, bugün en büyük
+birleşik formal matematik kütüphanelerinden biridir \citep{mathlib2020}.
+
+\textbf{İleri okuma.} \Lean{}'e İngilizce giriş için resmî kaynaklar
+\citet{tpil4} ve \citet{logicandproof}'tur. Bilgisayar bilimi
+perspektifinden bir giriş için \citet{hitchhiker2026}'ya, programlama
+yönü için \citet{fpil}'e bakılabilir. \Lean{}'in tip kuramının kesin
+tanımı \citet{carneiro2019}'dadır.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Mantık, çıkarımların \emph{biçimine} bakarak geçerliliklerini
+        inceler. Geçerlilik ile doğruluk farklı kavramlardır.
+  \item İspat asistanları ispatları mekanik olarak denetler. \Lean{}'de
+        güven, küçük bir çekirdeğe dayanır (de Bruijn ölçütü).
+  \item \lc{\textcolor{leancmd}{\bfseries\#check}} türü,
+        \lc{\textcolor{leancmd}{\bfseries\#eval}} değeri gösterir.
+        \leantype{Prop}, önermelerin türüdür.
+  \item \lc{hp : P}, ``\lc{hp}, $P$'nin bir kanıtıdır'' diye okunur.
+        Bir önermeyi ispatlamak, onun türünden bir terim inşa etmektir.
+  \item Taktik modunda (\leankw{by}) \Lean{}, her adımda bağlamı ve hedefi
+        gösterir. \leantac{exact} hedefi kapatır, \leantac{sorry} erteler.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} Aşağıdaki çıkarımların her biri için geçerli olup
+olmadığını ve sağlam olup olmadığını belirleyin:
+(a) ``Bütün kediler memelidir. Tekir bir kedidir. O hâlde Tekir bir
+memelidir.''
+(b) ``Bütün balıklar yüzer. Yunus yüzer. O hâlde yunus bir balıktır.''
+
+\alistirma{1} Aşağıdaki komutların çıktısını önce tahmin edin, sonra
+\Lean{}'de deneyin:
+\lc{\#check 3}, \lc{\#eval 3 * 7}, \lc{\#check (3 < 7)},
+\lc{\#check "merhaba"}, \lc{\#eval "mer" ++ "haba"}.
+
+\alistirma{1} \lc{ilk\_teorem}'in ispatındaki \lc{hp}'yi silip yerine
+\leantac{sorry} yazın. Infoview'da ne değişiyor? Sonra \lc{\#print axioms}
+komutunu çalıştırın.
+
+\alistirma{2} Aşağıdaki teoremi ispatlayın. Elinizdeki varsayımlardan
+hangisi gereksiz?
+\begin{center}
+\lc{theorem ikinci (P Q : Prop) (hp : P) (hq : Q) : Q := sorry}
+\end{center}
+
+\alistirma{2} \cref{sec:hatalar}'teki \lc{yanlis} teoremini \Lean{}'de
+yazın. Hata mesajını kendi cümlelerinizle açıklayın. Sonra varsayımlara
+tek bir varsayım ekleyerek teoremi ispatlanabilir hâle getirin.
+
+\alistirma{3} (Tartışma) de Bruijn ölçütü neden önemlidir? Bir ispat
+asistanının elaboratöründe bir hata bulunduğunu düşünün. Bu hata hangi
+koşullarda yanlış bir teoremin kabul edilmesine yol açabilir, hangi
+koşullarda açamaz?
+\end{alistirmalar}

@@ -1,0 +1,659 @@
+% =====================================================================
+%  Bölüm 7 — Doğal Sayılar ve Tümevarım
+% =====================================================================
+\chapter{Doğal Sayılar ve Tümevarım}\label{bol:tumevarim}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Peano aksiyomlarını ve onların \Lean{}'de neden \emph{teorem}
+        olduğunu,
+  \item Doğal sayıları kendi tümevarımsal tipimizle sıfırdan tanımlamayı,
+  \item Toplama ve çarpmayı \emph{özyinelemeyle} tanımlamayı ve bu
+        tanımların nasıl hesaplandığını,
+  \item Tümevarım ilkesini, \leantac{induction} taktiğini ve tümevarım
+        hipotezini kullanmayı,
+  \item Toplamanın değişme ve birleşme özelliklerini ilk ilkelerden
+        ispatlamayı,
+  \item Gauss toplam formülünü, güçlü tümevarımı ve pul problemini,
+  \item \leantac{simp}, \leantac{omega} ve \leantac{decide} otomasyonunu
+        ve sınırlarını.
+\end{itemize}
+\end{bolumhedefleri}
+
+Şimdiye kadar mantığın \emph{genel} yasalarıyla uğraştık: Her $P$, $Q$
+ya da her yüklem için geçerli olan yasalar. Bu bölümde ilk kez belirli bir
+matematiksel yapıyı, doğal sayıları ele alıyoruz. Doğal sayılar, mantıkla
+matematiğin buluştuğu ilk yerdir. Burada öğreneceğimiz iki fikir,
+\emph{özyinelemeli tanım} ve \emph{tümevarımla ispat}, kitabın geri
+kalanının neredeyse her sayfasında karşımıza çıkacak.
+
+% ---------------------------------------------------------------------
+\section{Peano aksiyomları}\label{sec:peano}
+
+Doğal sayılar nedir? Okulda $0, 1, 2, 3, \ldots$ diye sayarız; ama bu
+``$\ldots$'' ne anlama gelir? On dokuzuncu yüzyılın sonunda Richard
+Dedekind ve Giuseppe Peano bu soruya kesin bir cevap verdiler
+\citep{dedekind1888, peano1889}. Doğal sayıların bütün özellikleri,
+birkaç basit ilkeden türetilebilir (\cref{tab:peano}).
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\centering\arraybackslash}p{0.6cm}
+                >{\raggedright\arraybackslash}p{6.2cm}
+                >{\raggedright\arraybackslash}p{4.8cm}}
+\rowcolor{tabloust}
+\tablobaslik{} & \tablobaslik{Aksiyom} & \tablobaslik{Lean'de} \\
+P1 & $0$ bir doğal sayıdır. & kurucu \lc{sifir} \\
+P2 & Her $n$ doğal sayısının bir \emph{ardılı} $S(n)$ vardır. & kurucu \lc{ard} \\
+P3 & $0$ hiçbir sayının ardılı değildir: $S(n) \neq 0$. & teorem \lc{sifir\_ard\_degil} \\
+P4 & Ardıl fonksiyonu birebirdir: $S(n) = S(m) \Rightarrow n = m$. & teorem \lc{ard\_birebir} \\
+P5 & \textbf{Tümevarım}: $0$'ı içeren ve ardıl altında kapalı olan her
+     özellik, bütün doğal sayılarda geçerlidir. & teorem \lc{tumevarim} \\
+\end{tabular}
+\caption{Peano aksiyomları ve \Lean{}'deki karşılıkları. İlk ikisi
+tanımın kendisidir; geri kalan üçü, tanımdan \emph{türetilen}
+teoremlerdir.}
+\label{tab:peano}
+\end{table}
+
+\begin{tarihce}[Tarihçe: Dedekind ve Peano]
+Dedekind 1888'de yayımladığı \emph{Was sind und was sollen die Zahlen?}
+(Sayılar nedir ve ne olmalıdır?) adlı kitabında doğal sayıları
+kümeler kuramı içinde tanımladı ve özyinelemeli tanımların neden
+anlamlı olduğunu ispatladı \citep{dedekind1888}. Peano bir yıl sonra
+aynı fikirleri, kendi geliştirdiği sembolik dille ve aksiyomlar hâlinde
+sundu \citep{peano1889}. Bugün kullandığımız $\in$ sembolü ve pek çok
+mantık gösterimi Peano'dan gelir. Aksiyomlara Peano'nun adı verilir,
+ama Peano kendisi Dedekind'in önceliğini kabul etmiştir.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{Doğal sayıları sıfırdan tanımlamak}\label{sec:dogal-tanim}
+
+\Lean{}'in kendi doğal sayıları (\lc{Nat}) vardır; ama ne olduklarını
+anlamanın en iyi yolu, onları kendimiz tanımlamaktır:
+
+\leandosya[Kendi doğal sayılarımız]{Bolum07}{dogal_tanim}
+
+\noindent \leankw{inductive} anahtar kelimesi yeni bir tip tanımlar ve
+bu tipin elemanlarının \emph{nasıl kurulabileceğini} söyler. \lc{Dogal}
+tipinin iki kurucusu vardır: \lc{sifir} ve \lc{ard}. Bu tipin her elemanı
+bu iki kurucunun sonlu sayıda uygulanmasıyla elde edilir; başka hiçbir
+eleman yoktur (\cref{fig:dogal-zincir}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    sayi/.style={draw=anarenk, fill=tanimbg, thick, rounded corners=4pt,
+                 font=\leanfont\scriptsize, minimum height=0.8cm, inner sep=4pt},
+    ok/.style={-{Stealth[length=2.4mm]}, thick, leankw},
+  ]
+  \node[sayi] (s0) at (0,0) {sifir};
+  \node[sayi] (s1) at (2.5,0) {ard sifir};
+  \node[sayi] (s2) at (5.6,0) {ard (ard sifir)};
+  \node[sayi] (s3) at (9.6,0) {ard (ard (ard sifir))};
+  \node (s4) at (12.5,0) {$\cdots$};
+  \foreach \a/\b in {s0/s1, s1/s2, s2/s3, s3/s4}
+    \draw[ok] (\a) -- node[above, font=\leanfont\scriptsize\bfseries, text=leankw]{ard} (\b);
+  \foreach \n/\v in {s0/0, s1/1, s2/2, s3/3}
+    \node[below=4pt of \n, font=\baslikfont\small\bfseries, text=anarenk] {$\v$};
+\end{tikzpicture}
+\caption{\lc{Dogal} tipinin elemanları. Her sayı, \lc{sifir}'dan başlayıp
+\lc{ard}'ı yeterince kez uygulayarak elde edilir.}
+\label{fig:dogal-zincir}
+\end{figure}
+
+Tümevarımsal bir tanımın iki önemli özelliği vardır:
+\begin{enumerate}[label=(\roman*)]
+  \item \textbf{Kurucular birbirinden farklıdır}: \lc{sifir} ile
+        \lc{ard n} asla eşit olamaz.
+  \item \textbf{Kurucular birebirdir}: \lc{ard n = ard m} ise \lc{n = m}.
+\end{enumerate}
+
+\noindent Bu iki özellik \Lean{}'in tip kuramına yerleşiktir. Dolayısıyla
+Peano'nun P3 ve P4 aksiyomları, bizim için \emph{ispatlanabilir
+teoremlerdir}:
+
+\leandosya[Peano aksiyomları teorem olarak]{Bolum07}{peano_teorem}
+
+\begin{onemlifikir}[Önemli Fikir: Aksiyom değil, tanım]
+Klasik matematikte Peano aksiyomları \emph{varsayılır}. Tip kuramında
+ise tek yaptığımız \lc{Dogal} tipini tanımlamaktır; aksiyomların hepsi
+bu tanımdan teorem olarak çıkar. Yeni bir varsayım eklemediğimiz için
+bu yaklaşım, sistemin tutarlılığı açısından daha güvenlidir. Bu yöntemin
+genel hâlini, yani her türlü veri yapısını \leankw{inductive} ile
+tanımlamayı, \cref{bol:tumevarimsal-tipler}'da göreceğiz.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Özyineleme: toplama ve çarpma}\label{sec:ozyineleme}
+
+Doğal sayılar üzerinde fonksiyonları \emph{özyinelemeyle} tanımlarız:
+Fonksiyonun \lc{sifir}'daki değerini ve \lc{ard n}'deki değerini
+\lc{n}'deki değeri cinsinden veririz.
+
+\leandosya[Toplama]{Bolum07}{topla_tanim}
+
+\noindent Bu tanım, ikinci argüman üzerinde özyinelemelidir. ``$n + 0 = n$''
+ve ``$n + (m+1) = (n+m)+1$'' kurallarını söyler. Bir toplamın nasıl
+hesaplandığını adım adım izleyelim (\cref{fig:hesaplama-izi}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    adim/.style={font=\leanfont\small, anchor=west},
+    kural/.style={font=\baslikfont\scriptsize, text=leantac, anchor=west},
+  ]
+  \node[adim] at (0,0)    {topla iki (ard (ard sifir))};
+  \node[adim] at (0,-0.75) {= ard (topla iki (ard sifir))};
+  \node[adim] at (0,-1.5) {= ard (ard (topla iki sifir))};
+  \node[adim] at (0,-2.25) {= ard (ard iki)};
+  \node[adim] at (0,-3.0) {= ard (ard (ard (ard sifir)))};
+  \node[kural] at (7.4,-0.75) {2. kural};
+  \node[kural] at (7.4,-1.5)  {2. kural};
+  \node[kural] at (7.4,-2.25) {1. kural};
+  \node[kural] at (7.4,-3.0)  {\lc{iki}'nin tanımı};
+  \node[font=\baslikfont\bfseries\small, text=anarenk, anchor=west] at (9.4,-1.5) {$2 + 2 = 4$};
+  \draw[anarenk, thick, decorate, decoration={brace, amplitude=6pt}]
+       (9.2,0.2) -- (9.2,-3.2);
+\end{tikzpicture}
+\caption{$2 + 2$'nin hesaplanması. Her adımda tanımdaki iki kuraldan biri
+uygulanır; ikinci argüman her adımda küçülür ve hesaplama sona erer.}
+\label{fig:hesaplama-izi}
+\end{figure}
+
+Çarpma da toplamaya dayanarak aynı biçimde tanımlanır:
+
+\leandosya[Çarpma]{Bolum07}{carp_tanim}
+
+\noindent Tanımlarımızı denemek için, kendi sayılarımızı \Lean{}'in
+\lc{Nat}'ına çeviren bir fonksiyon yazıp \lc{\textcolor{leancmd}{\bfseries\#eval}}
+ile hesaplatabiliriz:
+
+\leandosya[Hesaplama]{Bolum07}{sayiya}
+
+\begin{dikkat}[Dikkat: Özyineleme her zaman sona ermelidir]
+\Lean{}, özyinelemeli her tanımın sona erdiğini denetler. Yukarıdaki
+tanımlarda her özyinelemeli çağrı \emph{daha küçük} bir argümanla
+(\lc{ard m} yerine \lc{m} ile) yapıldığı için bu denetim kendiliğinden
+geçer. Buna \emph{yapısal özyineleme} denir. Sona ermeyen bir tanım
+(örneğin \lc{f n := f n + 1}) kabul edilseydi, \lc{f 0 = f 0 + 1}
+eşitliğinden \lc{False} türetilebilirdi. Sona erme denetimi, mantığın
+tutarlılığının bir parçasıdır.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Tümevarım ilkesi}\label{sec:tumevarim-ilkesi}
+
+\begin{center}
+\begin{prooftree}
+  \hypo{P(0)}
+  \hypo{[P(n)]^{1}}
+  \ellipsis{}{P(n+1)}
+  \infer2[Tümevarım$^{1,*}$]{\forall n,\; P(n)}
+\end{prooftree}
+\qquad
+{\small \leantac{induction n with \ldots}}
+\end{center}
+
+\noindent {\small $^{*}$\,$n$, sağdaki türetimin diğer açık
+varsayımlarında geçmemelidir.}
+
+Tümevarım ilkesi, dominoların düşmesine benzetilir
+(\cref{fig:domino}). Birinci domino düşüyorsa (\emph{taban adımı}) ve
+her domino düştüğünde bir sonrakini de düşürüyorsa (\emph{tümevarım
+adımı}), bütün dominolar düşer.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \draw[black!30, thick] (-0.9,0) -- (11.4,0);
+  % düşmüş dominolar (sağ alt köşeleri etrafında döndürülmüş)
+  \foreach \i in {0,1,2,3} {
+    \draw[bittiframe, thick, fill=bittibg, rotate around={-58:({1.25*\i+0.2},0)}]
+         ({1.25*\i-0.2},0) rectangle ({1.25*\i+0.2},1.5);
+    \node[font=\scriptsize, text=bittiframe] at ({1.25*\i},-0.35) {$P(\i)$};
+  }
+  % ayakta olanlar
+  \foreach \i in {4,5,6,7} {
+    \draw[anarenk, thick, fill=tanimbg] ({1.25*\i-0.2},0) rectangle ({1.25*\i+0.2},1.5);
+    \node[font=\scriptsize, text=anarenk] at ({1.25*\i},-0.35) {$P(\i)$};
+  }
+  \node at (10.6,0.7) {$\cdots$};
+  \draw[-{Stealth[length=2.6mm]}, very thick, vurgu] (-0.8,2.0) -- (-0.15,1.2);
+  \node[font=\baslikfont\scriptsize\bfseries, text=vurgu, anchor=south] at (-0.8,2.0) {taban: $P(0)$};
+  \draw[-{Stealth[length=2.6mm]}, very thick, leantac] (4.0,2.3) to[bend left=20] (4.75,1.75);
+  \node[font=\baslikfont\scriptsize\bfseries, text=leantac, anchor=south] at (4.0,2.3) {adım: $P(n) \to P(n+1)$};
+\end{tikzpicture}
+\caption{Tümevarım: İlk domino düşer ve her düşen domino bir sonrakini
+düşürür; o hâlde hepsi düşer.}
+\label{fig:domino}
+\end{figure}
+
+\Lean{}'de tümevarım ilkesi de bir \emph{teoremdir}. \leankw{inductive}
+ile her tip tanımladığımızda, \Lean{} o tip için bir \emph{özyineleyici}
+(İng.\ \emph{recursor}) üretir:
+
+\leandosya[Özyineleyici]{Bolum07}{rec_check}
+
+\noindent Bu tip, tam olarak tümevarım ilkesidir: \lc{motive} ispatlamak
+istediğimiz özellik, ikinci argüman taban adımı, üçüncü argüman
+tümevarım adımıdır. Aynı özyineleyici hem \emph{fonksiyon tanımlamak}
+(\lc{motive} bir \lc{Type} ise) hem de \emph{ispat yapmak} (\lc{motive}
+bir \lc{Prop} ise) için kullanılır. Curry--Howard'ın bir başka
+yüzü: \textbf{tümevarımla ispat, özyinelemeli bir fonksiyondur}.
+
+\leandosya[Tümevarım ilkesi]{Bolum07}{tumevarim}
+
+\noindent \leantac{induction n with} satırı iki hedef açar. İkinci
+hedefte bağlama \emph{tümevarım hipotezi} \lc{ih : P m} eklenir:
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[\texttt{sifir} durumu]
+P : Dogal → Prop
+h0 : P sifir
+hs : ∀ (n : Dogal), P n → P n.ard
+⊢ P sifir
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{ard} durumu]
+P : Dogal → Prop
+h0 : P sifir
+hs : ∀ (n : Dogal), P n → P n.ard
+m : Dogal
+ih : P m
+⊢ P m.ard
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+% ---------------------------------------------------------------------
+\section{İlk tümevarım ispatları}\label{sec:ilk-tumevarim}
+
+\subsection{Bir asimetri}
+
+Toplamanın tanımı ``$n + 0 = n$'' der. Bu eşitlik tanım gereği doğrudur;
+\lc{rfl} yeter:
+
+\leandosya[$n + 0 = n$]{Bolum07}{topla_sifir}
+
+\noindent Ya ``$0 + n = n$''? Matematik açısından aynı derecede apaçık
+görünür, ama \Lean{} için hiç de öyle değildir: Tanım ikinci argümana
+bakar ve \lc{n} bilinmeyen bir sayı olduğu için hiçbir kural
+uygulanamaz. Bu eşitlik ancak \emph{tümevarımla} ispatlanabilir:
+
+\leandosya[$0 + n = n$]{Bolum07}{sifir_topla}
+
+\noindent \leantac{show} adımı, hedefteki \lc{topla sifir (ard m)}
+ifadesini tanımın ikinci kuralıyla bir adım açar. Ardından tümevarım
+hipotezi \lc{ih : topla sifir m = m} ile yeniden yazmak yeterlidir.
+
+\begin{onemlifikir}[Önemli Fikir: Tanımsal ve önermesel eşitlik]
+\lc{topla n sifir = n} \emph{tanımsal} bir eşitliktir: \Lean{} iki tarafı
+hesaplayarak aynı olduklarını görür ve \lc{rfl} kabul edilir.
+\lc{topla sifir n = n} ise \emph{önermesel} bir eşitliktir: Doğrudur,
+ama bir ispat gerektirir. Bu ayrım tip kuramının en önemli
+kavramlarından biridir ve \cref{bol:bagimli}'te ayrıntılı olarak
+incelenecek.
+\end{onemlifikir}
+
+Aynı ispatı terim modunda, \emph{özyinelemeli bir fonksiyon} olarak da
+yazabiliriz. Kendini daha küçük bir argümanla çağıran bu ``ispat'',
+tümevarımın kendisidir:
+
+\leandosya[$0 + n = n$, özyinelemeli ispat]{Bolum07}{sifir_topla_terim}
+
+\subsection{Değişme ve birleşme}
+
+Toplamanın değişme özelliğini ($n + m = m + n$) ispatlamak için önce bir
+yardımcı önsav gerekir:
+
+\leandosya[Ardıl ile toplama]{Bolum07}{ard_topla}
+\leandosya[Değişme özelliği]{Bolum07}{topla_degisme}
+\leandosya[Birleşme özelliği]{Bolum07}{topla_birlesme}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    onsav/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                  font=\leanfont\scriptsize, align=center, inner sep=5pt,
+                  minimum width=2.8cm},
+    ok/.style={-{Stealth[length=2.4mm]}, thick, black!45},
+  ]
+  \node[onsav=anarenk] (t0) at (0,0)    {topla\_sifir\\{\rmfamily\small $n + 0 = n$}\\{\rmfamily\scriptsize tanımdan}};
+  \node[onsav=ikincil] (s0) at (4.4,1.2)  {sifir\_topla\\{\rmfamily\small $0 + n = n$}};
+  \node[onsav=ikincil] (at) at (4.4,-1.2) {ard\_topla\\{\rmfamily\small $(n{+}1) + m = (n{+}m){+}1$}};
+  \node[onsav=teoremframe] (dg) at (9.0,0) {topla\_degisme\\{\rmfamily\small $n + m = m + n$}};
+  \node[onsav=teoremframe] (bl) at (9.0,-2.5) {topla\_birlesme\\{\rmfamily\small $(a{+}b){+}c = a{+}(b{+}c)$}};
+  \draw[ok] (t0) -- (s0);
+  \draw[ok] (s0) -- (dg);
+  \draw[ok] (at) -- (dg);
+  \node[font=\baslikfont\scriptsize, text=black!60, align=center] at (0,-2.3) {her ok:\\``şu önsav kullanılır''};
+\end{tikzpicture}
+\caption{Toplamanın temel özellikleri arasındaki bağımlılıklar. Birleşme
+özelliği hiçbir önsava ihtiyaç duymaz; değişme özelliği ise iki önsav
+gerektirir.}
+\label{fig:onsav-grafi}
+\end{figure}
+
+\Cref{fig:onsav-grafi}, ispatlar arasındaki bağımlılıkları gösteriyor.
+Bu küçük grafik, büyük formalizasyon projelerinin nasıl planlandığının
+bir minyatürüdür: Önce hangi önsavların gerektiği belirlenir, sonra
+bunlar tek tek ispatlanır (\cref{bol:proje}).
+
+\begin{dikkat}[Dikkat: Hangi değişken üzerinde tümevarım?]
+Toplama ikinci argümanda özyinelemeli olduğu için, tümevarımı da
+genellikle ikinci argüman üzerinde yapmak gerekir. \lc{topla\_degisme}
+ispatında tümevarımı \lc{n} üzerinde yapmayı deneyin: Tanım
+açılamayacağı için takılırsınız. Doğru değişkeni seçmek, tümevarım
+ispatlarındaki en önemli karardır ve çoğunlukla \emph{tanımın} hangi
+argümana baktığına göre verilir.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Lean'in doğal sayıları}\label{sec:nat}
+
+\Lean{}'in yerleşik \lc{Nat} tipi, bizim \lc{Dogal} tipimizle tam olarak
+aynı biçimde tanımlanmıştır:
+
+\leandosya[\texttt{Nat}'ın tanımı]{Bolum07}{nat_print}
+
+\noindent Tek fark, \Lean{}'in \lc{Nat} için \lc{0}, \lc{1}, \lc{2}
+gibi rakamları, \lc{n + 1} gösterimini ve büyük sayılarla verimli
+hesaplamayı desteklemesidir. \leantac{induction} taktiği \lc{Nat} üzerinde
+de aynı biçimde çalışır; durumlar \lc{zero} ve \lc{succ} adını taşır:
+
+\leandosya[$0 + n = n$, \texttt{Nat} ile]{Bolum07}{nat_sifir_arti}
+
+\noindent Bu ispatta \Lean{}'in kütüphanesindeki \lc{Nat.add\_assoc}
+(birleşme) teoremini ters yönde kullandık. Bir sonraki örnekte ise
+aritmetik işi \leantac{omega}'ya bırakıyoruz:
+
+\leandosya[İki katı]{Bolum07}{iki_kat}
+
+\subsection{Gauss'un toplamı}
+
+Anlatılan hikâyeye göre küçük Carl Friedrich Gauss'a öğretmeni
+1'den 100'e kadar olan sayıları topla demiş, Gauss da birkaç saniye
+içinde 5050 cevabını vermiş. Gauss'un fikri, toplamı iki kez yazıp
+terimleri eşlemekti (\cref{fig:gauss}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    top/.style={circle, fill=#1, inner sep=0pt, minimum size=0.36cm},
+  ]
+  \foreach \satir in {1,...,5} {
+    \foreach \sutun in {1,...,6} {
+      \pgfmathtruncatemacro{\sinir}{\satir}
+      \ifnum\sutun>\sinir
+        \node[top=vurgu!55] at ({0.48*\sutun},{-0.48*\satir}) {};
+      \else
+        \node[top=anarenk] at ({0.48*\sutun},{-0.48*\satir}) {};
+      \fi
+    }
+  }
+  \draw[decorate, decoration={brace, amplitude=5pt}, thick] (0.25,-0.2) -- (3.12,-0.2)
+       node[midway, above=6pt, font=\small] {$n + 1 = 6$};
+  \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick] (0.18,-0.28) -- (0.18,-2.68)
+       node[midway, left=6pt, font=\small] {$n = 5$};
+  \node[font=\small, align=left, anchor=west] at (3.8,-1.0)
+       {\textcolor{anarenk}{$\bullet$} $1 + 2 + \cdots + n$\\[2pt]
+        \textcolor{vurgu!80}{$\bullet$} $n + \cdots + 2 + 1$};
+  \node[font=\small, anchor=west] at (3.8,-2.2)
+       {$2 \cdot (1 + \cdots + n) = n(n+1)$};
+\end{tikzpicture}
+\caption{Gauss'un fikri: İki üçgen birleşince $n \times (n+1)$'lik bir
+dikdörtgen oluşur.}
+\label{fig:gauss}
+\end{figure}
+
+\leandosya[Toplam fonksiyonu]{Bolum07}{gauss_tanim}
+
+\noindent \lc{\textcolor{leancmd}{\bfseries\#eval}} ve \leantac{decide},
+formülü belirli değerler için denetler; ama \emph{her} $n$ için
+doğruluğunu göstermez. Bunun için tümevarım gerekir:
+
+\begin{teorem}{Gauss}{gauss}
+Her $n$ doğal sayısı için $2 \cdot (1 + 2 + \cdots + n) = n(n+1)$.
+\end{teorem}
+
+\leandosya[Gauss toplamı]{Bolum07}{gauss}
+
+\noindent İspatın tümevarım adımı, kâğıt üzerindeki hesabın
+satır satır karşılığıdır:
+\begin{align*}
+2 \cdot \bigl(T(m) + (m+1)\bigr)
+  &= 2 \cdot T(m) + 2(m+1)   && \text{dağılma} \\
+  &= m(m+1) + 2(m+1)          && \text{tümevarım hipotezi} \\
+  &= (m+2)(m+1)               && \text{ters dağılma} \\
+  &= (m+1)(m+2).              && \text{değişme}
+\end{align*}
+
+% ---------------------------------------------------------------------
+\section{Güçlü tümevarım}\label{sec:guclu}
+
+Bazı ispatlarda $P(n+1)$'i göstermek için yalnızca $P(n)$ değil, daha
+önceki bütün değerler gerekir. Örneğin bir sayıyı asal çarpanlarına
+ayırırken $n$'nin çarpanlarına bakarız ve bunlar $n-1$'den çok daha
+küçük olabilir. \emph{Güçlü tümevarım} bu durumlar içindir
+(\cref{fig:guclu}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!10, thick, rounded corners=2pt,
+                 minimum width=0.8cm, minimum height=0.8cm, font=\scriptsize},
+  ]
+  \node[font=\baslikfont\small\bfseries, text=anarenk, anchor=west] at (-0.5,1.1) {Sıradan tümevarım};
+  \foreach \i in {0,...,4} \node[kutu=gri] (a\i) at ({1.0*\i},0) {$\i$};
+  \node[kutu=leantac] (a5) at (5,0) {$5$};
+  \draw[-{Stealth[length=2.2mm]}, thick, anarenk] (a4) to[bend left=40] (a5);
+  \node[font=\scriptsize, text=black!60, anchor=west] at (5.6,0) {$P(4) \Rightarrow P(5)$};
+
+  \node[font=\baslikfont\small\bfseries, text=ikincil, anchor=west] at (-0.5,-1.1) {Güçlü tümevarım};
+  \foreach \i in {0,...,4} \node[kutu=ikincil] (b\i) at ({1.0*\i},-2.2) {$\i$};
+  \node[kutu=leantac] (b5) at (5,-2.2) {$5$};
+  \foreach \i in {0,...,4} \draw[-{Stealth[length=2.2mm]}, thick, ikincil] (b\i) to[bend right=35] (b5);
+  \node[font=\scriptsize, text=black!60, anchor=west] at (5.6,-2.2) {$P(0), \ldots, P(4) \Rightarrow P(5)$};
+\end{tikzpicture}
+\caption{Sıradan tümevarımda yalnızca bir önceki değer, güçlü
+tümevarımda ise bütün önceki değerler kullanılabilir.}
+\label{fig:guclu}
+\end{figure}
+
+\begin{teorem}{Güçlü tümevarım}{guclu}
+$P$ doğal sayılar üzerinde bir yüklem olsun. Her $n$ için ``$m < n$ olan
+her $m$ için $P(m)$'' varsayımından $P(n)$ çıkıyorsa, her $n$ için $P(n)$
+doğrudur.
+\end{teorem}
+
+\noindent Güçlü tümevarımı ayrı bir aksiyom olarak eklememize gerek
+yoktur; sıradan tümevarımdan türetilebilir. Hile, daha güçlü bir önermeyi
+(``$n$'den küçük her $m$ için $P(m)$'') sıradan tümevarımla ispatlamaktır:
+
+\leandosya[Güçlü tümevarım]{Bolum07}{guclu}
+
+\noindent İspatın ortasındaki \leantac{have} adımına dikkat edin:
+\emph{İspatlanacak önermeyi güçlendirmek}, tümevarım ispatlarındaki en
+güçlü tekniklerden biridir. Doğrudan \lc{P n}'yi ispatlamaya çalışınca
+tümevarım hipotezi yetersiz kalır; güçlendirilmiş önermenin tümevarım
+hipotezi ise tam ihtiyacımız olanı verir.
+
+\begin{onemlifikir}[Önemli Fikir: İyi sıralama]
+Güçlü tümevarım, \emph{iyi sıralama ilkesine} denktir: Doğal sayıların
+boş olmayan her alt kümesinin bir en küçük elemanı vardır. ``En küçük
+karşı örnek'' yöntemiyle yapılan bütün ispatlar (``varsayalım ki $P$'yi
+sağlamayan sayılar var; en küçüğü $n$ olsun\ldots'') aslında güçlü
+tümevarımdır. Bu yöntemi \cref{bol:tumevarimsal-tipler}'da, sona erme
+ispatlarında yeniden kullanacağız.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Otomasyon: simp, omega, decide}\label{sec:otomasyon-nat}
+
+Doğal sayılarla ilgili ispatların büyük kısmı rutin hesaplardan
+oluşur. \Lean{}'in bu işler için güçlü araçları vardır:
+
+\leandosya[Otomasyon örnekleri]{Bolum07}{otomasyon}
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.0cm}
+                             >{\raggedright\arraybackslash}X
+                             >{\raggedright\arraybackslash}p{4.2cm}}
+\rowcolor{tabloust}
+\tablobaslik{Taktik} & \tablobaslik{Ne yapar?} & \tablobaslik{Ne yapamaz?} \\
+\leantac{decide}  & Değişken içermeyen, karar verilebilir önermeleri hesaplayarak çözer. & Değişken içeren önermeler; çok büyük hesaplar. \\
+\leantac{simp}    & Bilinen eşitliklerle (\lc{n + 0 = n} gibi) hedefi sadeleştirir. & Her zaman kapatmaz; sonuç tahmin edilemeyebilir. \\
+\leantac{omega}   & Tam sayı ve doğal sayılar üzerinde \emph{doğrusal} aritmetiği (toplama, sabitle çarpma, $<$, $\leq$, $=$) tam olarak karar verir. & Değişkenlerin çarpımı ($x \cdot y$) içeren \emph{doğrusal olmayan} adımlar. \\
+\end{tabularx}
+\caption{Doğal sayılar için otomasyon araçları.}
+\label{tab:otomasyon-nat}
+\end{table}
+
+\begin{dikkat}[Dikkat: omega doğrusal olmayan adımları atlayamaz]
+Gauss ispatının son adımı olan $m(m+1) + 2(m+1) = (m+1)(m+2)$ eşitliği
+\emph{doğrusal değildir}: Değişkenler birbiriyle çarpılıyor. \leantac{omega}
+bu tür terimleri yalnızca ``atom'' olarak, yani bilinmeyen sayılar gibi
+görür; $m \cdot (m+1)$ ile $(m+1) \cdot (m+2)$ arasındaki ilişkiyi
+göremez. Bu yüzden Gauss ispatında dağılma ve değişme adımlarını kendimiz
+yazdık. \Mathlib{}'teki \leantac{ring} taktiği bu tür polinom
+eşitliklerini kendiliğinden çözer; onu \cref{bol:kumeler}'de tanıyacağız.
+\end{dikkat}
+
+\begin{tarihce}[Tarihçe: Presburger aritmetiği]
+1929'da Mojżesz Presburger, yalnızca toplamayı içeren doğal sayı
+aritmetiğinin \emph{karar verilebilir} ve \emph{tam} olduğunu gösterdi
+\citep{presburger1929}: Bu dildeki her önermenin doğru mu yanlış mı
+olduğu bir algoritmayla belirlenebilir. Çarpma eklendiğinde ise durum
+tamamen değişir: Gödel iki yıl sonra, toplama ve çarpmayı birlikte içeren
+aritmetiğin eksik olduğunu gösterecekti (\ciltiki{4}). \leantac{omega}
+taktiği, William Pugh'un Presburger aritmetiği için geliştirdiği
+``omega testi'' algoritmasının bir çeşitlemesine dayanır \citep{pugh1991}.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{Curry--Howard: tümevarım = özyineleme}\label{sec:curry-howard-4}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{4.2cm}
+                >{\raggedright\arraybackslash}p{4.6cm}
+                >{\raggedright\arraybackslash}p{3.0cm}}
+\rowcolor{tabloust}
+\tablobaslik{Mantık} & \tablobaslik{Programlama} & \tablobaslik{Lean} \\
+tümevarımsal tanım            & veri tipi tanımı                & \leankw{inductive} \\
+tümevarımla ispat             & özyinelemeli fonksiyon          & \leantac{induction}, örüntü eşleme \\
+taban adımı                   & taban durum                     & \lc{| sifir => \ldots} \\
+tümevarım hipotezi            & özyinelemeli çağrının sonucu    & \lc{ih}, \lc{f m} \\
+tümevarım ilkesi              & özyineleyici                    & \lc{Dogal.rec} \\
+\end{tabular}
+\end{center}
+
+% ---------------------------------------------------------------------
+\section{Taktik özeti}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{4.2cm} X}
+\rowcolor{tabloust}
+\tablobaslik{Taktik} & \tablobaslik{Ne yapar?} \\
+\leantac{induction n with | ... }  & \lc{n} üzerinde tümevarım; her kurucu için bir durum açar. \\
+\leantac{injection h with h'}      & \lc{h : c a = c b}'den \lc{h' : a = b} çıkarır. \\
+\leantac{cases h} (\lc{h : c₁ = c₂}) & Farklı kurucuların eşitliğinden çelişki çıkarır. \\
+\leantac{show t}                   & Hedefi tanımsal olarak eşit bir biçime çevirir (tanımı açar). \\
+\leantac{change t at h}            & Hipotezi tanımsal olarak eşit bir biçime çevirir. \\
+\leantac{omega}                    & Doğrusal tam sayı aritmetiğini çözer. \\
+\leantac{simp}                     & Hedefi bilinen eşitliklerle sadeleştirir. \\
+\leantac{decide}                   & Değişken içermeyen önermeleri hesaplar. \\
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Natural Number Game.} Kevin Buzzard ve arkadaşlarının hazırladığı
+çevrimiçi \emph{Natural Number Game}, bu bölümdeki ispatları (ve çok
+daha fazlasını) adım adım bir oyun olarak sunar \citep{nng}. Peano
+aksiyomlarından başlayıp $\leq$ ilişkisine ve asal sayılara uzanır.
+Bu bölümü bitiren okura özellikle öneririz.
+
+\textbf{Tümevarımın gücü.} Peano aritmetiğinin (PA) gücü, tümevarım
+aksiyomunun hangi önermeler için kabul edildiğine bağlıdır. Tümevarımı
+yalnızca basit (sınırlı niceleyicili) önermelerle kısıtlayan zayıf
+aritmetik sistemleri, karmaşıklık kuramıyla ilişkileri nedeniyle hâlâ
+etkin bir araştırma alanıdır. Gentzen'in 1936'daki tutarlılık ispatı,
+PA'nın tutarlılığının $\varepsilon_0$ ordinaline kadar
+\emph{sonsuz ötesi tümevarımla} gösterilebileceğini ortaya koydu
+\citep{gentzen1936}; bu konuya \ciltiki{4}'te döneceğiz.
+
+\textbf{İleri okuma.} Tümevarım ve özyineleme için \citet{avigad2022};
+\Lean{}'de özyinelemeli tanımlar ve sona erme için \citet{tpil4} ve
+\citet{fpil}.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Doğal sayılar, \lc{sifir} ve \lc{ard} kurucularıyla tümevarımsal
+        bir tip olarak tanımlanır. Peano aksiyomları bu tanımdan teorem
+        olarak çıkar.
+  \item Fonksiyonlar özyinelemeyle tanımlanır; \Lean{} her özyinelemenin
+        sona erdiğini denetler.
+  \item Tümevarım ilkesi, tipin özyineleyicisidir. \leantac{induction}
+        taktiği taban ve adım durumlarını açar; adım durumunda
+        tümevarım hipotezi \lc{ih} kullanılır.
+  \item \lc{n + 0 = n} tanımsal, \lc{0 + n = n} önermeseldir ve tümevarım
+        ister. Tümevarım genellikle tanımın özyinelemeli olduğu argüman
+        üzerinde yapılır.
+  \item Güçlü tümevarım sıradan tümevarımdan türetilir; anahtar teknik
+        önermeyi güçlendirmektir.
+  \item \leantac{omega} doğrusal aritmetiği, \leantac{decide} somut
+        hesapları çözer. Doğrusal olmayan adımlar elle ya da \Mathlib{}'in
+        \leantac{ring} taktiğiyle yapılır.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} \lc{topla n (ard sifir) = ard n}. Neden tümevarım
+gerekmiyor? (\lc{a7\_1})
+
+\alistirma{2} \lc{carp sifir n = sifir}. Hangi değişken üzerinde
+tümevarım yapmalısınız? (\lc{a7\_2})
+
+\alistirma{2} Toplamada sadeleştirme: \lc{topla a c = topla b c → a = b}.
+İpucu: Tümevarım adımında \leantac{injection} kullanın. (\lc{a7\_3})
+
+\alistirma{1} \lc{Nat} üzerinde, kütüphane teoremi kullanmadan:
+\lc{0 * n = 0}. (\lc{a7\_4})
+
+\alistirma{2} \lc{ucKat n = 3 * n}. (\lc{a7\_5})
+
+\alistirma{2} Tek sayıların toplamı bir karedir:
+$1 + 3 + \cdots + (2n-1) = n^2$. Önce \cref{fig:gauss}'e benzer bir
+resimle neden doğru olduğunu gösterin, sonra \Lean{}'de ispatlayın.
+(\lc{a7\_6})
+
+\alistirma{2} \lc{n < 2 \textasciicircum{} n}. İpucu: \lc{Nat.pow\_succ}. (\lc{a7\_7})
+
+\alistirma{3} \textbf{Pul problemi}: 8 kuruş ve üstündeki her tutar
+yalnızca 3 ve 5 kuruşluk pullarla ödenebilir. Güçlü tümevarımla
+ispatlayın. Hangi üç durum taban adımı olarak gerekli? (\lc{a7\_8})
+
+\alistirma{2} (Kâğıt-kalem) \lc{carp iki uc} ifadesinin hesaplanmasını
+\cref{fig:hesaplama-izi}'deki gibi adım adım yazın.
+
+\alistirma{3} (Kâğıt-kalem) \lc{topla\_degisme}'yi \lc{n} üzerinde
+tümevarımla ispatlamaya çalışın. Hangi adımda takılıyorsunuz?
+Takılmamak için hangi önsavlar gerekir?
+
+\alistirma{3} (Tartışma) Aşağıdaki ``ispatın'' hatası nedir?
+``Bütün atlar aynı renktir. Tümevarımla: Bir attan oluşan her grupta
+atlar aynı renktir. $n$ atlık gruplar için doğru olsun; $n+1$ atlık bir
+grupta ilk $n$ at aynı renktir, son $n$ at da aynı renktir; iki grup
+ortak atlar içerdiği için hepsi aynı renktir.''
+\end{alistirmalar}

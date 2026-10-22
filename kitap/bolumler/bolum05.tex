@@ -1,0 +1,799 @@
+% =====================================================================
+%  Bölüm 5 — Doğal Çıkarım Ağaçları ve Lean Taktikleri
+% =====================================================================
+\chapter{Doğal Çıkarım Ağaçları ve Lean Taktikleri}\label{bol:dogal-cikarim}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Önermeler mantığının doğal çıkarım kurallarının tamamını tek bir
+        tabloda görmeyi,
+  \item \Lean{}'in hedef ekranının bir \emph{ardışık} ($\Gamma \vdash \varphi$)
+        olduğunu ve her taktiğin bir ardışığı başkalarına dönüştürdüğünü,
+  \item Geriye doğru (\leantac{apply}, \leantac{suffices}) ve ileriye doğru
+        (\leantac{have}) akıl yürütmeyi ve ikisini birlikte kullanmayı,
+  \item Bir ispata nereden başlanacağını söyleyen bir strateji haritasını,
+  \item İspat normalleştirmeyi: dolambaçlı ispatların nasıl
+        sadeleştirildiğini ve bunun neden ``hesaplama'' olduğunu,
+  \item Taktik birleştiricilerini: \lc{<;>}, \leantac{all\_goals},
+        \leantac{first}, \leantac{refine}.
+\end{itemize}
+\end{bolumhedefleri}
+
+Bu bölüm Kısım~I'i kapatıyor. Yeni bir bağlaç tanıtmayacağız; bunun
+yerine önceki dört bölümde öğrendiklerimizi bir araya getirip
+\emph{düzenleyeceğiz}. Amaç, önünüze yeni bir önerme geldiğinde
+``nereden başlamalıyım?'' sorusunu sistemli biçimde cevaplayabilmenizdir.
+
+% ---------------------------------------------------------------------
+\section{Kural kataloğu}\label{sec:kural-katalogu}
+
+\Cref{fig:kural-katalogu}, Bölüm~2--4'te tanıştığımız bütün çıkarım
+kurallarını bir arada gösteriyor. Tabloda iki şeye dikkat edin.
+Birincisi, her bağlacın bir \textcolor{ikincil}{\bfseries giriş} ve bir
+\textcolor{vurgu}{\bfseries eleme} sütunu vardır. İkincisi, yalnızca son
+satırdaki kural (\emph{klasik saçmaya indirgeme}) yapıcı değildir.
+
+\begin{figure}[p]
+\centering
+\small
+\renewcommand{\arraystretch}{1}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{>{\centering\arraybackslash}m{1.2cm}
+                >{\centering\arraybackslash}m{5.3cm}
+                >{\centering\arraybackslash}m{6.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Bağlaç} & \tablobaslik{Giriş (kanıtlamak)} & \tablobaslik{Eleme (kullanmak)} \\[2pt]
+% →
+$\to$ &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{[P]^{n}} \ellipsis{}{Q} \infer1[$\to$G$^n$]{P \to Q}
+\end{prooftree}\par\smallskip \leantac{intro} &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{P \to Q} \hypo{P} \infer2[$\to$E]{Q}
+\end{prooftree}\par\smallskip \leantac{apply}, \lc{h hp} \\[4pt]
+\hline
+% ∧
+$\wedge$ &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{P} \hypo{Q} \infer2[$\wedge$G]{P \wedge Q}
+\end{prooftree}\par\smallskip \leantac{constructor}, \lc{⟨hp, hq⟩} &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{P \wedge Q} \infer1[$\wedge$E$_1$]{P}
+\end{prooftree}\quad
+\begin{prooftree}
+  \hypo{P \wedge Q} \infer1[$\wedge$E$_2$]{Q}
+\end{prooftree}\par\smallskip \leantac{obtain}, \lc{h.1}, \lc{h.2} \\[4pt]
+\hline
+% ∨
+$\vee$ &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{P} \infer1[$\vee$G$_1$]{P \vee Q}
+\end{prooftree}\quad
+\begin{prooftree}
+  \hypo{Q} \infer1[$\vee$G$_2$]{P \vee Q}
+\end{prooftree}\par\smallskip \lc{Or.inl}, \lc{Or.inr} &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{P \vee Q}
+  \hypo{[P]^{m}} \ellipsis{}{R}
+  \hypo{[Q]^{n}} \ellipsis{}{R}
+  \infer3[$\vee$E$^{m,n}$]{R}
+\end{prooftree}\par\smallskip \leantac{cases}, \leantac{rcases} \\[4pt]
+\hline
+% ¬
+$\neg$ &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{[P]^{n}} \ellipsis{}{\bot} \infer1[$\neg$G$^n$]{\neg P}
+\end{prooftree}\par\smallskip \leantac{intro} &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{\neg P} \hypo{P} \infer2[$\neg$E]{\bot}
+\end{prooftree}\par\smallskip \lc{hnp hp} \\[4pt]
+\hline
+% ↔
+$\leftrightarrow$ &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{[P]^{m}} \ellipsis{}{Q}
+  \hypo{[Q]^{n}} \ellipsis{}{P}
+  \infer2[$\leftrightarrow$G$^{m,n}$]{P \leftrightarrow Q}
+\end{prooftree}\par\smallskip \leantac{constructor} &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{P \leftrightarrow Q} \hypo{P} \infer2[$\leftrightarrow$E$_1$]{Q}
+\end{prooftree}\quad
+\begin{prooftree}
+  \hypo{P \leftrightarrow Q} \hypo{Q} \infer2[$\leftrightarrow$E$_2$]{P}
+\end{prooftree}\par\smallskip \lc{h.mp}, \lc{h.mpr}, \leantac{rw} \\[4pt]
+\hline
+% ⊤ ⊥
+$\top$, $\bot$ &
+\vspace{2pt}
+\begin{prooftree}
+  \infer0[$\top$G]{\top}
+\end{prooftree}\par\smallskip \leantac{trivial} &
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{\bot} \infer1[$\bot$E]{P}
+\end{prooftree}\par\smallskip \leantac{exfalso}, \lc{False.elim} \\[4pt]
+\hline
+\rowcolor{teorembg}
+\textcolor{teoremframe}{\bfseries klasik} &
+\multicolumn{2}{c}{%
+\vspace{2pt}
+\begin{prooftree}
+  \hypo{[\neg P]^{n}} \ellipsis{}{\bot} \infer1[RAA$^n$]{P}
+\end{prooftree}\quad\raisebox{1.2em}{\lc{Classical.byContradiction}}} \\[4pt]
+\end{tabular}
+
+\vspace{6pt}
+\begin{tikzpicture}
+  \node[draw=black!20, rounded corners=3pt, fill=white, font=\footnotesize,
+        text width=12.6cm, align=left, inner sep=6pt] {%
+    \textbf{Varsayım kuralı.} Bir varsayım, kendi başına bir türetimdir:
+    \quad$\begin{prooftree}\infer0{P}\end{prooftree}$ \;(varsayım $P$).
+    \Lean{}'de \leantac{assumption} ya da \leantac{exact hp}.
+    \quad \textbf{Kapatma.} $[P]^n$ biçimindeki varsayımlar, aynı
+    numarayı taşıyan kuralda kapatılır.};
+\end{tikzpicture}
+\caption{Önermeler mantığı için doğal çıkarımın kural kataloğu ve her
+kuralın \Lean{} karşılığı. Pembe satır dışındaki bütün kurallar
+yapıcıdır; pembe satır klasik mantığa geçiştir.}
+\label{fig:kural-katalogu}
+\end{figure}
+
+\begin{tanim}{Doğal çıkarım türetimi}{turetim}
+Bir \textbf{türetim}, yaprakları varsayımlar, iç düğümleri
+\cref{fig:kural-katalogu}'deki kuralların uygulamaları olan bir
+ağaçtır. Kökteki önerme türetimin \textbf{sonucudur}. Bir türetimin
+\textbf{açık varsayımları}, hiçbir kuralda kapatılmamış yapraklardır.
+$\Gamma$ açık varsayımlar kümesi ve $\varphi$ sonuç ise,
+\[
+  \Gamma \vdash \varphi
+\]
+yazarız ve ``$\varphi$, $\Gamma$'dan türetilebilir'' diye okuruz.
+Açık varsayımı olmayan bir türetimin sonucuna \textbf{teorem} denir:
+$\vdash \varphi$.
+\end{tanim}
+
+% ---------------------------------------------------------------------
+\section{Lean'in hedef ekranı bir ardışıktır}\label{sec:ardisik-gorunum}
+
+Bölüm~2'den beri her \leantac{intro} adımında varsayımların Infoview
+panelinde \lc{⊢} işaretinin \emph{üstüne} taşındığını gördük. Bu
+gösterim bir rastlantı değildir: \Lean{}'in hedef ekranı, tam olarak
+$\Gamma \vdash \varphi$ biçiminde bir \emph{ardışıktır} (İng.\
+\emph{sequent}) (\cref{fig:ardisik}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=hedefframe, fill=hedefbg, thick, rounded corners=3pt,
+                 font=\leanfont\small, align=left, inner sep=7pt},
+    ok/.style={-{Stealth[length=2.6mm]}, thick, #1},
+  ]
+  \node[kutu] (lean) at (0,0) {%
+    P Q : \textcolor{leantype}{\bfseries Prop}\\
+    \textcolor{leanhyp}{\bfseries hp} : P\\
+    \textcolor{leanhyp}{\bfseries hq} : Q\\[3pt]
+    \textcolor{leansym}{⊢} P \textcolor{leansym}{∧} Q};
+  \node[font=\Large] (es) at (3.2,0) {$\Longleftrightarrow$};
+  \node[font=\Large] (sq) at (6.6,0) {$\underbrace{P,\; Q}_{\Gamma} \;\vdash\; \underbrace{P \wedge Q}_{\varphi}$};
+  \draw[decorate, decoration={brace, amplitude=5pt}, thick, leanhyp]
+    ([xshift=4pt]lean.north east) -- ([xshift=4pt,yshift=-1.55cm]lean.north east)
+    node[midway, right=7pt, font=\baslikfont\scriptsize, text=leanhyp]{bağlam $\Gamma$};
+  \node[below=0.35cm of lean, font=\baslikfont\scriptsize, text=black!60] {Lean Infoview};
+  \node[below=0.55cm of sq, font=\baslikfont\scriptsize, text=black!60] {ardışık (sequent)};
+\end{tikzpicture}
+\caption{\Lean{}'in hedef durumu ile mantıktaki ardışık gösterimi aynı
+şeydir. Hipotez adları (\lc{hp}, \lc{hq}), varsayımların numaralarının
+yerini tutar.}
+\label{fig:ardisik}
+\end{figure}
+
+Bu bakış açısıyla doğal çıkarım kurallarını, varsayımları ağacın
+yapraklarında taşımak yerine her düğümde açıkça yazarak ifade
+edebiliriz. Örneğin varsayım kuralı ile implikasyonun kuralları şöyle
+olur:
+
+\begin{center}
+\begin{tabular}{c@{\hspace{2.6em}}c@{\hspace{2.6em}}c}
+\begin{prooftree}
+  \infer0[Var]{\Gamma, P \vdash P}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma, P \vdash Q}
+  \infer1[$\to$G]{\Gamma \vdash P \to Q}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma \vdash P \to Q}
+  \hypo{\Gamma \vdash P}
+  \infer2[$\to$E]{\Gamma \vdash Q}
+\end{prooftree}
+\\[10pt]
+\small \leantac{assumption} & \small \leantac{intro} & \small \leantac{apply}
+\end{tabular}
+\end{center}
+
+\noindent Bu biçimde okunduğunda her kural bir \emph{taktiğin tarifidir}:
+
+\begin{onemlifikir}[Önemli Fikir: Taktik = kuralı aşağıdan yukarı uygulamak]
+Bir çıkarım kuralı, \emph{yukarıdaki} ardışıklardan \emph{aşağıdakine}
+geçişi gösterir. Bir taktik ise aynı kuralı \emph{tersten} uygular:
+Aşağıdaki ardışığı (mevcut hedefi) alır ve onu yukarıdaki ardışıklara
+(yeni hedeflere) dönüştürür. \leantac{intro}, $\Gamma \vdash P \to Q$
+hedefini $\Gamma, P \vdash Q$ hedefine çevirir. \leantac{constructor},
+$\Gamma \vdash P \wedge Q$ hedefini iki hedefe böler. Kâğıt üzerinde ağacı
+yapraklardan köke doğru \emph{okuruz}; \Lean{}'de ise kökten yapraklara
+doğru \emph{inşa ederiz}.
+\end{onemlifikir}
+
+\leandosya[Varsayım kuralı]{Bolum05}{varsayim}
+
+\noindent Ardışık biçimindeki bu doğal çıkarım sistemi, \cref{bol:ardisik}'te
+göreceğimiz Gentzen'in \emph{ardışık hesabından} farklıdır: Orada sağ
+tarafta da birden çok önerme bulunabilir ve eleme kuralları yerine
+``sol giriş'' kuralları kullanılır.
+
+% ---------------------------------------------------------------------
+\section{Kural--taktik eşleme tablosu}\label{sec:kural-taktik}
+
+\Cref{tab:kural-taktik}, her kuralın taktik modunda (geriye doğru) ve
+terim modunda (ileriye doğru) nasıl kullanıldığını özetliyor. Bu tablo,
+kitabın geri kalanında sık sık başvuracağınız bir kaynak olacak.
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{1.6cm}
+                             >{\raggedright\arraybackslash}p{3.1cm}
+                             >{\raggedright\arraybackslash}X
+                             >{\centering\arraybackslash}p{1.0cm}}
+\rowcolor{tabloust}
+\tablobaslik{Kural} & \tablobaslik{Taktik (hedef üzerinde)} & \tablobaslik{Terim / hipotez üzerinde} & \tablobaslik{Bölüm} \\
+Var                 & \leantac{assumption}, \leantac{exact h} & \lc{h} & \ref{bol:giris} \\
+$\to$G              & \leantac{intro h}             & \lc{fun h => t} & \ref{bol:onermeler1} \\
+$\to$E              & \leantac{apply f}             & \lc{f a} & \ref{bol:onermeler1} \\
+$\wedge$G           & \leantac{constructor}         & \lc{⟨a, b⟩} & \ref{bol:onermeler1} \\
+$\wedge$E           & ---                           & \lc{h.1}, \lc{h.2}, \leantac{obtain ⟨a, b⟩ := h} & \ref{bol:onermeler1} \\
+$\vee$G             & \leantac{apply Or.inl}        & \lc{Or.inl a}, \lc{Or.inr b} & \ref{bol:onermeler1} \\
+$\vee$E             & ---                           & \leantac{cases h}, \leantac{rcases h with a | b}, \lc{Or.elim} & \ref{bol:onermeler1} \\
+$\neg$G             & \leantac{intro h}             & \lc{fun h => ...} & \ref{bol:degilleme} \\
+$\neg$E             & \leantac{apply hn}            & \lc{hn h}, \lc{absurd h hn} & \ref{bol:degilleme} \\
+$\leftrightarrow$G  & \leantac{constructor}         & \lc{⟨f, g⟩} & \ref{bol:degilleme} \\
+$\leftrightarrow$E  & \leantac{rw [h]}              & \lc{h.mp a}, \lc{h.mpr b} & \ref{bol:degilleme} \\
+$\top$G             & \leantac{trivial}             & \lc{True.intro} & \ref{bol:degilleme} \\
+$\bot$E             & \leantac{exfalso}             & \lc{False.elim h}, \leantac{cases h} & \ref{bol:degilleme} \\
+RAA                 & \leantac{apply Classical.}\newline\leantac{\quad byContradiction} & \lc{Classical.byContradiction f} & \ref{bol:yapici-klasik} \\
+\end{tabularx}
+\caption{Doğal çıkarım kuralları ile \Lean{} taktiklerinin ve terimlerinin
+eşlemesi. Eleme kuralları çoğunlukla \emph{hipotezler} üzerinde, giriş
+kuralları ise \emph{hedef} üzerinde çalışır.}
+\label{tab:kural-taktik}
+\end{table}
+
+% ---------------------------------------------------------------------
+\section{Geriye ve ileriye akıl yürütme}\label{sec:geri-ileri}
+
+Bir ispatı iki yönden kurabiliriz (\cref{fig:geri-ileri}):
+
+\begin{itemize}
+  \item \textbf{Geriye doğru}: Hedeften başlar, ``bunu göstermek için ne
+        yeter?'' diye sorarız. \leantac{apply}, \leantac{intro},
+        \leantac{constructor}, \leantac{suffices} bu yönde çalışır.
+  \item \textbf{İleriye doğru}: Hipotezlerden başlar, ``bunlardan ne
+        çıkar?'' diye sorarız. \leantac{have} ve terim modundaki
+        uygulamalar bu yönde çalışır.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    dugum/.style={draw=#1, fill=#1!8, thick, rounded corners=3pt,
+                  minimum width=1.5cm, minimum height=0.8cm, font=\leanfont\small},
+    ok/.style={-{Stealth[length=2.6mm]}, very thick, #1},
+  ]
+  % hipotezler
+  \node[dugum=leanhyp] (p) at (0,0) {p : P};
+  \node[dugum=leanframe] (q) at (3.6,0) {Q};
+  \node[dugum=leanframe] (r) at (7.2,0) {R};
+  \node[dugum=bittiframe] (g) at (10.6,0) {⊢ R};
+  \draw[ok=leansym] (p) -- node[above, font=\leanfont\scriptsize\bfseries, text=leanhyp]{q := h1 p} (q);
+  \draw[ok=leansym] (q) -- node[above, font=\leanfont\scriptsize\bfseries, text=leanhyp]{r := h2 q} (r);
+  \draw[ok=leansym, dashed] (r) -- node[above, font=\leanfont\scriptsize\bfseries, text=leanhyp]{exact r} (g);
+  \node[font=\baslikfont\small\bfseries, text=leansym, anchor=west] at (-0.8,0.95) {İleriye doğru (have)};
+  % geri
+  \node[dugum=hedefframe] (g1) at (10.6,-2.3) {⊢ R};
+  \node[dugum=hedefframe] (g2) at (7.2,-2.3) {⊢ Q};
+  \node[dugum=hedefframe] (g3) at (3.6,-2.3) {⊢ P};
+  \node[dugum=bittiframe] (g4) at (0,-2.3) {p : P};
+  \draw[ok=leantac] (g1) -- node[below, font=\leanfont\scriptsize\bfseries, text=leantac]{apply h2} (g2);
+  \draw[ok=leantac] (g2) -- node[below, font=\leanfont\scriptsize\bfseries, text=leantac]{apply h1} (g3);
+  \draw[ok=leantac, dashed] (g3) -- node[below, font=\leanfont\scriptsize\bfseries, text=leantac]{exact p} (g4);
+  \node[font=\baslikfont\small\bfseries, text=leantac, anchor=east] at (11.4,-3.25) {Geriye doğru (apply)};
+\end{tikzpicture}
+\caption{Aynı ispat iki yönden: İleriye doğru ispat hipotezlerden
+hedefe, geriye doğru ispat hedeften hipotezlere yürür. İkisi ortada
+buluşur.}
+\label{fig:geri-ileri}
+\end{figure}
+
+Hipotetik kıyasın geriye doğru ispatını Bölüm~2'de görmüştük:
+
+\leandosya[Geriye doğru]{Bolum05}{kiyas_geri}
+
+\noindent Aynı ispatı ileriye doğru da yazabiliriz. \leantac{have}
+taktiği, bağlama yeni bir ara sonuç ekler:
+
+\leandosya[İleriye doğru]{Bolum05}{kiyas_ileri}
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[\texttt{have q} öncesi]
+h1 : P → Q
+h2 : Q → R
+p : P
+⊢ R
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{have q} sonrası]
+h1 : P → Q
+h2 : Q → R
+p : P
+q : Q
+⊢ R
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+\noindent \leantac{have} hedefi değiştirmez; yalnızca bağlamı
+büyütür. Matematik kitaplarındaki ``\ldots olduğundan \ldots elde
+ederiz'' cümlelerinin karşılığı budur.
+
+\paragraph{suffices: ``Şunu göstermek yeter''}
+Geriye doğru akıl yürütürken ara hedefe bir ad vermek isteyebiliriz.
+\leantac{suffices} tam bunu yapar: ``$Q$ elimde olsaydı işi şöyle
+bitirirdim; o hâlde $Q$'yu göstermek yeter.''
+
+\leandosya[Yeter koşulu]{Bolum05}{kiyas_suffices}
+
+\paragraph{show: hedefi açıkça yazmak}
+\leantac{show} taktiği hiçbir şeyi değiştirmez; hedefin ne olduğunu
+okura (ve \Lean{}'e) açıkça söyler. Hedef yazdığınız şeyle uyuşmazsa
+\Lean{} hata verir. Uzun ispatlarda \leantac{show}, ispatı okunabilir
+kılmanın en ucuz yoludur.
+
+\leandosya[Hedefi açıkça yazmak]{Bolum05}{kiyas_show}
+
+\begin{dikkat}[Dikkat: Hangi yön ne zaman?]
+Geriye doğru ispatlar kısadır ama okunması zordur: Okur, ara hedefleri
+görmek için \Lean{}'i çalıştırmak zorunda kalır. İleriye doğru ispatlar
+uzundur ama kâğıt üzerindeki matematiğe benzer. İyi bir ispat genellikle
+ikisini karıştırır: Büyük adımları \leantac{have} ile adlandırır, küçük
+boşlukları \leantac{apply} ve \leantac{exact} ile kapatır.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Bir ispat stratejisi}\label{sec:strateji}
+
+Önermeler mantığında bir ispata nereden başlayacağınızı çoğu zaman
+\emph{hedefin} ve \emph{hipotezlerin} biçimi söyler. \Cref{fig:strateji}
+bu bilgiyi bir harita olarak topluyor.
+
+\begin{figure}[p]
+\centering
+\begin{tikzpicture}[
+    bas/.style={draw=koyu, fill=koyu, text=white, rounded corners=4pt,
+                font=\baslikfont\bfseries\small, minimum width=5.6cm,
+                minimum height=0.8cm},
+    sekil/.style={draw=#1, fill=#1!8, thick, rounded corners=3pt,
+                  font=\leanfont\small, minimum width=1.7cm, minimum height=0.75cm},
+    eylem/.style={draw=black!20, fill=white, rounded corners=3pt,
+                  font=\small, text width=4.3cm, minimum height=0.75cm,
+                  align=left, inner sep=4pt},
+    ok/.style={-{Stealth[length=2.2mm]}, thick, black!45},
+  ]
+  % ----- Sol sütun: hedef -----
+  \node[bas] at (3.1,0) {1. Hedefe bak: $\vdash$ ?};
+  \foreach \i/\s/\e in {
+      1/{⊢ A → B}/{\leantac{intro h}},
+      2/{⊢ ¬A}/{\leantac{intro h}; hedef \lc{False} olur},
+      3/{⊢ A ∧ B}/{\leantac{constructor}},
+      4/{⊢ A ↔ B}/{\leantac{constructor}: iki yön},
+      5/{⊢ A ∨ B}/{Taraf belliyse \lc{Or.inl}/\lc{Or.inr}; değilse önce 2. adım},
+      6/{⊢ True}/{\leantac{trivial}},
+      7/{⊢ False}/{Çelişki ara: \lc{hn h}, \leantac{contradiction}},
+      8/{⊢ atom}/{2. adıma geç}}
+  {
+    \node[sekil=ikincil] (h\i) at (0.85,{-1.3*\i}) {\s};
+    \node[eylem, anchor=west] (e\i) at (1.95,{-1.3*\i}) {\e};
+    \draw[ok] (h\i) -- (e\i);
+  }
+  % ----- Sağ sütun: hipotezler -----
+  \node[bas] at (10.1,0) {2. Hipotezlere bak: h : ?};
+  \foreach \i/\s/\e in {
+      1/{h : A ∧ B}/{\leantac{obtain ⟨a, b⟩ := h}},
+      2/{h : A ∨ B}/{\leantac{rcases h with a | b}: iki durum},
+      3/{h : A → B}/{Hedef \lc{B}: \leantac{apply h}; \lc{a : A} varsa: \leantac{have b := h a}},
+      4/{h : ¬A}/{Hedef \lc{False}: \leantac{apply h}, sonra \lc{A}'yı göster},
+      5/{h : A ↔ B}/{\leantac{rw [h]} ya da \lc{h.mp}, \lc{h.mpr}},
+      6/{h : False}/{\leantac{exact h.elim}; bitti},
+      7/{h : hedef}/{\leantac{exact h}, \leantac{assumption}}}
+  {
+    \node[sekil=vurgu] (k\i) at (7.85,{-1.3*\i}) {\s};
+    \node[eylem, anchor=west] (f\i) at (8.95,{-1.3*\i}) {\e};
+    \draw[ok] (k\i) -- (f\i);
+  }
+  % ----- Alt: takılınca -----
+  \node[draw=teoremframe, fill=teorembg, thick, rounded corners=4pt,
+        text width=13.6cm, align=left, font=\small, inner sep=6pt]
+     at (6.6,-12.45) {%
+     {\baslikfont\bfseries\color{teoremframe} 3. Takıldıysan:}
+     Kâğıt üzerinde bir doğruluk tablosu ya da küçük bir Kripke modeli
+     dene. Önerme klasik olarak doğru ama yapıcı olarak ispatlanamıyorsa
+     (\cref{bol:yapici-klasik}), içinde bir ``hangisi?'' sorusu
+     saklıdır: \lc{Classical.em} ile durum ayır. Önerme klasik olarak da
+     yanlışsa, bir karşı örnek bul ve ispatlamaya çalışmayı bırak!};
+\end{tikzpicture}
+\caption{Önermeler mantığında ispat stratejisi. Önce hedefin biçimine,
+sonra hipotezlerin biçimine bakılır. Her satır bir giriş (sol) ya da
+eleme (sağ) kuralına karşılık gelir.}
+\label{fig:strateji}
+\end{figure}
+
+Bu haritanın arkasında güçlü bir teorik sonuç yatar: Yapıcı önermeler
+mantığında, hedefin biçimine göre giriş kurallarını, hipotezlerin
+biçimine göre eleme kurallarını uygulayan ve aynı hedefe dönmemeye
+dikkat eden sistemli bir arama, ispat varsa onu \emph{her zaman} bulur. Bu sonucun kesin hâli, \cref{bol:ardisik}'te
+göreceğimiz kesme eleme teoreminin bir sonucudur. Yapıcı önermeler
+mantığının \emph{karar verilebilir} olmasının nedeni de budur:
+Herhangi bir önermenin ispatlanabilir olup olmadığını sonlu bir aramayla
+anlayabiliriz.
+
+% ---------------------------------------------------------------------
+\section{Kapsamlı bir örnek}\label{sec:kapsamli-ornek}
+
+Stratejiyi bir örnek üzerinde adım adım uygulayalım. İspatlamak
+istediğimiz önerme şudur:
+\[
+  (P \to R) \wedge (Q \to R) \;\leftrightarrow\; (P \vee Q \to R).
+\]
+``$P$ de $R$'yi gerektiriyorsa $Q$ da gerektiriyorsa, $P$ veya $Q$
+$R$'yi gerektirir; tersi de doğrudur.''
+
+\begin{enumerate}[adimlar]
+  \item \textbf{Hedef \lc{↔}}: \leantac{constructor} ile iki yöne ayır.
+  \item \textbf{(→) yönü, hedef \lc{→}}: \leantac{intro} ile
+        \lc{(P → R) ∧ (Q → R)}'yi al. Bu bir \lc{∧} hipotezi:
+        \leantac{obtain} ile parçala. Hedef yine \lc{→}: \lc{P ∨ Q}'yu
+        al. Bu bir \lc{∨} hipotezi: durum ayır. \leantac{rintro}, bu dört
+        adımı tek satırda yapar.
+  \item \textbf{Her durumda hedef \lc{R}} (atom): Hipotezlere bak.
+        \lc{hpr : P → R} ve \lc{hp : P} var: \lc{hpr hp}.
+  \item \textbf{(←) yönü}: \lc{h : P ∨ Q → R}'yi al. Hedef \lc{∧}: iki
+        bileşeni ayrı ayrı kur. Her bileşen bir implikasyon: \lc{fun hp => \ldots}.
+\end{enumerate}
+
+\leandosya[Durum ayırmanın denkliği]{Bolum05}{durum_iff}
+
+\noindent (→) yönünün doğal çıkarım ağacı \cref{fig:durum-agaci}'de
+görülüyor. Ağaçtaki her kural, \Lean{} ispatındaki bir parçaya karşılık
+geliyor.
+
+\begin{figure}[htbp]
+\centering
+\small
+\begin{prooftree}
+  \hypo{[P \vee Q]^{4}}
+  %
+  \hypo{[(P \to R) \wedge (Q \to R)]^{3}}
+  \infer1[$\wedge$E$_1$]{P \to R}
+  \hypo{[P]^{1}}
+  \infer2[$\to$E]{R}
+  %
+  \hypo{[(P \to R) \wedge (Q \to R)]^{3}}
+  \infer1[$\wedge$E$_2$]{Q \to R}
+  \hypo{[Q]^{2}}
+  \infer2[$\to$E]{R}
+  %
+  \infer3[$\vee$E$^{1,2}$]{R}
+  \infer1[$\to$G$^{4}$]{P \vee Q \to R}
+  \infer1[$\to$G$^{3}$]{(P \to R) \wedge (Q \to R) \to (P \vee Q \to R)}
+\end{prooftree}
+
+\vspace{8pt}
+\begin{tikzpicture}[font=\leanfont\scriptsize]
+  \node[draw=black!20, rounded corners=3pt, fill=white, align=left, inner sep=6pt]{%
+    \textcolor{leantac}{\bfseries rintro} ⟨hpr, hqr⟩ (hp | hq)
+    \quad$\rightsquigarrow$\quad {\rmfamily\small $\to$G$^3$, $\wedge$E, $\to$G$^4$, $\vee$E$^{1,2}$}\\[2pt]
+    \textcolor{leantac}{\bfseries exact} hpr hp \;/\; \textcolor{leantac}{\bfseries exact} hqr hq
+    \quad$\rightsquigarrow$\quad {\rmfamily\small iki $\to$E adımı}};
+\end{tikzpicture}
+\caption{$(P \to R) \wedge (Q \to R) \to (P \vee Q \to R)$'nin doğal
+çıkarım ağacı ve \Lean{} ispatıyla karşılaştırması.}
+\label{fig:durum-agaci}
+\end{figure}
+
+\noindent Terim modunda aynı ispat iki satıra sığar. (→) yönünde
+\lc{Or.elim h hpr hqr} ifadesi, $\vee$E kuralını \emph{doğrudan}
+uygular: İki durumun her biri için hazır bir fonksiyonumuz zaten var.
+
+\leandosya[Durum ayırmanın denkliği, terim modu]{Bolum05}{durum_iff_terim}
+
+% ---------------------------------------------------------------------
+\section{İspat normalleştirme}\label{sec:normallestirme}
+
+Bazı ispatlar gereksiz dolambaçlar içerir. En basit örnek, bir ``ve''
+kanıtını kurup hemen ardından sökmektir:
+
+\leandosya[Dolambaçlı ve dolaysız ispat]{Bolum05}{dolambacli}
+
+\noindent \lc{dolambacli} ispatı, \lc{⟨hp, hq⟩} çiftini kurar ($\wedge$G)
+ve hemen sol bileşenini alır ($\wedge$E$_1$). Sonuçta elimize başta
+zaten sahip olduğumuz \lc{hp} geçer. Ağaç olarak (\cref{fig:normallestirme}):
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \node (sol) at (0,0) {%
+    \begin{prooftree}
+      \hypo{\mathcal{D}_1}\ellipsis{}{P}
+      \hypo{\mathcal{D}_2}\ellipsis{}{Q}
+      \infer2[\textcolor{ikincil}{$\wedge$G}]{P \wedge Q}
+      \infer1[\textcolor{vurgu}{$\wedge$E$_1$}]{P}
+    \end{prooftree}};
+  \node (sag) at (5.2,0) {%
+    \begin{prooftree}
+      \hypo{\mathcal{D}_1}\ellipsis{}{P}
+    \end{prooftree}};
+  \draw[-{Stealth[length=3mm]}, very thick, anarenk] (1.9,0) -- node[above, font=\baslikfont\scriptsize\bfseries, text=anarenk]{indirgeme} (4.4,0);
+  \node[font=\baslikfont\scriptsize, text=black!60] at (0,-1.6) {dolambaç: giriş, hemen ardından eleme};
+  \node[font=\baslikfont\scriptsize, text=black!60] at (5.2,-1.6) {normal};
+
+  \node (sol2) at (0,-4.1) {%
+    \begin{prooftree}
+      \hypo{[P]^{1}}\ellipsis{$\mathcal{D}$}{Q}
+      \infer1[\textcolor{ikincil}{$\to$G$^1$}]{P \to Q}
+      \hypo{\mathcal{E}}\ellipsis{}{P}
+      \infer2[\textcolor{vurgu}{$\to$E}]{Q}
+    \end{prooftree}};
+  \node (sag2) at (5.2,-4.1) {%
+    \begin{prooftree}
+      \hypo{\mathcal{E}}\ellipsis{}{P}
+      \ellipsis{$\mathcal{D}$}{Q}
+    \end{prooftree}};
+  \draw[-{Stealth[length=3mm]}, very thick, anarenk] (1.9,-4.1) -- node[above, font=\baslikfont\scriptsize\bfseries, text=anarenk]{indirgeme} (4.4,-4.1);
+  \node[font=\baslikfont\scriptsize, text=black!60, align=center] at (5.2,-6.0) {$[P]$ varsayımının yerine\\$\mathcal{E}$ türetimi konur};
+\end{tikzpicture}
+\caption{İki temel indirgeme. Bir giriş kuralının hemen ardından aynı
+bağlacın eleme kuralı geliyorsa, ikisi birlikte silinebilir.}
+\label{fig:normallestirme}
+\end{figure}
+
+\begin{tanim}{Normal türetim}{normal}
+Bir türetimde, bir bağlacın giriş kuralıyla elde edilen bir önermeye
+hemen ardından aynı bağlacın eleme kuralı uygulanıyorsa, bu önermeye
+\textbf{dolambaç} (İng.\ \emph{detour}, \emph{maximal formula}) denir.
+Dolambaç içermeyen türetimlere \textbf{normal} türetim denir.
+\end{tanim}
+
+İmplikasyondaki dolambaç da aynı fikri izler: Önce bir fonksiyon kurar,
+sonra onu hemen bir argümana uygularız.
+
+\leandosya[İmplikasyonda dolambaç]{Bolum05}{dolambacli_imp}
+
+\noindent Bu ispatın indirgenmiş hâli \lc{hpq hp}'dir: Fonksiyonun
+gövdesinde \lc{h} gördüğümüz her yere \lc{hp} koyarız. Programlama
+dillerinde buna \textbf{$\beta$-indirgeme}, yani \emph{bir fonksiyonu
+çağırmak} denir. Aynı dolambaçları veri dünyasında yazdığımızda
+\Lean{} onları \emph{hesaplar}:
+
+\leandosya[Normalleştirme = hesaplama]{Bolum05}{hesaplama}
+
+\begin{teorem}{Normalleştirme, Prawitz 1965}{normallestirme}
+Yapıcı önermeler mantığında her türetim, aynı varsayımlardan aynı sonucu
+veren bir normal türetime indirgenebilir \citep{prawitz1965}.
+\end{teorem}
+
+\begin{onemlifikir}[Önemli Fikir: Normalleştirme = program çalıştırma]
+Curry--Howard eşlemesi altında Prawitz'in teoremi şunu söyler: Her
+ispat (program) dolambaçları silinerek (hesaplanarak) bir sonuca ulaşır;
+hesaplama sonsuza dek sürmez. İspat kuramında ``normalleştirme'', bilgisayar
+biliminde ``program çalıştırma'' denen şeyin aynısıdır. Bu bağlantıyı
+\cref{bol:lambda}'te $\lambda$-hesabı ile kesinleştireceğiz.
+\end{onemlifikir}
+
+Normal türetimlerin önemli bir özelliği vardır: \emph{Alt formül özelliği}.
+Normal bir türetimde görünen her önerme, ya sonucun ya da açık
+varsayımlardan birinin bir parçasıdır. Yani normal bir ispat ``dışarıdan''
+hiçbir yeni kavram getirmez. Bundan çarpıcı bir sonuç çıkar:
+
+\begin{teorem}{Tutarlılık}{tutarlilik}
+Yapıcı önermeler mantığında $\bot$ önermesi, varsayımsız olarak
+türetilemez: $\nvdash \bot$.
+\end{teorem}
+
+\noindent\textit{İspat taslağı.} $\bot$'un bir türetimi olsaydı,
+Teorem~\ref{trm:normallestirme}'e göre normal bir türetimi de olurdu. Alt
+formül özelliğine göre bu türetimdeki her önerme $\bot$'un bir parçası,
+yani $\bot$'un kendisi olmalıdır. Ama $\bot$'un giriş kuralı yoktur ve
+açık varsayım da yoktur; dolayısıyla ağacın hiçbir yaprağı olamaz.
+Bu bir çelişkidir. \hfill\qedsymbol
+
+\noindent Bu, mantığın \emph{kendi tutarlılığını} kendi araçlarıyla
+gösteren ilk ve en basit örnektir. Aynı fikri aritmetiğe uygulama
+çabası, Gentzen'i 1936'da aritmetiğin tutarlılık ispatına götürdü
+\citep{gentzen1936}; bu hikâyeye \ciltiki{4}'te döneceğiz.
+
+% ---------------------------------------------------------------------
+\section{Taktik birleştiricileri}\label{sec:birlestiriciler}
+
+Bazı ispatlarda aynı taktiği birçok hedefe uygulamamız gerekir. Üç
+önermenin ``ve''sini kurmak için:
+
+\leandosya[Uzun yol]{Bolum05}{birlestirici_uzun}
+
+\noindent Bu ispatı \emph{taktik birleştiricileri} ile kısaltabiliriz:
+
+\leandosya[Kısa yol]{Bolum05}{birlestirici_kisa}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.6cm} X}
+\rowcolor{tabloust}
+\tablobaslik{Birleştirici} & \tablobaslik{Ne yapar?} \\
+\lc{t₁ <;> t₂}                     & \lc{t₁}'i uygular, \emph{ortaya çıkan her hedefe} \lc{t₂}'yi uygular. \\
+\leantac{all\_goals} \lc{t}        & Açık olan bütün hedeflere \lc{t}'yi uygular. \\
+\leantac{first} \lc{| t₁ | t₂}     & Önce \lc{t₁}'i dener; başarısız olursa \lc{t₂}'yi. \\
+\leantac{try} \lc{t}               & \lc{t}'yi dener; başarısız olursa hiçbir şey yapmaz. \\
+\leantac{repeat} \lc{t}            & \lc{t}'yi başarısız olana dek tekrar tekrar uygular. \\
+\leantac{refine} \lc{⟨?\_, ?\_⟩}   & Terimin bir kısmını yazar; \lc{?\_} ile işaretli boşlukları yeni hedef yapar. \\
+\end{tabularx}
+\end{center}
+
+\leantac{refine}, terim modu ile taktik modunu birleştirir: İspatın
+iskeletini bir terim olarak yazar, boşlukları taktiklerle doldururuz.
+\leantac{first} ile durum ayırmayı birleştiren bir örnek:
+
+\leandosya[Durum ayırma ve first]{Bolum05}{birlestirici_veya}
+
+\noindent İki durumun her birinde \Lean{} önce \lc{Or.inr h}'yi dener;
+türler uyuşmazsa \lc{Or.inl h}'ye geçer.
+
+\begin{dikkat}[Dikkat: Kısa her zaman iyi değildir]
+Birleştiriciler ispatı kısaltır ama okunmasını zorlaştırabilir. Bir
+ispat \lc{<;>} ile bir satıra indiğinde, okur hangi hedefin hangi
+taktikle kapandığını göremez. Bir kural olarak, birleştiricileri
+\emph{aynı biçimdeki} hedefler için kullanın (\lc{refine ⟨?\_, ?\_, ?\_⟩
+<;> assumption} gibi), farklı mantık gerektiren durumlar için değil.
+\end{dikkat}
+
+\paragraph{Otomasyona bir bakış}
+Önermeler mantığı karar verilebilir olduğuna göre, bu bölümdeki
+ispatları otomatik olarak bulan bir taktik yazılabilir. \Mathlib{}'teki
+\leantac{tauto} taktiği tam olarak bunu yapar. \Lean{}'in güncel
+sürümlerinde \lc{exact?} komutu ise kütüphanede hedefi kapatan bir
+teorem arar. Bu araçları \ciltiki{6}'da tanıyacak,
+\ciltiki{7}'de ise kendi önermeler mantığı ispatçımızı
+yazacağız. O zamana dek ispatları elle yazmanızı öneririz: Otomasyon,
+ne yaptığını anlayan birinin elinde güçlü bir araçtır.
+
+% ---------------------------------------------------------------------
+\begin{tarihce}[Tarihçe: Hilbert sistemlerinden Gentzen'e]
+Frege'den Hilbert'e kadar mantık sistemleri \emph{aksiyomatik} olarak
+kurulurdu: Birkaç aksiyom şeması (örneğin
+$P \to (Q \to P)$ ve $(P \to Q \to R) \to (P \to Q) \to P \to R$) ve
+tek bir kural (modus ponens). Bu \emph{Hilbert sistemleri} teorik olarak
+güçlüdür, ama içlerinde ispat yazmak zahmetlidir: $P \to P$ gibi basit
+bir önermenin ispatı bile beş adım tutar. Gentzen 1935'te bu sistemlerin
+``gerçek matematiksel akıl yürütmeden çok uzak'' olduğunu yazarak doğal
+çıkarımı önerdi \citep{gentzen1935}. Bugün ispat asistanlarının
+neredeyse tamamı doğal çıkarım ya da onun bir uzantısı üzerine kuruludur.
+Hilbert sisteminin aksiyomlarının Bölüm~2'deki $K$ ve $S$
+kombinatörleri olduğuna dikkat edin.
+\end{tarihce}
+
+\begin{arastirmanotu}
+\textbf{Uyum ve ispat-kuramsal anlambilim.} \Cref{sec:dogal-cikarim-fikri}'te
+sözünü ettiğimiz giriş ve eleme kuralları arasındaki \emph{uyum}, Michael
+Dummett ve Dag Prawitz'in \emph{ispat-kuramsal anlambilim} programının
+temel kavramıdır: Bir bağlacın anlamı, doğruluk tablosuyla değil, giriş
+kurallarıyla verilir; eleme kuralları bu anlamla uyumlu olmalıdır.
+Normalleştirme teoremi, bu uyumun teknik ifadesidir
+\citep{prawitz1965, dummett2000}.
+
+\textbf{Taktik dilleri.} \Lean{}'in taktik dili, kendisi \Lean{}'de
+yazılmış bir programlama dilidir; kullanıcılar yeni taktikler
+tanımlayabilir \citep{demoura2021lean4, ullrich2022macros}. Taktik
+ispatlarının okunabilirliği ve bakımı, büyük formalizasyon projelerinde
+pratik bir sorun olarak tartışılmaya devam ediyor; \Mathlib{} bu nedenle
+belirli bir ispat stili önerir (\ciltiki{9}).
+
+\textbf{İleri okuma.} Normalleştirme ve alt formül özelliğinin tam
+ispatları için \citet{troelstra2000}; Curry--Howard açısından
+normalleştirme için \citet{girard1989} ve \citet{sorensen2006}.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Her bağlacın giriş ve eleme kuralları vardır; tek klasik kural
+        RAA'dır (\cref{fig:kural-katalogu}).
+  \item \Lean{}'in hedef ekranı bir ardışıktır: $\Gamma \vdash \varphi$.
+        Bir taktik, bir kuralı aşağıdan yukarı uygular.
+  \item İspatlar geriye (\leantac{apply}, \leantac{suffices}) ya da
+        ileriye (\leantac{have}) doğru kurulabilir; iyi ispatlar ikisini
+        karıştırır.
+  \item Strateji: Önce hedefin biçimine (giriş kuralları), sonra
+        hipotezlerin biçimine (eleme kuralları) bak.
+  \item Dolambaç, bir girişin hemen ardından gelen elemedir. Normalleştirme
+        dolambaçları siler; Curry--Howard altında bu, program çalıştırmaktır.
+        Normal ispatların alt formül özelliği, tutarlılığı verir.
+  \item \lc{<;>}, \leantac{all\_goals}, \leantac{first} ve \leantac{refine}
+        ispatları kısaltır; ölçülü kullanılmalıdır.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} Varsayımların sırasını değiştirin:
+\lc{(P → Q → R) → (Q → P → R)}. Terim modunda bu ispat hangi
+fonksiyondur? (\lc{a5\_1})
+
+\alistirma{1} \lc{(P ∧ Q → R) → P → Q → R} önermesini önce yalnızca
+\leantac{have} ve \leantac{exact} ile (\lc{a5\_2}), sonra yalnızca
+\leantac{apply} ve \leantac{exact} ile (\lc{a5\_3}) ispatlayın. Hangisi
+size daha okunabilir geldi?
+
+\alistirma{2} İmplikasyonun ve'ye dağıldığını ispatlayın:
+\lc{(P → Q ∧ R) ↔ (P → Q) ∧ (P → R)}. (\lc{a5\_4})
+
+\alistirma{2} \lc{(P ∨ Q) ∧ (P → R) ∧ (Q → R) → R}. Önce
+\cref{fig:strateji}'yi kullanarak bir plan yazın, sonra ispatlayın.
+(\lc{a5\_5})
+
+\alistirma{2} \lc{P ∧ Q ∧ R → R ∧ Q ∧ P} önermesini \leantac{rintro}
+ve tek bir \lc{refine ... <;> assumption} satırıyla ispatlayın.
+(\lc{a5\_6})
+
+\alistirma{2} Dört halkalı zinciri önce geriye, sonra ileriye doğru
+ispatlayın: \lc{(P → Q) → (Q → R) → (R → S) → P → S}. (\lc{a5\_7})
+
+\alistirma{3} \lc{(P ∨ Q → R) → ¬R → ¬P ∧ ¬Q}. Doğal çıkarım ağacını
+da çizin. (\lc{a5\_8})
+
+\alistirma{3} \lc{(P ∨ Q) ∧ (R ∨ S) → (P ∧ R) ∨ (P ∧ S) ∨ (Q ∧ R) ∨ (Q ∧ S)}.
+İpucu: \leantac{rintro} ile \lc{⟨hp | hq, hr | hs⟩} örüntüsü dört durumu
+birden açar. (\lc{a5\_9})
+
+\alistirma{2} (Kâğıt-kalem) Aşağıdaki türetimi normalleştirin. Kaç
+indirgeme adımı gerekti?
+\[
+\begin{prooftree}
+  \hypo{[P]^{1}}
+  \hypo{[Q]^{2}}
+  \infer2[$\wedge$G]{P \wedge Q}
+  \infer1[$\wedge$E$_2$]{Q}
+  \infer1[$\to$G$^{1}$]{P \to Q}
+  \hypo{P}
+  \infer2[$\to$E]{Q}
+  \infer1[$\to$G$^{2}$]{Q \to Q}
+\end{prooftree}
+\]
+
+\alistirma{3} (Kâğıt-kalem) Alt formül özelliğini kullanarak $P \vee Q$'nun
+varsayımsız olarak türetilemeyeceğini gösterin ($P$, $Q$ farklı
+atomlar). İpucu: Normal bir türetimin son kuralı ne olabilir?
+
+\alistirma{3} (Tartışma) \cref{fig:strateji}'deki haritayı kullanarak
+Peirce yasasını ispatlamaya çalışın. Haritanın hangi adımında
+takılıyorsunuz? Bu takılma, \cref{bol:yapici-klasik}'teki Kripke
+modeliyle nasıl ilişkilidir?
+\end{alistirmalar}

@@ -1,0 +1,55 @@
+% ---------------- Kapak ----------------
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay]
+  % Zemin
+  \fill[koyu] (current page.south west) rectangle (current page.north east);
+  % Üst şerit
+  \fill[anarenk] ([yshift=-7.2cm]current page.north west) rectangle
+                 ([yshift=-7.5cm]current page.north east);
+
+  % Arka planda soluk bir doğal çıkarım ağacı motifi
+  \begin{scope}[shift={([xshift=-5.2cm, yshift=7.4cm]current page.south east)},
+                text=white!25!koyu, font=\leanfont\large]
+    \node at (0,3.2)  {[P]};
+    \node at (2.2,3.2){P → Q};
+    \draw[white!25!koyu, line width=0.8pt] (-0.6,2.8) -- (2.9,2.8);
+    \node at (1.1,2.4){Q};
+    \node at (3.6,2.4){Q → R};
+    \draw[white!25!koyu, line width=0.8pt] (0.5,2.0) -- (4.3,2.0);
+    \node at (2.4,1.6){R};
+    \draw[white!25!koyu, line width=0.8pt] (1.4,1.2) -- (3.4,1.2);
+    \node at (2.4,0.8){P → R};
+  \end{scope}
+
+  % Curry–Howard motifi
+  \node[anchor=south west, text=white!45!koyu, font=\baslikfont\large,
+        align=left]
+    at ([xshift=2.4cm, yshift=3.0cm]current page.south west)
+    {önermeler = türler\\[2pt] kanıtlar = programlar};
+
+  % Başlık
+  \node[anchor=north west, text=white, font=\baslikfont\bfseries\fontsize{40}{46}\selectfont,
+        align=left]
+    at ([xshift=2.4cm, yshift=-9.0cm]current page.north west)
+    {Lean 4 ile\\Modern Mantık};
+  \node[anchor=north west, text=white!75!anarenk, font=\baslikfont\Large, align=left]
+    at ([xshift=2.4cm, yshift=-13.4cm]current page.north west)
+    {\altbaslik};
+  \node[anchor=north west, text=koyu, fill=white!85!anarenk, font=\baslikfont\bfseries\Large,
+        rounded corners=3pt, inner sep=6pt]
+    at ([xshift=2.4cm, yshift=-14.6cm]current page.north west)
+    {\ciltadi};
+
+  % Yazar ve sürüm
+  \node[anchor=north west, text=white, font=\baslikfont\LARGE]
+    at ([xshift=2.4cm, yshift=-3.6cm]current page.north west) {\yazar};
+  \node[anchor=north west, text=white!60!koyu, font=\baslikfont\small]
+    at ([xshift=2.4cm, yshift=-4.6cm]current page.north west) {\surum};
+
+  % Küçük ⊢ logosu
+  \node[anchor=south east, text=anarenk!70!white, font=\leanfont\bfseries\fontsize{70}{70}\selectfont]
+    at ([xshift=-2.2cm, yshift=1.6cm]current page.south east) {⊢};
+\end{tikzpicture}
+\end{titlepage}
+\cleardoublepage

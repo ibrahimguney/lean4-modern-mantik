@@ -1,0 +1,502 @@
+% =====================================================================
+%  Bölüm 17 — Projeler (Cilt I)
+% =====================================================================
+\chapter{Projeler}\label{bol:proje}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Bir formalizasyon projesini ifadeden temiz bir ispata kadar
+        yürütmenin yöntemini,
+  \item Cilt~I'in konularını derinleştiren on iki projeyi ve her biri için
+        önerilen bir yol haritasını,
+  \item Projeler arasındaki bağımlılıkları ve Cilt~II'ye uzanan köprüleri.
+\end{itemize}
+\end{bolumhedefleri}
+
+Bir alıştırma birkaç satırlık bir ispatla biter. Bir \emph{proje} ise
+günler, bazen haftalar sürer. Önce doğru tanımları bulmak, sonra ispatı
+önsavlara bölmek ve en sonunda tanımlarınızın ispatı ne kadar
+kolaylaştırdığını ya da zorlaştırdığını görmek gerekir. Kitap boyunca bazı
+sonuçları ``bir projedir'' diyerek kâğıt üzerinde bıraktık. Church--Rosser
+teoremi, güçlü normalleşme ve sözdizimsel kesme eleme bunlardandır. Bu
+bölüm, bunları on iki proje olarak bir araya getiriyor. Her projenin hedef
+teoremi eşlik eden \Lean{} projesinde \lc{sorry} ile hazır bekliyor:
+\lc{ModernMantik/}\allowbreak\lc{Alistirmalar/}\allowbreak\lc{Projeler.lean}.
+
+% ---------------------------------------------------------------------
+\section{Bir formalizasyon projesi nasıl yürütülür?}\label{sec:proje-yontem}
+
+Deneyimli formalizasyoncuların neredeyse hepsi aynı döngüyü izler
+(\cref{fig:proje-dongusu}). Bölüm~12'nin tamlık ispatını bu döngüyle
+yazmıştık: Önce \lc{tamlik} ifadesi, sonra onu besleyen önsavlar, en son
+da her önsavın kendi ispatı geldi.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    adim/.style={draw=#1, fill=#1!8, very thick, rounded corners=5pt,
+                 text width=2.5cm, align=center, inner sep=5pt,
+                 font=\small, minimum height=1.5cm},
+    ok/.style={-{Stealth[length=2.6mm]}, very thick, black!40},
+    no/.style={font=\baslikfont\scriptsize\bfseries, text=white,
+               fill=#1, circle, inner sep=1.6pt},
+  ]
+  \node[adim=anarenk]        (a) at (0,0)    {\textbf{İfade}\\{\scriptsize tanımlar ve hedef teorem, \lc{sorry} ile}};
+  \node[adim=ornekframe]     (b) at (3.4,0)  {\textbf{İskelet}\\{\scriptsize önsavlar, her biri \lc{sorry}}};
+  \node[adim=ikincil]        (c) at (6.8,0)  {\textbf{İspat}\\{\scriptsize önsavları birer birer kapat}};
+  \node[adim=teoremframe]    (d) at (10.2,0) {\textbf{Temizlik}\\{\scriptsize \leankw{\#print} \lc{axioms}, belgeler}};
+  \draw[ok] (a) -- (b); \draw[ok] (b) -- (c); \draw[ok] (c) -- (d);
+  \draw[ok, dikkatframe, dashed] (c.south) to[bend left=35]
+       node[below, font=\baslikfont\scriptsize, text=dikkatframe]{ispat zorlaşıyor mu? tanımları değiştir} (a.south);
+  \foreach \n/\c/\k in {a/anarenk/1, b/ornekframe/2, c/ikincil/3, d/teoremframe/4}
+    \node[no=\c] at (\n.north west) {\k};
+\end{tikzpicture}
+\caption{Bir formalizasyon projesinin döngüsü. Kesikli ok en önemli
+adımdır: Zor bir ispat çoğu zaman yanlış seçilmiş bir tanımın
+işaretidir.}
+\label{fig:proje-dongusu}
+\end{figure}
+
+\begin{onemlifikir}[Önemli Fikir: \lc{sorry} ile geliştirme]
+\lc{sorry}, \Lean{}'e ``bu kısmı sonra ispatlayacağım'' demenin yoludur.
+Bir projenin iskeletini önce \lc{sorry}'lerle kurup sonra her \lc{sorry}'yi
+ayrı ayrı doldurmak, ispatın genel yapısının doğru olup olmadığını
+erkenden görmenizi sağlar. İskeletteki bir önsav yanlış ifade edilmişse
+(örneğin bir varsayım eksikse), bunu ana teoremi ispatlamaya çalışırken
+fark edersiniz. Önsavı ispatlamak için saatler harcamadan önce.
+\end{onemlifikir}
+
+\noindent Kitaptaki tasarım tartışmalarından çıkan birkaç pratik kural:
+
+\begin{itemize}
+  \item \textbf{Hesaplayan tanımlar seçin.} \lc{deger}'i \lc{Bool} değerli
+        tanımlamak (Bölüm~10), Kalmár önsavını \leantac{cases} ile satır satır
+        ilerletmeyi mümkün kıldı.
+  \item \textbf{Önermeyi güçlendirin.} Kalmár önsavı hem doğruyu hem yanlışı
+        taşıdı. Zayıflatma ispatı \lc{Δ}'yı genelleştirdi. Tümevarım
+        takıldığında ilk soru budur.
+  \item \textbf{İndis aritmetiğine dikkat.} Bağımlı tiplerde \lc{n + 0} ile
+        \lc{0 + n} farklıdır (Bölüm~15). Tanımı özyinelemenin yönüne göre
+        yazın.
+  \item \textbf{Aksiyomları denetleyin.} Yapıcı olması gereken bir sonuç
+        için \leankw{\#print} \lc{axioms} son adımdır (Bölüm~16).
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Projelerin haritası}\label{sec:proje-haritasi}
+
+\Cref{fig:proje-haritasi}, on iki projeyi dayandıkları bölümlere ve
+zorluklarına göre yerleştiriyor. Oklar projeler arasındaki
+bağımlılıkları gösteriyor: Örneğin P6'yı yapmak için önce P4'ün ilk
+yarısı ve P5'in fikirleri gerekir.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    proje/.style={draw=#1, fill=#1!12, thick, rounded corners=3pt,
+                  font=\baslikfont\small\bfseries, inner sep=4pt, minimum width=1.0cm},
+    ok/.style={-{Stealth[length=2mm]}, thick, black!40},
+    x=1.75cm, y=1.25cm,
+  ]
+  % eksenler
+  \foreach \b/\x in {10/0, 11/1, 12/2, 13/3, 14/4, 15/5, 16/6}
+    \node[font=\baslikfont\scriptsize, text=black!55] at (\x,-0.75) {Bölüm \b};
+  \draw[black!20] (-0.5,-0.45) -- (6.5,-0.45);
+  \node[font=\baslikfont\scriptsize, text=ikincil, anchor=east]     at (-0.55,0) {\zorluk{2}};
+  \node[font=\baslikfont\scriptsize, text=dikkatframe, anchor=east] at (-0.55,1.5) {\zorluk{3}};
+  \node[font=\baslikfont\scriptsize, text=vurgu, anchor=east]       at (-0.55,3) {\zorluk{3}+};
+  \foreach \y in {0,1.5,3} \draw[black!10, dashed] (-0.5,\y) -- (6.5,\y);
+  % projeler
+  \node[proje=ikincil]     (p1)  at (0,0)   {P1};
+  \node[proje=dikkatframe] (p4)  at (1,1.5) {P4};
+  \node[proje=dikkatframe] (p12) at (2,1.5) {P12};
+  \node[proje=dikkatframe] (p2)  at (3,1.5) {P2};
+  \node[proje=vurgu]       (p5)  at (3,3)   {P5};
+  \node[proje=vurgu]       (p6)  at (2.3,3) {P6};
+  \node[proje=ikincil]     (p3)  at (4,0)   {P3};
+  \node[proje=dikkatframe] (p7)  at (4,1.5) {P7};
+  \node[proje=vurgu]       (p8)  at (4.6,3) {P8};
+  \node[proje=vurgu]       (p9)  at (3.8,3) {P9};
+  \node[proje=ikincil]     (p10) at (5,0)   {P10};
+  \node[proje=ikincil]     (p11) at (6,0)   {P11};
+  % bağımlılıklar
+  \draw[ok] (p1) -- (p12);
+  \draw[ok] (p4) -- (p6);
+  \draw[ok] (p5) -- (p6);
+  \draw[ok] (p7) -- (p9);
+  \draw[ok] (p3) -- (p8);
+  \draw[ok, dashed, teoremframe] (p4.north) -- ++(0,0.65)
+       node[above, font=\baslikfont\scriptsize, text=teoremframe]{Cilt~II: Kripke};
+\end{tikzpicture}
+\caption{On iki projenin haritası. Yatay eksen projenin dayandığı ana
+bölümü, dikey eksen zorluğu gösterir. Oklar ``önce bunu yapın''
+anlamındadır.}
+\label{fig:proje-haritasi}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.35}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\bfseries}p{0.8cm} X p{1.7cm} p{1.4cm} p{2.1cm}}
+\rowcolor{tabloust}
+\tablobaslik{} & \tablobaslik{Proje} & \tablobaslik{Bölüm} & \tablobaslik{Zorluk} & \tablobaslik{Emek} \\
+P1  & Doğruluk tablosu yönteminin doğruluğu        & 10     & \zorluk{2} & 1--2 gün \\
+P2  & Ardışık hesapta ispat aramanın doğruluğu     & 13     & \zorluk{3} & 3--5 gün \\
+P3  & Normalleştiricinin doğruluğu                 & 14     & \zorluk{2} & 1--2 gün \\
+P4  & Yapıcı doğal çıkarım ve Peirce yasası         & 4, 11  & \zorluk{3} & 1 hafta \\
+P5  & Sözdizimsel kesme eleme                      & 13     & \zorluk{3} & 2--4 hafta \\
+P6  & LJ ile yapıcı doğal çıkarımın denkliği       & 5, 13  & \zorluk{3} & 1--2 hafta \\
+P7  & Tip korunumu                                 & 14     & \zorluk{3} & 1 hafta \\
+P8  & Church--Rosser teoremi                       & 14     & \zorluk{3} & 1--2 hafta \\
+P9  & Güçlü normalleşme                            & 14     & \zorluk{3} & 2--3 hafta \\
+P10 & Biriktiricili ters çevirme                   & 15     & \zorluk{2} & 1 gün \\
+P11 & Tamsayıların halka yapısı                    & 16     & \zorluk{2} & 2--3 gün \\
+P12 & Yapıcı model varlığı                         & 10, 12 & \zorluk{3} & 1 hafta \\
+\end{tabularx}
+\caption{Projelerin özeti. Emek tahminleri, kitabı buraya kadar
+alıştırmalarıyla birlikte izlemiş bir okur içindir.}
+\label{tab:projeler}
+\end{table}
+
+% ---------------------------------------------------------------------
+\section{A. Karar yöntemleri ve yansıma}\label{sec:projeler-a}
+
+Bu gruptaki üç proje, kitapta yazdığımız \emph{çalışan} fonksiyonların
+(\lc{totolojiMi}, \lc{ara}, \lc{adim?}) gerçekten söylediklerini yaptığını
+ispatlamayı ister. Bir fonksiyonun doğruluğunu ispatlamak, onu bir
+\emph{karar yöntemine} dönüştürmenin ilk adımıdır. Cilt~II'nin 6. bölümünde
+bu tekniği, \emph{yansıma} adıyla, \Lean{}'in kendi önermelerine
+uygulayacağız.
+
+\begin{projekarti}{P1}{Doğruluk tablosu yöntemi doğrudur}
+\projebilgi{Bölüm~10}{\zorluk{2}}{1--2 gün}
+Bölüm~10'daki \lc{totolojiMi}, formülü \lc{tumDegerlemeler}'deki her
+değerlemede hesaplar. Bunun gerçekten totolojiliği yakaladığını ispatlayın.
+
+\leandosya[P1]{Alistirmalar/Projeler}{p1}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item \emph{Kapsama önsavı}: Her \lc{w} için, \lc{tumDegerlemeler n}
+        içinde ilk \lc{n} atomda \lc{w} ile anlaşan bir \lc{v} vardır.
+        \lc{n} üzerinde tümevarımla ve \lc{genislet}'in tanımıyla.
+  \item Kapsama önsavını \lc{yerellik} ile birleştirin: \lc{deger v A =
+        deger w A}.
+  \item \lc{List.all} için \lc{List.all\_eq\_true} önsavını kullanın.
+\end{enumerate}
+\end{projekarti}
+
+\begin{projekarti}{P2}{İspat arama doğrudur}
+\projebilgi{Bölüm~13}{\zorluk{3}}{3--5 gün}
+Bölüm~13'teki \lc{ara} fonksiyonu \lc{true} döndürdüğünde, ardışığın gerçekten
+kesmesiz bir türetimi vardır.
+
+\leandosya[P2]{Alistirmalar/Projeler}{p2}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item \lc{tam\_aux}'un örüntülerini aynen izleyin; her durumda \lc{ara}'nın
+        tanımı tek bir özyinelemeli çağrıya ya da bir \lc{\&\&}'e açılır.
+  \item \lc{(a \&\& b) = true}'yu \lc{Bool.and\_eq\_true} ile ikiye bölün.
+  \item Atomik durum için \lc{List.any\_eq\_true} ve \lc{List.contains}
+        önsavlarından ortak bir atom elde edin.
+  \item \emph{Uzantı:} Ters yönü (\lc{Gecerli} ise \lc{ara = true}) de
+        ispatlayıp \lc{ara}'yı bir karar yöntemine dönüştürün.
+\end{enumerate}
+\end{projekarti}
+
+\begin{projekarti}{P3}{Normalleştiricinin her adımı bir β-adımıdır}
+\projebilgi{Bölüm~14}{\zorluk{2}}{1--2 gün}
+\leandosya[P3]{Alistirmalar/Projeler}{p3}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item \lc{t} üzerinde tümevarım yapın. \lc{app t₁ t₂} durumunda
+        \lc{t₁}'in bir \lc{lam} olup olmadığına göre ayırın; çünkü
+        \lc{adim?}'ın örüntüleri örtüşüyor.
+  \item \lc{Option.map f x = some u} hipotezini \lc{x = some u'} ve \lc{u =
+        f u'} biçimine çeviren küçük bir önsav yazın.
+  \item \emph{Uzantı:} \lc{adim? t = none} ise \lc{Normal t}.
+\end{enumerate}
+\end{projekarti}
+
+% ---------------------------------------------------------------------
+\section{B. İspat kuramı}\label{sec:projeler-b}
+
+\begin{projekarti}{P4}{Yapıcı doğal çıkarım ve Peirce yasası}
+\projebilgi{Bölüm~4, 11}{\zorluk{3}}{1 hafta}
+\lc{Turetilir}'den RAA kuralını çıkarınca yapıcı doğal çıkarım elde edilir
+(Bölüm~11, \cref{sec:gecerlilik-sinir}). Peirce yasası bu sistemde
+türetilemez. Ama bunu göstermek için iki değerli anlambilim yetmez.
+
+\leandosya[P4]{Alistirmalar/Projeler}{p4}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item (a) kural tümevarımıyla birkaç satırdır.
+  \item (b) için bir \emph{Kripke modeli} tanımlayın: kısmi sıralı bir
+        dünyalar kümesi ve tekdüze bir atom yorumu. Zorlama bağıntısını
+        ($w \Vdash A$) formül üzerinde özyinelemeyle tanımlayın (Bölüm~4).
+  \item \lc{TuretilirY}'nin Kripke anlambilimine göre geçerliliğini ispatlayın.
+        \lc{iseG} durumunda tekdüzelik önsavı gerekecek.
+  \item Peirce yasası için iki dünyalı bir karşı model kurun:
+        $w_0 \le w_1$, $p$ yalnızca $w_1$'de doğru.
+\end{enumerate}
+\emph{Kaynak:} \citet{kripke1965,troelstra1988}. Kripke anlambilimi
+Cilt~II'nin 2. bölümünde ayrıntılı olarak işlenecek.
+\end{projekarti}
+
+\begin{projekarti}{P5}{Sözdizimsel kesme eleme}
+\projebilgi{Bölüm~13}{\zorluk{3}}{2--4 hafta}
+Bölüm~13'te kesmenin elenebilirliğini anlambilim yoluyla, birkaç satırda
+ispatladık. Gentzen'in yolu ise kesmeli bir türetimi doğrudan kesmesiz bir
+türetime \emph{dönüştürmektir}. Bu proje, bu dönüşümü yazmayı ister.
+
+\leandosya[P5]{Alistirmalar/Projeler}{p5}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item Kesmesiz \lc{Ardisik} için \emph{sözdizimsel} tersinirlik önsavları
+        ispatlayın (Bölüm~13'tekiler anlambilimseldi). Örneğin \lc{Ardisik
+        ((A {\sembolkodfont ⋀} B) :: Γ) Δ → Ardisik (A :: B :: Γ) Δ}, türetim üzerinde
+        tümevarımla.
+  \item \emph{Kesme kabul edilebilirliği}: \lc{Ardisik Γ (A :: Δ)} ve
+        \lc{Ardisik (A :: Γ) Δ} ise \lc{Ardisik Γ Δ}. \lc{A}'nın boyutu
+        üzerinde dış tümevarım, birinci türetim üzerinde iç tümevarım.
+        Ana formül her iki tarafta da yeni tanıtılmışsa tersinirlik
+        önsavlarını kullanın.
+  \item Son olarak \lc{ArdisikK} üzerinde tümevarımla, her kesmeyi bir
+        önceki adımla eleyin.
+\end{enumerate}
+\emph{Kaynak:} \citet{gentzen1935,pfenning2000,negri2001}.
+\end{projekarti}
+
+\begin{projekarti}{P6}{LJ ile yapıcı doğal çıkarım aynıdır}
+\projebilgi{Bölüm~5, 13}{\zorluk{3}}{1--2 hafta}
+Gentzen'in sezgici ardışık hesabı LJ, sağ tarafta en fazla bir formüle izin
+verir. LJ'nin, P4'teki \lc{TuretilirY} ile aynı formülleri türettiğini
+gösterin.
+
+\leandosya[P6]{Alistirmalar/Projeler}{p6}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item LJ $\Rightarrow$ doğal çıkarım: Sol kurallar eleme kurallarıyla
+        taklit edilir. Kolay yöndür.
+  \item Doğal çıkarım $\Rightarrow$ LJ: Eleme kuralları için LJ'de
+        \emph{kesme} gerekir. Önce LJ için kesme kabul edilebilirliğini
+        (P5'in tekniğiyle) ispatlayın.
+  \item \lc{iseL} kuralının ana formülü öncülde de tuttuğuna dikkat edin.
+        Bu, LJ'de daraltmanın kabul edilebilirliği için gereklidir.
+\end{enumerate}
+\emph{Kaynak:} \citet{negri2001,prawitz1965,dyckhoff1992}.
+\end{projekarti}
+
+% ---------------------------------------------------------------------
+\section{C. $λ$-hesabı}\label{sec:projeler-c}
+
+\begin{projekarti}{P7}{Tip korunumu}
+\projebilgi{Bölüm~14}{\zorluk{3}}{1 hafta}
+Bir terim indirgendiğinde tipi değişmez. Bu teorem, ``iyi tiplenmiş
+programlar yanlış gitmez'' sloganının yarısıdır.
+
+\leandosya[P7]{Alistirmalar/Projeler}{p7}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item \emph{Zayıflatma}: \lc{Tiplenir (Γ₁ ++ Γ₂) t A} ise
+        \lc{Tiplenir (Γ₁ ++ B :: Γ₂) (kaydir 1 Γ₁.length t) A}.
+        \lc{t} üzerinde tümevarım, \lc{Γ₁}'i genelleştirerek.
+  \item \emph{Yerine koyma}: \lc{Tiplenir (Γ₁ ++ B :: Γ₂) t A} ve
+        \lc{Tiplenir Γ₂ s B} ise \lc{Tiplenir (Γ₁ ++ Γ₂) (yerine
+        Γ₁.length s t) A}. \lc{bul} için liste birleştirme önsavları
+        gerekecek.
+  \item Son olarak \lc{Adim} üzerinde tümevarım. Yalnızca \lc{beta}
+        durumu yerine koyma önsavını kullanır.
+\end{enumerate}
+\emph{Kaynak:} \citet{barendregt1984,sorensen2006}.
+\end{projekarti}
+
+\begin{projekarti}{P8}{Church--Rosser teoremi}
+\projebilgi{Bölüm~14}{\zorluk{3}}{1--2 hafta}
+\leandosya[P8]{Alistirmalar/Projeler}{p8}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item \emph{Paralel indirgeme} \lc{Paralel t u}'yu tanımlayın: Bir
+        terimdeki redekslerin herhangi bir alt kümesi aynı anda
+        indirgenir.
+  \item \lc{Adim ⊆ Paralel ⊆ Adimlar} olduğunu gösterin.
+  \item Takahashi'nin yöntemi \citep{takahashi1995}: Her terimin bütün
+        redekslerini indirgeyen \lc{tamGelisme t}'yi tanımlayın ve
+        \lc{Paralel t u → Paralel u (tamGelisme t)} önsavını ispatlayın.
+        Bu, \lc{Paralel}'in elmas özelliğini hemen verir.
+  \item Elmas özelliğini \lc{Adimlar}'a taşıyın. \lc{kaydir} ve \lc{yerine}
+        için bir ``yerine koyma ile paralel indirgeme'' önsavı gerekecek.
+\end{enumerate}
+\end{projekarti}
+
+\begin{projekarti}{P9}{Güçlü normalleşme}
+\projebilgi{Bölüm~14}{\zorluk{3}}{2--3 hafta}
+Tiplenebilen her terimin her indirgeme dizisi sonludur. \lc{GucluNormal},
+bu özelliğin \emph{tümevarımsal} bir tanımıdır: Bir terim, bütün tek adımlık
+indirgenmişleri güçlü normalleşiyorsa güçlü normalleşir.
+
+\leandosya[P9]{Alistirmalar/Projeler}{p9}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item Isınma: \lc{omega\_adim} ile \lc{p9\_omega}.
+  \item Tait'in yöntemi: Tip üzerinde özyinelemeyle bir
+        \lc{Indirgenebilir : Tip → Terim → Prop} tanımlayın. Ok tipinde
+        ``her indirgenebilir argümana uygulandığında indirgenebilir''.
+  \item Üç özellik (CR1--CR3): İndirgenebilir terimler güçlü normalleşir,
+        indirgenme altında kapalıdır ve ``nötr'' terimler için genişleme
+        altında kapalıdır.
+  \item \emph{Temel önsav}: Tiplenebilen bir terime indirgenebilir terimler
+        yerine konursa sonuç indirgenebilirdir. P7'nin yerine koyma
+        önsavları burada yeniden kullanılır.
+\end{enumerate}
+\emph{Kaynak:} \citet{tait1967}; \citet[Bölüm~6]{girard1989}.
+\end{projekarti}
+
+% ---------------------------------------------------------------------
+\section{D. Bağımlı tipler ve bölümler}\label{sec:projeler-d}
+
+\begin{projekarti}{P10}{Biriktiricili ters çevirme}
+\projebilgi{Bölüm~15}{\zorluk{2}}{1 gün}
+\leandosya[P10]{Alistirmalar/Projeler}{p10}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item \lc{p10\_tersAux bos w}'nin tipi \lc{Vek α (0 + n)}'dir, \lc{w}'nin
+        ise \lc{Vek α n}. Ya tipi \lc{Vek α (n + m)} olarak değiştirin
+        (hangi durumda sorun çıkıyor?) ya da \lc{Nat.zero\_add n ▸ w}
+        ile taşıyın.
+  \item \lc{toList}'in taşımayla değişmediğini \lc{a15\_5}'teki gibi
+        \leantac{subst} ile gösterin.
+  \item Genelleştirilmiş önsav: \lc{(tersAux v w).toList = v.toList.reverse
+        ++ w.toList}.
+\end{enumerate}
+\end{projekarti}
+
+\begin{projekarti}{P11}{Tamsayıların halka yapısı}
+\projebilgi{Bölüm~16}{\zorluk{2}}{2--3 gün}
+\leandosya[P11]{Alistirmalar/Projeler}{p11}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item $(a - b)(c - d) = (ac + bd) - (ad + bc)$ olduğundan çarpmayı
+        temsilciler üzerinde \lc{(a*c + b*d, a*d + b*c)} olarak tanımlayın.
+  \item İyi tanımlılık doğrusal olmayan bir eşitlik ister; \leantac{omega}
+        yetmez. \lc{Nat.mul\_add}, \lc{Nat.add\_mul} ile elle ya da Mathlib'in
+        \leantac{ring}/\leantac{nlinarith} taktikleriyle ispatlayın.
+        Önce bir argümanı, sonra diğerini değiştirmek işi kolaylaştırır.
+  \item Halka aksiyomlarını \lc{Quotient.inductionOn₃} ile ispatlayın.
+  \item \emph{Uzantı:} \lc{Tamsayi.isaret}'in bir halka eşyapı dönüşümü
+        olduğunu ve \lc{Int}'e bir eşleme verdiğini gösterin.
+\end{enumerate}
+\end{projekarti}
+
+\begin{projekarti}{P12}{Yapıcı model varlığı}
+\projebilgi{Bölüm~10, 12}{\zorluk{3}}{1 hafta}
+Bölüm~12'deki \lc{model\_varligi}, \lc{Classical.byContradiction} kullanıyordu.
+Doğruluk tablosunu gerçekten tarayan yapıcı bir sürüm yazın.
+
+\leandosya[P12]{Alistirmalar/Projeler}{p12}
+
+\textbf{Önerilen yol.}
+\begin{enumerate}[nosep]
+  \item \lc{Γ}'nın formüllerindeki en büyük atom indisini bulun ve
+        \lc{tumDegerlemeler} listesini \lc{List.find?} ile tarayın.
+  \item \lc{p12\_dogru}, \lc{List.find?}'ın bulduğu elemanın koşulu
+        sağladığını söyleyen önsavdan çıkar.
+  \item \lc{p12\_tam} için P1'deki kapsama önsavı ve Bölüm~12'deki
+        \lc{tamlik} gerekir.
+  \item Son olarak \leankw{\#print} \lc{axioms} ile \lc{Classical.choice}'un
+        kullanılmadığını doğrulayın.
+\end{enumerate}
+\end{projekarti}
+
+% ---------------------------------------------------------------------
+\section{Projeyi bitirdiğinizde}\label{sec:proje-bitis}
+
+\begin{itemize}
+  \item \textbf{\lc{sorry} kalmasın.} Projenizi \lc{Alistirmalar/}'dan
+        kendi dosyanıza taşıyın ve sürekli tümleştirmenin \lc{sorry}
+        denetimine dahil edin.
+  \item \textbf{Aksiyomları listeleyin.} Sonucunuzun dayandığı aksiyomları
+        belgeleyin. Yapıcı olması gereken bir sonuç \lc{Classical.choice}'a
+        dayanıyorsa nedenini bulun.
+  \item \textbf{Belgeleyin.} Her tanımın ve ana teoremin başına,
+        neyi neden öyle tanımladığınızı açıklayan bir yorum yazın. Altı ay
+        sonra kodu okuyacak kişi muhtemelen siz olacaksınız.
+  \item \textbf{Paylaşın.} \Lean{} topluluğunun Zulip sohbet sunucusu ve
+        Reservoir paket dizini, bitmiş projeler için doğal yerlerdir. Bir
+        sonucun Mathlib'e katkı olarak uygun olup olmadığını orada
+        sorabilirsiniz.
+\end{itemize}
+
+\begin{arastirmanotu}
+Bu projelerin çoğu, ispat asistanlarının kıyaslama ölçütü olarak
+kullanılmıştır. Church--Rosser ve güçlü normalleşme, POPLmark yarışmasının
+\citep{aydemir2005} ruhuna uygun ``bağlayıcı içeren metateori''
+örnekleridir. Kesme eleme ise formalize edilmiş ispat kuramının merkezindedir
+\citep{chaudhuri2019,shillito2023}. Lean~4'te bu sonuçların bir kısmı
+Foundation kütüphanesinde \citep{foundation} genel biçimleriyle bulunur.
+Kendi çözümünüzü yazdıktan sonra oradaki çözümlerle karşılaştırmak,
+tanım seçimlerinin etkisini görmenin en iyi yoludur.
+\end{arastirmanotu}
+
+% ---------------------------------------------------------------------
+\chapter*{Sonsöz: Cilt II'ye Bakış}
+\addcontentsline{toc}{chapter}{Sonsöz: Cilt II'ye Bakış}
+\markboth{Sonsöz}{Sonsöz}
+
+Cilt~I'e ``Mantık nedir?'' sorusuyla başladık ve \Lean{}'in çekirdeğinin
+neye inandığını sorarak bitirdik. Bu yolda önermeler mantığını hem bir
+araç hem de bir inceleme nesnesi olarak gördük. İspat sistemlerinin
+geçerli ve tam olduğunu, kesmenin elenebildiğini ve tiplenebilen
+programların ispat olduğunu \Lean{}'de ispatladık. Bölüm~16'da üçüncü hâlin
+olanaksızlığının \Lean{}'de bir teorem olduğunu gördüğümüzde, Bölüm~4'te
+açtığımız yapıcı/klasik sorusu da kapanmış oldu.
+
+Cilt~I'in büyük ölçüde \emph{önermeler} mantığında kaldığını fark etmiş
+olabilirsiniz. Niceleyicileri \Lean{}'in kendi mantığında bolca kullandık
+(sığ gömme). Ama niceleyicili bir nesne dilini ve onun metateorisini derin
+gömmeyle kurmadık. Bölüm~12'de Henkin yöntemini kâğıt üzerinde bırakmamızın
+nedeni budur. Bağlı değişkenlerin bütün zorluğu, Bölüm~14'te
+$\lambda$-hesabında gördüğümüz gibi, orada bizi bekliyor.
+
+\textbf{Cilt~II} tam bu noktadan başlıyor. Planlanan içerik şöyle:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{0.92\linewidth}{>{\bfseries}p{0.7cm} X}
+\rowcolor{tabloust}
+\tablobaslik{} & \tablobaslik{Cilt II: İleri Konular} \\
+1 & Birinci mertebe mantık: sözdizim, anlambilim ve Gödel--Henkin tamlığı, \Lean{}'de \\
+2 & Kip mantığı ve Kripke anlambilimi; sezgici mantığın S4'e gömülmesi \\
+3 & Kanıtlanabilirlik mantığı (GL) \\
+4 & Gödel'in eksiklik teoremleri \\
+5 & Küme kuramı, modeller ve bağımsızlık \\
+6 & Karar verilebilirlik ve otomasyon: SAT/SMT, \leantac{omega}, \leantac{bv\_decide}, yansıma \\
+7 & Metaprogramlama: kendi taktiğinizi yazmak \\
+8 & Yapay zekâ ve otomatik teorem ispatı \\
+9 & Büyük formalizasyon projeleri ve araştırma projeleri \\
+\end{tabularx}
+\end{center}
+
+Cilt~I boyunca ``Cilt~II, Bölüm~$n$'' diye işaret ettiğimiz her konu bu
+tablodadır. Cilt~I'deki P4 projesi (Kripke modelleri ile Peirce yasası) ve
+P2 projesi (ispat aramanın doğruluğu), sırasıyla 2. ve 6. bölümlerin doğal
+başlangıç noktalarıdır.
+
+\vspace{1em}
+\begin{flushright}
+\yazar\\
+\textit{Ekim 2026}
+\end{flushright}

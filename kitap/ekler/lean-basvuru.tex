@@ -1,0 +1,114 @@
+\chapter{Lean 4 Hızlı Başvuru}\label{ek:basvuru}
+
+Bu ek, kitap boyunca kullanılan taktikleri ve komutları tek bir yerde toplar.
+Her yeni bölümle birlikte genişletilecektir.
+
+\section{Taktikler ve doğal çıkarım kuralları}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.6cm}
+                             >{\raggedright\arraybackslash}p{3.2cm}
+                             >{\raggedright\arraybackslash}X
+                             >{\centering\arraybackslash}p{1.4cm}}
+\rowcolor{tabloust}
+\tablobaslik{Taktik} & \tablobaslik{Hedef / durum} & \tablobaslik{Etkisi} & \tablobaslik{Bölüm} \\
+\leantac{intro h}       & \lc{⊢ A → B}           & $A$'yı \lc{h} adıyla varsayar; hedef $B$ olur. ($\to$G) & \ref{bol:onermeler1} \\
+\leantac{apply h}       & \lc{h : A → B}, \lc{⊢ B} & Hedefi $A$'ya çevirir. ($\to$E, geriye doğru) & \ref{bol:onermeler1} \\
+\leantac{exact t}       & \lc{t : B}, \lc{⊢ B}   & İspatı bitirir. & \ref{bol:giris} \\
+\leantac{constructor}   & \lc{⊢ A ∧ B}           & İki hedef açar: $A$ ve $B$. ($\wedge$G) & \ref{bol:onermeler1} \\
+\leantac{obtain ⟨a, b⟩ := h} & \lc{h : A ∧ B}    & \lc{a : A} ve \lc{b : B} hipotezlerini verir. ($\wedge$E) & \ref{bol:onermeler1} \\
+\leantac{left} / \leantac{right} & \lc{⊢ A ∨ B}  & Hedefi $A$ (ya da $B$) yapar. ($\vee$G) & \ref{bol:onermeler1} \\
+\leantac{cases h}       & \lc{h : A ∨ B}         & İki duruma ayırır. ($\vee$E) & \ref{bol:onermeler1} \\
+\leantac{rcases h with a | b} & \lc{h : A ∨ B}   & Durumlara ayırır ve adlandırır. & \ref{bol:onermeler1} \\
+\leantac{assumption}    & hedef bir hipotezde    & Uygun hipotezi bulup kullanır. & \ref{bol:onermeler1} \\
+\leantac{sorry}         & her durumda            & İspatı \emph{kapatmadan} geçer; uyarı üretir. & \ref{bol:giris} \\
+\leantac{trivial}       & \lc{⊢ True}            & Hedefi kapatır. ($\top$G) & \ref{bol:degilleme} \\
+\leantac{exfalso}       & her hedef              & Hedefi \lc{False} yapar. ($\bot$E) & \ref{bol:degilleme} \\
+\leantac{contradiction} & bağlamda çelişki       & İspatı bitirir. & \ref{bol:degilleme} \\
+\leantac{rw [h]}        & \lc{h : P ↔ Q} ya da \lc{a = b} & Hedefi yeniden yazar. & \ref{bol:degilleme} \\
+\lc{Classical.em P}     & her durumda            & \lc{P ∨ ¬P} verir (klasik). & \ref{bol:yapici-klasik} \\
+\lc{Classical.byContradiction} & her hedef       & Çelişki ile ispat (klasik). & \ref{bol:yapici-klasik} \\
+\leantac{decide}        & karar verilebilir hedef & Hesaplayarak ispatlar. & \ref{bol:yapici-klasik} \\
+\leantac{have h : A := t} & her durumda          & Bağlama ara sonuç ekler (ileriye doğru). & \ref{bol:dogal-cikarim} \\
+\leantac{suffices h : A by t} & her hedef        & ``\lc{A}'yı göstermek yeter''; hedef \lc{A} olur. & \ref{bol:dogal-cikarim} \\
+\leantac{show A}        & hedef \lc{A}           & Hedefi açıkça yazar; değiştirmez. & \ref{bol:dogal-cikarim} \\
+\leantac{refine ⟨?\_, ?\_⟩} & her hedef          & Terim iskeleti yazar; \lc{?\_} yeni hedef olur. & \ref{bol:dogal-cikarim} \\
+\lc{t₁ <;> t₂}          & her hedef              & \lc{t₁}'den çıkan her hedefe \lc{t₂}'yi uygular. & \ref{bol:dogal-cikarim} \\
+\leantac{all\_goals t}  & birden çok hedef       & Bütün hedeflere \lc{t}'yi uygular. & \ref{bol:dogal-cikarim} \\
+\leantac{first | t₁ | t₂} & her hedef            & İlk başarılı taktiği uygular. & \ref{bol:dogal-cikarim} \\
+\leantac{intro x}       & \lc{⊢ ∀ x, P x}        & Keyfi bir \lc{x} alır. ($\forall$G) & \ref{bol:yuklemler} \\
+\leantac{specialize h t} & \lc{h : ∀ x, P x}     & \lc{h}'yi \lc{h : P t} yapar. ($\forall$E) & \ref{bol:yuklemler} \\
+\lc{⟨t, ht⟩}            & \lc{⊢ ∃ x, P x}        & Tanık ve kanıt verir. ($\exists$G) & \ref{bol:yuklemler} \\
+\leantac{obtain ⟨a, ha⟩ := h} & \lc{h : ∃ x, P x} & Tanığa ad verir. ($\exists$E) & \ref{bol:yuklemler} \\
+\leantac{rw [← h]}      & \lc{h : a = b}         & Hedefte \lc{b}'yi \lc{a} yapar. & \ref{bol:yuklemler} \\
+\leankw{calc}           & eşitlik zinciri        & Adım adım eşitlik ispatı. & \ref{bol:yuklemler} \\
+\leantac{induction n with} & \lc{n : Nat}, \lc{n : Dogal} & Tümevarım; her kurucu için bir durum. & \ref{bol:tumevarim} \\
+\leantac{injection h with h'} & \lc{h : c a = c b} & \lc{h' : a = b} verir. & \ref{bol:tumevarim} \\
+\leantac{change t at h} & her hipotez           & Hipotezi tanımsal eşdeğerine çevirir. & \ref{bol:tumevarim} \\
+\leantac{omega}         & doğrusal aritmetik     & \lc{Nat}/\lc{Int} üzerinde karar verir. & \ref{bol:tumevarim} \\
+\leantac{simp}          & her hedef              & Bilinen eşitliklerle sadeleştirir. & \ref{bol:tumevarim} \\
+\leantac{ext x}         & \lc{⊢ s = t}           & Elemanlara indirger. (\Mathlib{}) & \ref{bol:kumeler} \\
+\leantac{ring}          & polinom eşitliği       & Halka eşitliklerini kanıtlar. (\Mathlib{}) & \ref{bol:kumeler} \\
+\leantac{linarith}      & doğrusal eşitsizlik    & Hipotezlerden türetir. (\Mathlib{}) & \ref{bol:kumeler} \\
+\leantac{norm\_num}     & sayısal hedef          & Hesaplar, asallık denetler. (\Mathlib{}) & \ref{bol:kumeler} \\
+\leantac{positivity}    & \lc{⊢ 0 ≤ e}, \lc{0 < e} & Pozitifliği gösterir. (\Mathlib{}) & \ref{bol:kumeler} \\
+\leantac{tauto}         & totoloji               & Klasik önermeler mantığı. (\Mathlib{}) & \ref{bol:kumeler} \\
+\lc{exact?}             & her hedef              & Kütüphanede teorem arar. & \ref{bol:kumeler} \\
+\leantac{induction h with} & \lc{h} bir yüklem kanıtı & Kural tümevarımı. & \ref{bol:tumevarimsal-tipler} \\
+\lc{cases r <;> rfl}    & sonlu tip              & Her durumu hesaplayarak kapatır. & \ref{bol:tumevarimsal-tipler} \\
+\leantac{show t}        & her hedef              & Hedefi tanımsal eşdeğeriyle açıkça yazar. & \ref{bol:sozdizim} \\
+\leantac{cases h : e}   & \lc{e : Bool}          & \lc{e}'nin değerine göre ayırır, \lc{h : e = true} vb. verir. & \ref{bol:sozdizim} \\
+\leantac{induction h generalizing Δ} & kural tümevarımı & Hipotezi her \lc{Δ} için güçlendirir. & \ref{bol:gecerlilik} \\
+\leantac{cases a with | false => … | true => …} & \lc{a : Bool} & Adlandırılmış durumlar; sıradan bağımsız. & \ref{bol:tamlik} \\
+\leantac{simp at h}     & \lc{h : false = true} & Çelişkili hipotezle hedefi kapatır. & \ref{bol:tamlik} \\
+\leantac{unfold f}      & tanımlı \lc{f}         & \lc{f}'nin tanımını açar. & \ref{bol:tamlik} \\
+\leankw{abbrev}         & tanım                  & Açılabilir (indirgenebilir) tanım; \lc{⟨\_, \_⟩} ile kurulabilir. & \ref{bol:tamlik} \\
+\leantac{refine t ?\_}  & her hedef              & Terimi verir; \lc{?\_} delikleri yeni hedef olur. & \ref{bol:ardisik} \\
+\leantac{apply f (x := t)} & örtük argümanlı \lc{f} & Örtük argümanı adıyla belirleyerek uygular. & \ref{bol:ardisik} \\
+\leantac{rcases h with h1 | h2} & \lc{h : a ∈ s ++ t} & \lc{List.mem\_append} ile durumlara ayırır. & \ref{bol:ardisik} \\
+\leantac{injection h with h1 h2} & \lc{h : c a b = c a' b'} & Kurucu argümanlarının eşitliklerini verir. & \ref{bol:lambda} \\
+\leantac{by\_cases h : p} & her hedef         & \lc{p} ve \lc{¬p} durumlarına ayırır. & \ref{bol:lambda} \\
+\leantac{subst h}       & \lc{h : x = e}         & Değişkeni her yerde terimle değiştirir. & \ref{bol:lambda} \\
+\lc{h ▸ e}              & \lc{h : a = b}         & \lc{e}'yi eşitlik boyunca taşır. & \ref{bol:bagimli} \\
+\leankw{\#print axioms t} & bir teorem           & \lc{t}'nin dayandığı aksiyomları listeler. & \ref{bol:bagimli} \\
+\lc{Fin.elim0 i}        & \lc{i : Fin 0}         & Olanaksız durumu kapatır. & \ref{bol:bagimli} \\
+\leantac{funext x}      & \lc{⊢ f = g}           & Noktasal eşitliğe indirger. & \ref{bol:aksiyomlar} \\
+\lc{propext ⟨h1, h2⟩}   & \lc{⊢ p = q}           & Denklikten önerme eşitliği. & \ref{bol:aksiyomlar} \\
+\lc{Quotient.inductionOn x} & \lc{x : Quotient s} & Temsilci üzerinde ispata indirger. & \ref{bol:aksiyomlar} \\
+\lc{Quotient.sound h}   & \lc{⊢ ⟦a⟧ = ⟦b⟧}       & İlişkili temsilcilerin sınıfları eşittir. & \ref{bol:aksiyomlar} \\
+\end{tabularx}
+\end{center}
+
+\section{Komutlar}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.4cm} X}
+\rowcolor{tabloust}
+\tablobaslik{Komut} & \tablobaslik{Ne yapar?} \\
+\lc{\textcolor{leancmd}{\bfseries \#check} e}   & \lc{e} ifadesinin türünü gösterir. \\
+\lc{\textcolor{leancmd}{\bfseries \#eval} e}    & \lc{e} ifadesini hesaplar ve sonucu yazar. \\
+\lc{\textcolor{leancmd}{\bfseries \#print} ad}  & Bir tanımın içeriğini gösterir. \\
+\lc{\textcolor{leancmd}{\bfseries \#print axioms} ad} & Bir teoremin hangi aksiyomlara dayandığını listeler. \\
+\end{tabularx}
+\end{center}
+
+\section{Unicode sembollerin yazılışı}
+
+VS~Code'daki Lean eklentisinde semboller ters bölü ile yazılır ve boşluk
+tuşuna basıldığında dönüşür.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{cl@{\hspace{2.5em}}cl@{\hspace{2.5em}}cl}
+\toprule
+\lc{→} & \lc{\textbackslash to}  & \lc{∧} & \lc{\textbackslash and} & \lc{∀} & \lc{\textbackslash forall} \\
+\lc{←} & \lc{\textbackslash l}   & \lc{∨} & \lc{\textbackslash or}  & \lc{∃} & \lc{\textbackslash ex} \\
+\lc{↔} & \lc{\textbackslash iff} & \lc{¬} & \lc{\textbackslash not} & \lc{λ} & \lc{\textbackslash fun} \\
+\lc{⟨ ⟩} & \lc{\textbackslash< \textbackslash>} & \lc{⊢} & \lc{\textbackslash |-} & \lc{ℕ} & \lc{\textbackslash N} \\
+\bottomrule
+\end{tabular}
+\end{center}

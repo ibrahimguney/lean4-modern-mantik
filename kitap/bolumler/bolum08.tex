@@ -1,0 +1,686 @@
+% =====================================================================
+%  Bölüm 8 — Kümeler, İlişkiler ve Fonksiyonlar
+% =====================================================================
+\chapter{Kümeler, İlişkiler ve Fonksiyonlar}\label{bol:kumeler}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item \Mathlib{}'i projeye eklemeyi, adlandırma kurallarını ve teorem
+        arama araçlarını,
+  \item \leantac{ring}, \leantac{linarith}, \leantac{norm\_num},
+        \leantac{positivity} ve \leantac{tauto} taktiklerini,
+  \item Kümeleri \emph{yüklem} olarak görmeyi ve küme cebirinin
+        önermeler mantığının bir yansıması olduğunu,
+  \item \leantac{ext} taktiğiyle küme eşitliği ispatlamayı,
+  \item İlişkileri, denklik ilişkilerini ve kısmi sıralamaları,
+  \item Birebir, örten ve eşleme fonksiyonları; bileşke ve tersleri,
+  \item Cantor teoremini ve köşegen yöntemini.
+\end{itemize}
+\end{bolumhedefleri}
+
+Önceki bölümlerde her şeyi sıfırdan kurduk: bağlaçları, niceleyicileri,
+doğal sayıları. Bu yaklaşım, mantığın nasıl çalıştığını anlamak için
+vazgeçilmezdir; ama gerçek matematik yapmak için yavaştır. Bu bölümde
+\Lean{} topluluğunun yıllardır biriktirdiği büyük matematik kütüphanesi
+\Mathlib{}'i kullanmaya başlıyoruz \citep{mathlib2020}. Ardından
+matematiğin üç temel dilini, yani kümeleri, ilişkileri ve fonksiyonları
+mantık açısından ele alacağız.
+
+% ---------------------------------------------------------------------
+\section{Mathlib'e giriş}\label{sec:mathlib}
+
+\Mathlib{}, \Lean{}'de yazılmış, gönüllü bir topluluk tarafından
+geliştirilen ve sürekli büyüyen bir matematik kütüphanesidir. Cebirden
+analize, topolojiden sayılar kuramına uzanan yüz binlerce tanım ve
+teorem içerir. Kütüphaneye eklenen her teorem, \Lean{}'in çekirdeği
+tarafından denetlenmiştir.
+
+\paragraph{Kurulum}
+Eşlik eden projede \Mathlib{} bağımlılığı bu bölümle birlikte açıldı.
+\Mathlib{} belirli bir \Lean{} sürümüyle çalıştığı için kurulumda üç adım
+gerekir: projenin \lc{lean-toolchain} dosyasını \Mathlib{}'inkiyle
+eşlemek, \lc{lake update} ile bağımlılıkları indirmek ve
+\lc{lake exe cache get} ile önceden derlenmiş dosyaları almak. Adımların
+tam hâli projenin \lc{README.md} dosyasındadır.
+
+\begin{dikkat}[Dikkat: Önbelleği indirmeyi unutmayın]
+\Mathlib{}'i sıfırdan derlemek güçlü bir bilgisayarda bile saatler sürer.
+\lc{lake exe cache get} komutu, önceden derlenmiş dosyaları birkaç
+dakikada indirir. Bir \Lean{} dosyasının başında \lc{import Mathlib}
+satırı varsa ve dosya açılırken bilgisayarınız uzun süre ``derliyor''
+görünüyorsa, büyük olasılıkla bu adım atlanmıştır.
+\end{dikkat}
+
+\leandosya[Mathlib'e ilk bakış]{Bolum08}{mathlib_ilk}
+
+\subsection{Mathlib'in taktikleri}
+
+\Mathlib{}, çekirdek \Lean{}'in taktiklerine güçlü yeni araçlar ekler
+(\cref{tab:mathlib-taktik}).
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.4cm}
+                             >{\raggedright\arraybackslash}X
+                             >{\raggedright\arraybackslash}p{4.2cm}}
+\rowcolor{tabloust}
+\tablobaslik{Taktik} & \tablobaslik{Ne yapar?} & \tablobaslik{Örnek hedef} \\
+\leantac{ring}        & Değişmeli halkalarda polinom eşitliklerini kanıtlar. & $(a+b)^2 = a^2 + 2ab + b^2$ \\
+\leantac{linarith}    & Hipotezlerden doğrusal eşitsizlikleri türetir. & $x < y,\; y < 3 \vdash x < 3$ \\
+\leantac{norm\_num}   & Somut sayısal ifadeleri hesaplar; asallık gibi özellikleri denetler. & \lc{Nat.Prime 97} \\
+\leantac{positivity}  & Bir ifadenin pozitif ya da negatif olmadığını gösterir. & $0 \leq x^2 + 1$ \\
+\leantac{tauto}       & Önermeler mantığının totolojilerini (klasik olarak) kanıtlar. & $P \wedge Q \to Q \vee R$ \\
+\leantac{ext}         & İki küme ya da fonksiyonun eşitliğini, elemanlarının eşitliğine indirger. & $s \cap t = t \cap s$ \\
+\lc{exact?}           & Kütüphanede hedefi doğrudan kapatan bir teorem arar. & \lc{a + b = b + a} \\
+\end{tabularx}
+\caption{\Mathlib{}'in sık kullanılan taktikleri.}
+\label{tab:mathlib-taktik}
+\end{table}
+
+Bölüm~7'de Gauss formülünün son adımını, dağılma ve değişme teoremlerini
+tek tek uygulayarak elle yapmıştık. \leantac{ring} bu işi tek adımda
+yapar:
+
+\leandosya[Gauss, \texttt{ring} ile]{Bolum08}{gauss_ring}
+
+\noindent \Mathlib{}, sonlu toplamlar için matematikteki $\sum$
+gösterimini de sunar. Aynı formül, kitaplarda yazıldığı biçimiyle:
+
+\leandosya[Gauss, toplam gösterimiyle]{Bolum08}{gauss_finset}
+
+\subsection{Teorem bulmak}
+
+\Mathlib{}'de aradığınız teoremin büyük olasılıkla zaten var olduğunu
+varsayın. Onu bulmanın üç yolu vardır:
+
+\begin{enumerate}[adimlar]
+  \item \textbf{Adını tahmin etmek.} \Mathlib{} katı bir adlandırma
+        düzeni izler (\cref{tab:adlandirma}). ``Çarpma değişmelidir''
+        teoremi \lc{mul\_comm}, ``bir kümenin kesişimine üyelik'' teoremi
+        \lc{Set.mem\_inter\_iff}'tir.
+  \item \textbf{\lc{exact?} ile aramak.} Hedefin yerine \lc{exact?}
+        yazdığınızda \Lean{}, kütüphanede hedefi kapatan bir teorem arar
+        ve bulursa önerir.
+  \item \textbf{Çevrimiçi araçlar.} \Mathlib{}'in belgelendirme
+        sayfaları ve teoremleri tiplerine göre arayan \emph{Loogle}
+        arama motoru \citep{loogle}.
+\end{enumerate}
+
+\begin{leankod}[exact? ile arama (çıktı bir öneridir)]
+example (a b : ℕ) : a + b = b + a := by
+  exact?   -- Try this: exact Nat.add_comm a b
+\end{leankod}
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.6cm}
+                >{\raggedright\arraybackslash}p{4.6cm}
+                >{\raggedright\arraybackslash}p{3.4cm}}
+\rowcolor{tabloust}
+\tablobaslik{Ad} & \tablobaslik{İfade} & \tablobaslik{Okunuşu} \\
+\lc{mul\_comm}          & $a \cdot b = b \cdot a$          & çarpma, değişme \\
+\lc{add\_assoc}         & $(a+b)+c = a+(b+c)$              & toplama, birleşme \\
+\lc{mul\_add}           & $a(b+c) = ab + ac$               & çarpım, toplam üzerine \\
+\lc{add\_zero}          & $a + 0 = a$                      & toplama, sıfır \\
+\lc{le\_trans}          & $a \leq b \to b \leq c \to a \leq c$ & $\leq$, geçişme \\
+\lc{Set.mem\_inter\_iff} & $x \in s \cap t \leftrightarrow x \in s \wedge x \in t$ & üyelik, kesişim, ancak ve ancak \\
+\end{tabular}
+\caption{\Mathlib{}'in adlandırma düzeninden örnekler. Ad, ifadenin
+sembollerini soldan sağa okur; \lc{\_iff} bir denkliği, \lc{\_comm}
+değişmeyi, \lc{\_assoc} birleşmeyi bildirir.}
+\label{tab:adlandirma}
+\end{table}
+
+% ---------------------------------------------------------------------
+\section{Kümeler yüklemdir}\label{sec:kume-yuklem}
+
+\Mathlib{}'de bir küme, bir yüklemden başka bir şey değildir:
+
+\begin{tanim}{Küme}{kume}
+$\alpha$ tipinin bir \textbf{alt kümesi}, $\alpha$ üzerinde bir yüklemdir:
+\[
+  \mathsf{Set}\;\alpha \;:=\; \alpha \to \mathsf{Prop}.
+\]
+$x \in s$, ``$s(x)$ doğrudur'' demektir. $\{x \mid P(x)\}$ gösterimi,
+$P$ yükleminin kendisidir.
+\end{tanim}
+
+\leandosya[Kümeler ve üyelik]{Bolum08}{kume_tanim}
+
+\noindent İkinci örnekteki \lc{Iff.rfl}, ``$a \in \{x \mid P(x)\}$'' ile
+``$P(a)$''nın \emph{tanım gereği} aynı olduğunu gösterir. \Cref{fig:kume-yuklem},
+bu bakış açısını \cref{fig:yuklem}'deki yüklem resmiyle birleştiriyor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    eleman/.style={circle, inner sep=2.2pt, fill=#1},
+  ]
+  \draw[anarenk, thick, fill=tanimbg, rounded corners=12pt] (0,0) rectangle (5.2,3.4);
+  \node[font=\baslikfont\bfseries\small, text=anarenk, anchor=north west] at (0.15,3.35) {$\alpha = \mathbb{N}$};
+  \draw[vurgu, very thick, fill=vurgu!12, rounded corners=10pt] (2.4,0.35) rectangle (4.9,2.45);
+  \node[font=\baslikfont\bfseries\small, text=vurgu, anchor=south east] at (4.9,2.45) {$s = \{n \mid n \% 2 = 1\}$};
+  \foreach \x/\y/\n in {2.9/1.9/1, 3.9/1.9/3, 2.9/0.9/5, 3.9/0.9/7}
+    { \node[eleman=vurgu] at (\x,\y) {}; \node[font=\scriptsize, right=1pt] at (\x,\y) {$\n$}; }
+  \foreach \x/\y/\n in {0.6/1.9/0, 1.5/1.9/2, 0.6/0.9/4, 1.5/0.9/6}
+    { \node[eleman=black!35] at (\x,\y) {}; \node[font=\scriptsize, right=1pt] at (\x,\y) {$\n$}; }
+  % karakteristik fonksiyon
+  \node[font=\small, anchor=west, align=left] at (5.8,2.1)
+    {$s(1) = (1 \% 2 = 1)$ \;\textcolor{bittiframe}{doğru}\\[2pt]
+     $s(2) = (2 \% 2 = 1)$ \;\textcolor{hataframe}{yanlış}};
+  \node[font=\baslikfont\scriptsize, text=black!60, anchor=west, align=left] at (5.8,0.8)
+    {küme = her elemana bir önerme\\karşılık getiren fonksiyon};
+\end{tikzpicture}
+\caption{Bir küme, elemanlarını ``doğru'' önermelere götüren bir
+yüklemdir.}
+\label{fig:kume-yuklem}
+\end{figure}
+
+\begin{dikkat}[Dikkat: Tip kuramında kümeler homojendir]
+Klasik küme kuramında her şey bir kümedir ve herhangi iki nesne
+arasında $\in$ sorusu sorulabilir: ``$3 \in \pi$ mi?'' gibi anlamsız
+sorular bile. Tip kuramında ise \lc{Set α} yalnızca \lc{α} tipindeki
+elemanlardan oluşur; \lc{x ∈ s} yazabilmek için \lc{x : α} olmalıdır.
+Bu kısıt, Russell paradoksunu (\cref{sec:berber}) daha baştan engeller:
+``Kendini içermeyen kümelerin kümesi'' tanımlanamaz, çünkü bir küme
+kendi tipinin elemanı değildir.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Küme cebiri = önermeler mantığı}\label{sec:kume-cebiri}
+
+Kümeler yüklem olduğuna göre, küme işlemleri de mantık bağlaçlarıdır
+(\cref{tab:kume-mantik}).
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\centering\arraybackslash}p{1.6cm}
+                >{\raggedright\arraybackslash}p{2.6cm}
+                >{\raggedright\arraybackslash}p{4.6cm}
+                >{\centering\arraybackslash}p{1.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Küme} & \tablobaslik{Adı} & \tablobaslik{Tanımı ($x \in \ldots$ ancak ve ancak)} & \tablobaslik{Mantık} \\
+$s \cap t$       & kesişim      & $x \in s \wedge x \in t$ & $\wedge$ \\
+$s \cup t$       & birleşim     & $x \in s \vee x \in t$   & $\vee$ \\
+$s^{c}$          & tümleyen     & $\neg(x \in s)$          & $\neg$ \\
+$s \setminus t$  & fark         & $x \in s \wedge \neg(x \in t)$ & $\wedge\neg$ \\
+$s \subseteq t$  & alt küme     & her $x$ için $x \in s \to x \in t$ & $\to$ \\
+$\emptyset$      & boş küme     & $\bot$                   & \lc{False} \\
+\lc{univ}        & evrensel küme & $\top$                  & \lc{True} \\
+\end{tabular}
+\caption{Küme işlemleri ile mantık bağlaçları arasındaki sözlük.}
+\label{tab:kume-mantik}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \def\A{(0,0) circle (0.75)}
+  \def\B{(0.85,0) circle (0.75)}
+  \foreach \i/\baslik in {0/{$s \cap t$}, 1/{$s \cup t$}, 2/{$s \setminus t$}, 3/{$s^{c}$}} {
+    \begin{scope}[shift={({3.6*\i},0)}]
+      \draw[black!20, rounded corners=4pt, fill=white] (-1.2,-1.1) rectangle (2.05,1.1);
+      \ifcase\i
+        \begin{scope}\clip \A; \fill[anarenk!45] \B; \end{scope}
+      \or
+        \fill[anarenk!45] \A; \fill[anarenk!45] \B;
+      \or
+        \begin{scope}\clip \A; \fill[anarenk!45] \A; \end{scope}
+        \fill[white] \B;
+      \or
+        \fill[anarenk!45, rounded corners=4pt] (-1.2,-1.1) rectangle (2.05,1.1);
+        \fill[white] \A;
+      \fi
+      \draw[thick, anarenk] \A;
+      \draw[thick, vurgu] \B;
+      \node[font=\scriptsize\bfseries, text=anarenk] at (-0.35,0.5) {$s$};
+      \node[font=\scriptsize\bfseries, text=vurgu] at (1.2,0.5) {$t$};
+      \node[font=\small] at (0.42,-1.4) {\baslik};
+    \end{scope}
+  }
+\end{tikzpicture}
+\caption{Dört temel küme işleminin Venn şemaları.}
+\label{fig:venn}
+\end{figure}
+
+\begin{onemlifikir}[Önemli Fikir: Küme eşitlikleri mantık denklikleridir]
+Bu sözlük, küme cebirindeki her yasanın önermeler mantığındaki bir
+yasanın kılık değiştirmiş hâli olduğunu söyler. $s \cap (t \cup u) =
+(s \cap t) \cup (s \cap u)$ dağılma yasası, Bölüm~2'deki
+$P \wedge (Q \vee R) \leftrightarrow (P \wedge Q) \vee (P \wedge R)$
+dağılma yasasıdır. George Boole'un 1854'te keşfettiği bu ortak yapıya
+\emph{Boole cebiri} denir.
+\end{onemlifikir}
+
+\subsection{Alt küme ve küme eşitliği}
+
+$s \subseteq t$, ``her $x$ için $x \in s$ ise $x \in t$'' demektir. Bir
+alt küme ispatı, dolayısıyla \leantac{intro} ile başlar:
+
+\leandosya[Alt kümenin geçişliliği]{Bolum08}{altkume}
+
+\noindent İki kümenin eşitliği ise \emph{dışsallık} ilkesine dayanır:
+Aynı elemanlara sahip iki küme eşittir. \leantac{ext x} taktiği,
+\lc{s = t} hedefini \lc{x ∈ s ↔ x ∈ t} hedefine çevirir:
+
+\leandosya[Kesişimin değişme özelliği]{Bolum08}{kesisim_degisme}
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[\texttt{ext x} öncesi]
+s t : Set α
+⊢ s ∩ t = t ∩ s
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{ext x} sonrası]
+s t : Set α
+x : α
+⊢ x ∈ s ∩ t ↔ x ∈ t ∩ s
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+\noindent \lc{x ∈ s ∩ t}, tanım gereği \lc{x ∈ s ∧ x ∈ t} olduğundan
+\leantac{rintro ⟨hs, ht⟩} onu doğrudan parçalayabilir. Dağılma yasasının
+ispatı, Bölüm~2'deki ispatın neredeyse harfi harfine aynısıdır:
+
+\leandosya[Dağılma]{Bolum08}{dagilma}
+
+\noindent Aynı ispatı \Mathlib{}'in araçlarıyla kısaltabiliriz:
+\leantac{simp only} üyelik ifadelerini mantık bağlaçlarına çevirir,
+\leantac{tauto} da ortaya çıkan totolojiyi kanıtlar:
+
+\leandosya[Dağılma, otomasyonla]{Bolum08}{dagilma_simp}
+
+\leandosya[De Morgan, kümeler için]{Bolum08}{tumleyen}
+
+\noindent Bu ispat, Bölüm~3'teki \lc{demorgan\_veya} ispatının küme
+diliyle yazılmış hâlidir. Kesişimin tümleyeni için De Morgan yasası ise,
+Bölüm~3'teki ``zor yön'' nedeniyle klasik mantık gerektirir
+(Alıştırma~\ref{alis:kume-demorgan}).
+
+% ---------------------------------------------------------------------
+\section{İlişkiler}\label{sec:iliskiler}
+
+\begin{tanim}{İlişki}{iliski}
+$\alpha$ üzerinde bir \textbf{ilişki}, iki argümanlı bir yüklemdir:
+$R : \alpha \to \alpha \to \mathsf{Prop}$. $R\,a\,b$ ``$a$, $b$ ile
+$R$ ilişkisindedir'' diye okunur.
+\end{tanim}
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.6cm}
+                >{\raggedright\arraybackslash}p{5.4cm}
+                >{\raggedright\arraybackslash}p{3.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Özellik} & \tablobaslik{Tanım} & \tablobaslik{Örnek} \\
+yansıma      & $\forall a,\; R\,a\,a$                                  & $=$, $\leq$, $\mid$ \\
+simetri      & $\forall a\,b,\; R\,a\,b \to R\,b\,a$                   & $=$, ``kardeştir'' \\
+ters simetri & $\forall a\,b,\; R\,a\,b \to R\,b\,a \to a = b$         & $\leq$, $\mid$ ($\mathbb{N}$'de) \\
+geçişme      & $\forall a\,b\,c,\; R\,a\,b \to R\,b\,c \to R\,a\,c$    & $=$, $<$, $\leq$, $\mid$ \\
+\end{tabular}
+\caption{İlişkilerin temel özellikleri.}
+\label{tab:iliski-ozellik}
+\end{table}
+
+Bu özelliklerin iki önemli bileşimi vardır:
+\begin{itemize}
+  \item \textbf{Denklik ilişkisi}: yansıma + simetri + geçişme.
+        ``Aynı kalanı vermek'', ``aynı doğum gününe sahip olmak'' gibi
+        ``bir bakıma aynı olmak'' ilişkileri.
+  \item \textbf{Kısmi sıralama}: yansıma + ters simetri + geçişme.
+        $\leq$, $\subseteq$ ve bölünebilirlik ($\mid$) gibi.
+\end{itemize}
+
+\subsection{Denklik ilişkileri}
+
+``$n$'ye bölündüğünde aynı kalanı vermek'' bir denklik ilişkisidir.
+\Lean{}'de bir denklik ilişkisi, üç özelliği alan olarak içeren bir
+\lc{Equivalence} yapısıdır:
+
+\leandosya[Mod $n$ denkliği]{Bolum08}{mod_denk}
+
+\noindent Burada \leankw{where} ile bir yapının alanlarını tek tek
+dolduruyoruz. Her alanın ispatı, eşitliğin ilgili özelliğinden gelir:
+\lc{modDenk n a b}, tanım gereği \lc{a \% n = b \% n} eşitliği olduğu için
+yansıma \lc{rfl}, simetri \lc{Eq.symm}, geçişme \lc{Eq.trans} ile
+gösterilir.
+
+Bir denklik ilişkisi, kümeyi \emph{denklik sınıflarına} ayırır: Birbirine
+denk olan elemanlar aynı sınıftadır ve her eleman tam olarak bir sınıfa
+aittir (\cref{fig:denklik-siniflari}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    sinif/.style={draw=#1, fill=#1!10, very thick, rounded corners=10pt,
+                  minimum width=3.4cm, minimum height=2.2cm},
+    sayi/.style={font=\small},
+  ]
+  \node[sinif=anarenk]     (k0) at (0,0)   {};
+  \node[sinif=ikincil]     (k1) at (4.0,0) {};
+  \node[sinif=vurgu]       (k2) at (8.0,0) {};
+  \node[font=\baslikfont\bfseries\small, text=anarenk, above=2pt of k0] {kalan 0};
+  \node[font=\baslikfont\bfseries\small, text=ikincil, above=2pt of k1] {kalan 1};
+  \node[font=\baslikfont\bfseries\small, text=vurgu, above=2pt of k2] {kalan 2};
+  \node[sayi, align=center] at (k0) {$0 \quad 3 \quad 6$\\[3pt]$9 \quad 12 \;\cdots$};
+  \node[sayi, align=center] at (k1) {$1 \quad 4 \quad 7$\\[3pt]$10 \quad 13 \;\cdots$};
+  \node[sayi, align=center] at (k2) {$2 \quad 5 \quad 8$\\[3pt]$11 \quad 14 \;\cdots$};
+\end{tikzpicture}
+\caption{``3'e bölündüğünde aynı kalanı vermek'' ilişkisi, $\mathbb{N}$'yi
+üç denklik sınıfına ayırır.}
+\label{fig:denklik-siniflari}
+\end{figure}
+
+\subsection{Kısmi sıralamalar}
+
+Bölünebilirlik, doğal sayılar üzerinde bir kısmi sıralamadır:
+
+\leandosya[Bölünebilirlik]{Bolum08}{bolunme}
+
+\noindent ``Kısmi'' sözcüğü, her iki elemanın karşılaştırılamayabileceğini
+belirtir: Ne $2 \mid 3$ ne de $3 \mid 2$ doğrudur. Kısmi sıralamalar,
+\emph{Hasse şemalarıyla} çizilir: $a \mid b$ ise $b$, $a$'nın üstünde
+durur ve arada başka bir eleman yoksa ikisi bir çizgiyle birleştirilir
+(\cref{fig:hasse}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    d/.style={circle, draw=anarenk, fill=tanimbg, thick, minimum size=0.75cm, font=\small},
+  ]
+  \node[d] (1) at (0,0) {1};
+  \node[d] (2) at (-1.6,1.4) {2};
+  \node[d] (3) at (1.6,1.4) {3};
+  \node[d] (4) at (-2.6,2.8) {4};
+  \node[d] (6) at (0,2.8) {6};
+  \node[d, draw=vurgu, fill=teorembg] (12) at (-1.3,4.2) {12};
+  \foreach \a/\b in {1/2, 1/3, 2/4, 2/6, 3/6, 4/12, 6/12}
+    \draw[thick, black!45] (\a) -- (\b);
+  \node[font=\baslikfont\scriptsize, text=black!60, align=left, anchor=west] at (2.6,2.2)
+    {12'nin bölenleri\\\emph{kısmi} sıralama:\\4 ile 6 karşılaştırılamaz};
+\end{tikzpicture}
+\caption{12'nin bölenlerinin bölünebilirlik sıralamasındaki Hasse şeması.}
+\label{fig:hasse}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\section{Fonksiyonlar}\label{sec:fonksiyonlar}
+
+\begin{tanim}{Birebir, örten, eşleme}{fonk-tur}
+$f : \alpha \to \beta$ bir fonksiyon olsun.
+\begin{itemize}
+  \item $f$ \textbf{birebirdir} (İng.\ \emph{injective}):
+        $\forall a\,b,\; f(a) = f(b) \to a = b$.
+  \item $f$ \textbf{örtendir} (İng.\ \emph{surjective}):
+        $\forall b,\; \exists a,\; f(a) = b$.
+  \item $f$ \textbf{eşlemedir} (İng.\ \emph{bijective}): hem birebir hem örten.
+\end{itemize}
+\end{tanim}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    e/.style={circle, fill=#1, inner sep=1.8pt},
+    ok/.style={-{Stealth[length=2mm]}, thick, black!50},
+  ]
+  \foreach \k/\baslik/\renk in {0/{birebir, örten değil}/anarenk, 1/{örten, birebir değil}/ikincil, 2/{eşleme}/vurgu} {
+    \begin{scope}[shift={({4.4*\k},0)}]
+      \draw[\renk, thick, fill=\renk!7, rounded corners=8pt] (-0.5,-1.6) rectangle (0.5,1.3);
+      \draw[\renk, thick, fill=\renk!7, rounded corners=8pt] (1.9,-1.6) rectangle (2.9,1.3);
+      \node[font=\small] at (0,1.6) {$\alpha$};
+      \node[font=\small] at (2.4,1.6) {$\beta$};
+      \node[font=\baslikfont\scriptsize\bfseries, text=\renk] at (1.2,-2.0) {\baslik};
+    \end{scope}
+  }
+  % birebir, örten değil: 3 → 4
+  \foreach \i/\y in {1/0.8, 2/0.0, 3/-0.8} \node[e=anarenk] (a\i) at (0,\y) {};
+  \foreach \i/\y in {1/0.9, 2/0.3, 3/-0.3, 4/-0.9} \node[e=anarenk] (b\i) at (2.4,\y) {};
+  \draw[ok] (a1) -- (b1); \draw[ok] (a2) -- (b2); \draw[ok] (a3) -- (b4);
+  % örten, birebir değil: 4 → 3
+  \foreach \i/\y in {1/0.9, 2/0.3, 3/-0.3, 4/-0.9} \node[e=ikincil] (c\i) at (4.4,\y) {};
+  \foreach \i/\y in {1/0.8, 2/0.0, 3/-0.8} \node[e=ikincil] (d\i) at (6.8,\y) {};
+  \draw[ok] (c1) -- (d1); \draw[ok] (c2) -- (d1); \draw[ok] (c3) -- (d2); \draw[ok] (c4) -- (d3);
+  % eşleme: 3 → 3
+  \foreach \i/\y in {1/0.8, 2/0.0, 3/-0.8} {
+    \node[e=vurgu] (f\i) at (8.8,\y) {};
+    \node[e=vurgu] (g\i) at (11.2,\y) {};
+  }
+  \draw[ok] (f1) -- (g2); \draw[ok] (f2) -- (g3); \draw[ok] (f3) -- (g1);
+\end{tikzpicture}
+\caption{Üç fonksiyon türü. Birebir fonksiyonda iki ok aynı yere gitmez;
+örten fonksiyonda her hedef bir ok alır; eşlemede ikisi birden.}
+\label{fig:fonksiyon-turleri}
+\end{figure}
+
+\Mathlib{}'de bu kavramlar \lc{Function.Injective}, \lc{Function.Surjective}
+ve \lc{Function.Bijective} adını taşır. Tanımları, yukarıdaki
+formüllerin harfi harfine aynısıdır; ispatlar da Bölüm~6'nın niceleyici
+kurallarıyla yapılır:
+
+\leandosya[İkiyle çarpma]{Bolum08}{birebir_ornek}
+
+\noindent Birebirlik ispatı \leantac{intro a b h} ile başlar
+($\forall$G, $\to$G); örten olmamanın ispatı ise varsayılan örtenliği
+1 sayısına uygular ($\forall$E) ve tanığı \leantac{obtain} ile alır
+($\exists$E).
+
+\subsection{Bileşke}
+
+\leandosya[Bileşke]{Bolum08}{bileske}
+
+\noindent \lc{g ∘ f}, ``önce \lc{f}, sonra \lc{g}'' fonksiyonudur:
+\lc{(g ∘ f) a = g (f a)}. Bu eşitlik tanımsal olduğu için \leantac{show}
+ile hedefi açık biçimde yazabildik.
+
+\subsection{Tersler}
+
+\leandosya[Sol ters ve birebirlik]{Bolum08}{sol_ters}
+
+\noindent İspattaki üç yeniden yazma adımı şu hesabı yapar:
+$a = g(f(a)) = g(f(b)) = b$. Tersine, sağ tersi olan bir fonksiyon
+örtendir (Alıştırma~\ref{alis:sag-ters}). Bu sonuçların \emph{tersleri}
+ise ilginç bir biçimde asimetriktir (\cref{tab:tersler}).
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{5.2cm}
+                >{\raggedright\arraybackslash}p{6.4cm}}
+\rowcolor{tabloust}
+\tablobaslik{Önerme} & \tablobaslik{Ne gerekir?} \\
+sol tersi var $\Rightarrow$ birebir      & yalnızca mantık (yapıcı) \\
+sağ tersi var $\Rightarrow$ örten        & yalnızca mantık (yapıcı) \\
+birebir $\Rightarrow$ sol tersi var      & $\alpha$ boş olmamalı ve klasik mantık \\
+örten $\Rightarrow$ sağ tersi var        & \textbf{seçim aksiyomu}: her $b$ için bir $a$ \emph{seçmek} \\
+\end{tabular}
+\caption{Tersler ve fonksiyon türleri.}
+\label{tab:tersler}
+\end{table}
+
+\noindent Son satır özellikle önemlidir. $f$ örtense, her $b$ için
+$f(a) = b$ olan \emph{bir} $a$ vardır; ama sağ tersi kurmak için her $b$
+için \emph{belirli bir} $a$ seçmemiz gerekir. Sonsuz sayıda seçimi tek
+seferde yapmak, seçim aksiyomunun tam olarak izin verdiği şeydir.
+\Mathlib{}'de bu ters, \leankw{noncomputable} olarak işaretlenmiş
+\lc{Function.surjInv} fonksiyonudur. Seçim aksiyomunu \cref{bol:aksiyomlar}'da
+ayrıntılı olarak inceleyeceğiz.
+
+% ---------------------------------------------------------------------
+\section{Cantor teoremi}\label{sec:cantor}
+
+\begin{teorem}{Cantor, 1891}{cantor}
+Hiçbir $\alpha$ tipi için $\alpha$'dan $\mathsf{Set}\;\alpha$'ya örten bir
+fonksiyon yoktur. Yani bir kümenin alt kümeleri, kümenin kendisinden
+\emph{daha çoktur}.
+\end{teorem}
+
+\noindent Georg Cantor'un ünlü \emph{köşegen yöntemi}, berber
+paradoksuyla aynı yapıya sahiptir. $f : \alpha \to \mathsf{Set}\;\alpha$
+herhangi bir fonksiyon olsun ve şu kümeyi düşünelim:
+\[
+  D \;=\; \{x \mid x \notin f(x)\}.
+\]
+$D$, ``kendi görüntüsüne ait olmayan'' elemanların kümesidir. $f$ örten
+olsaydı, $f(a) = D$ olan bir $a$ bulunurdu. O zaman $a \in D$ ancak ve
+ancak $a \notin f(a) = D$ olurdu: Berber kendini tıraş eder mi?
+(\cref{fig:kosegen})
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    hucre/.style={draw=black!20, minimum size=0.75cm, font=\small},
+    kosegen/.style={hucre, fill=vurgu!20, draw=vurgu, thick},
+  ]
+  \foreach \x/\v in {1/a_1, 2/a_2, 3/a_3, 4/a_4}
+    \node[font=\small] at ({0.75*\x},0.75) {$\v$};
+  \foreach \y/\v in {1/{f(a_1)}, 2/{f(a_2)}, 3/{f(a_3)}, 4/{f(a_4)}}
+    \node[font=\small, anchor=east] at (0.25,{-0.75*(\y-1)}) {$\v$};
+  \foreach \y/\satir in {1/{1,0,1,1}, 2/{0,0,1,0}, 3/{1,1,1,0}, 4/{0,1,0,0}} {
+    \foreach \v [count=\x] in \satir {
+      \ifnum\x=\y
+        \node[kosegen] at ({0.75*\x},{-0.75*(\y-1)}) {$\v$};
+      \else
+        \node[hucre] at ({0.75*\x},{-0.75*(\y-1)}) {$\v$};
+      \fi
+    }
+  }
+  \node[font=\small, anchor=east] at (0.25,-3.25) {$D$};
+  \foreach \v [count=\x] in {0,1,0,1}
+    \node[hucre, fill=bittibg, draw=bittiframe, thick] at ({0.75*\x},-3.25) {$\v$};
+  \draw[-{Stealth[length=2.4mm]}, thick, vurgu] (3.6,-1.1) to[bend left=30] (3.6,-3.1);
+  \node[font=\baslikfont\scriptsize, text=vurgu, align=left, anchor=west] at (3.9,-2.0)
+       {köşegeni\\tersine çevir};
+  \node[font=\baslikfont\scriptsize, text=black!60, align=left, anchor=west] at (5.6,-0.6)
+       {1: $a_j \in f(a_i)$\\0: $a_j \notin f(a_i)$};
+  \node[font=\baslikfont\scriptsize, text=bittiframe, align=left, anchor=west] at (5.6,-3.25)
+       {$D$, her satırdan en az\\bir yerde (köşegende) farklıdır};
+\end{tikzpicture}
+\caption{Cantor'un köşegen yöntemi. $D$ kümesi, $i$. satırla $i$.
+sütunda farklı olacak biçimde kurulur; bu yüzden hiçbir satıra eşit
+değildir.}
+\label{fig:kosegen}
+\end{figure}
+
+\leandosya[Cantor teoremi]{Bolum08}{cantor}
+
+\begin{tarihce}[Tarihçe: Sonsuzluğun büyüklükleri]
+Cantor 1891'de yayımladığı kısa bir makalede köşegen yöntemini tanıttı
+ve bir kümenin alt kümelerinin her zaman kümeden ``daha büyük'' olduğunu
+gösterdi \citep{cantor1891}. Bu sonuç, farklı büyüklükte sonsuzlukların
+var olduğu anlamına geliyordu ve döneminde büyük tartışmalara yol açtı.
+Aynı köşegen fikri sonraki yarım yüzyılda Russell paradoksunda (1901),
+Gödel'in eksiklik teoreminde (1931) ve Turing'in durma probleminde (1936)
+yeniden karşımıza çıkacaktı.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{Taktik özeti}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{4.4cm} X}
+\rowcolor{tabloust}
+\tablobaslik{Taktik} & \tablobaslik{Ne yapar?} \\
+\leantac{ext x}                    & Küme (ya da fonksiyon) eşitliğini elemanlara indirger. \\
+\leantac{simp only [l₁, l₂]}       & Yalnızca verilen eşitliklerle sadeleştirir. \\
+\leantac{tauto}                    & Önermeler mantığı totolojilerini kanıtlar (klasik). \\
+\leantac{ring}                     & Değişmeli halkalarda polinom eşitlikleri. \\
+\leantac{linarith}                 & Doğrusal eşitsizlikler. \\
+\leantac{norm\_num}                & Sayısal hesaplar, asallık. \\
+\leantac{positivity}               & Pozitiflik ve negatif olmama. \\
+\lc{exact?}, \lc{apply?}           & Kütüphanede teorem arar. \\
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Köşegen argümanlarının ortak yapısı.} F.\,William Lawvere 1969'da,
+Cantor, Russell, Gödel ve Turing'in köşegen argümanlarının hepsinin
+kategori kuramındaki tek bir sabit nokta teoreminin örnekleri olduğunu
+gösterdi \citep{lawvere1969}. Bu sonucun matematik altyapısı ağır
+olmayan, okunabilir bir sunumu için \citet{yanofsky2003}'ya bakılabilir.
+Lawvere'in teoremi \Lean{}'de formalize edilmeye elverişli, kısa ve
+öğretici bir projedir.
+
+\textbf{Mathlib ve kütüphane tasarımı.} \Mathlib{}'in yapısı, adlandırma
+düzeni ve ``tip sınıfı'' hiyerarşisi \citet{mathlib2020}'de anlatılır.
+Büyük bir formal kütüphanede kavramların hangi genellikte tanımlanacağı,
+hangi teoremlerin \leantac{simp} lemması yapılacağı gibi sorular aktif
+tartışma konularıdır; bu konulara \ciltiki{9}'da döneceğiz.
+
+\textbf{İleri okuma.} \Mathlib{}'le matematik yapmaya kapsamlı bir giriş
+için \citet{mil}; kümeler ve fonksiyonlar bölümü bu bölümün doğal
+devamıdır.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item \Mathlib{}, \Lean{}'in büyük matematik kütüphanesidir. Teoremler
+        katı bir adlandırma düzeni izler; \lc{exact?} ve Loogle arama
+        araçlarıdır.
+  \item \leantac{ring}, \leantac{linarith}, \leantac{norm\_num},
+        \leantac{positivity}, \leantac{tauto} rutin işleri otomatikleştirir.
+  \item Bir küme, bir yüklemdir: \lc{Set α := α → Prop}. Küme işlemleri
+        mantık bağlaçlarıdır; küme cebiri önermeler mantığıdır.
+  \item Küme eşitliği \leantac{ext} ile elemanlara indirgenir.
+  \item Denklik ilişkileri sınıflara ayırır; kısmi sıralamalar Hasse
+        şemalarıyla çizilir.
+  \item Sol ters birebirliği, sağ ters örtenliği verir. Örten bir
+        fonksiyonun sağ tersini kurmak seçim aksiyomu ister.
+  \item Cantor teoremi: Hiçbir küme kendi alt kümeleri kadar büyük
+        değildir. Köşegen yöntemi, berber paradoksunun genellemesidir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} \lc{s ∩ s = s}. (\lc{a8\_1})
+
+\alistirma{1} \lc{s ⊆ s ∪ t}. (\lc{a8\_2})
+
+\alistirma{2} Birleşimin kesişim üzerine dağılması:
+\lc{s ∪ (t ∩ u) = (s ∪ t) ∩ (s ∪ u)}. Önce elle, sonra \leantac{simp only}
+ve \leantac{tauto} ile ispatlayın. (\lc{a8\_3})
+
+\alistirma{2}\label{alis:kume-demorgan} (Klasik) Kesişimin tümleyeni:
+\lc{(s ∩ t)ᶜ = sᶜ ∪ tᶜ}. Hangi yön klasik mantık gerektirir? Bölüm~3 ile
+ilişkisini açıklayın. (\lc{a8\_4})
+
+\alistirma{2} \lc{s ⊆ t → s ∩ u ⊆ t ∩ u}. (\lc{a8\_5})
+
+\alistirma{2} Bölünebilirliğin geçişliliğini, \lc{dvd\_trans} kullanmadan
+tanımdan ispatlayın. \lc{a ∣ b}, \lc{∃ c, b = a * c} demektir.
+(\lc{a8\_6})
+
+\alistirma{2} \lc{g ∘ f} örtense \lc{g} örtendir. (\lc{a8\_7})
+
+\alistirma{2} \lc{g ∘ f} birebirse \lc{f} birebirdir. (\lc{a8\_8})
+
+\alistirma{3}\label{alis:sag-ters} Sağ tersi olan fonksiyon örtendir:
+\lc{(∀ b, f (k b) = b) → Surjective f}. (\lc{a8\_9})
+
+\alistirma{3} Tam sayılar üzerinde ``farkı 3'ün katı olmak''
+ilişkisinin bir denklik ilişkisi olduğunu ispatlayın. Kaç denklik sınıfı
+vardır? (\lc{a8\_10})
+
+\alistirma{3} Köşegen yöntemi: \lc{ℕ}'den \lc{ℕ → ℕ}'ye örten fonksiyon
+yoktur. İpucu: \lc{fun n => F n n + 1} fonksiyonunu düşünün. Bu sonuç,
+``bütün programlar sayılabilir ama bütün fonksiyonlar sayılamaz''
+gözleminin özüdür. (\lc{a8\_11})
+
+\alistirma{2} (Kâğıt-kalem) $\{1, 2, 3, 4, 6, 8, 12, 24\}$ kümesi için
+bölünebilirlik sıralamasının Hasse şemasını çizin.
+
+\alistirma{3} (Tartışma) \Cref{tab:tersler}'ün üçüncü satırında
+``$\alpha$ boş olmamalı'' koşulu neden gerekir? $\alpha$ boşsa ve
+$\beta$ boş değilse ne olur?
+\end{alistirmalar}

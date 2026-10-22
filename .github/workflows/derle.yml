@@ -1,0 +1,39 @@
+name: Kitabı ve Lean kodunu derle
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lean:
+    name: Lean kodunu denetle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: lean
+          use-mathlib-cache: true
+      # Ana bölüm dosyalarında 'sorry' kalmasın (alıştırmalar hariç)
+      - name: Bölüm dosyalarında sorry denetimi
+        run: |
+          if grep -n "sorry" lean/ModernMantik/Bolum*.lean lean/ModernMantik/Cozumler/*.lean; then
+            echo "Bölüm veya çözüm dosyasında sorry bulundu."; exit 1
+          fi
+
+  kitap:
+    name: Kitabı derle (XeLaTeX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: xu-cheng/latex-action@v3
+        with:
+          root_file: ana.tex
+          working_directory: kitap
+          latexmk_use_xelatex: true
+          latexmk_shell_escape: true
+          extra_system_packages: "py3-pygments python3"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kitap-pdf
+          path: kitap/ana.pdf

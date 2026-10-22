@@ -1,0 +1,263 @@
+% =====================================================================
+%  kitap-stil.tex — Sayfa düzeni, yazı tipleri, başlıklar, kutular
+%  Lean 4 ile Modern Mantık
+% =====================================================================
+
+% ---------- Dil ve yazı tipleri (XeLaTeX) ----------
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{turkish}
+\setotherlanguage{english}
+
+\usepackage{amsmath,amsthm}
+\usepackage{unicode-math}
+\setmainfont{TeX Gyre Pagella}
+\setsansfont{TeX Gyre Heros}[Scale=MatchLowercase]
+\setmonofont{DejaVu Sans Mono}[Scale=0.84]
+\setmathfont{Latin Modern Math}[Scale=MatchLowercase]
+\newfontfamily\leanfont{DejaVu Sans Mono}[Scale=0.84]
+\newfontfamily\baslikfont{TeX Gyre Heros}[Ligatures=TeX]
+\newfontfamily\sembolfont{DejaVu Sans}   % ● ○ ⚠ ✓ ◇ □ gibi semboller için
+\newfontfamily\sembolkodfont{DejaVu Sans}[Scale=0.84]  % kod içinde ⋀ ⋁ ⟹ ⊨
+
+% ---------- Sayfa ----------
+\usepackage[a4paper, inner=2.6cm, outer=2.4cm, top=2.6cm, bottom=2.8cm,
+            headheight=14pt]{geometry}
+\usepackage{microtype}
+\usepackage[table]{xcolor}
+\usepackage{graphicx}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,
+                fit,backgrounds,decorations.pathreplacing,matrix}
+\usepackage{booktabs,array,tabularx,multirow}
+\usepackage{enumitem}
+\setlist{itemsep=2pt, topsep=4pt}
+\usepackage{ebproof}           % doğal çıkarım ağaçları
+\usepackage{csquotes}
+\usepackage{multicol}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{xurl}
+
+% ---------- Ana renkler ----------
+\definecolor{anarenk}{HTML}{3B5BDB}     % lacivert
+\definecolor{ikincil}{HTML}{0CA678}     % yeşil
+\definecolor{vurgu}{HTML}{D6336C}       % pembe-kırmızı
+\definecolor{koyu}{HTML}{1F2A44}
+\definecolor{tabloust}{HTML}{3B5BDB}
+\definecolor{tablosatir}{HTML}{EDF2FF}
+
+\definecolor{tanimbg}{HTML}{EDF2FF}  \definecolor{tanimframe}{HTML}{3B5BDB}
+\definecolor{teorembg}{HTML}{FFF0F6} \definecolor{teoremframe}{HTML}{C2255C}
+\definecolor{ornekbg}{HTML}{F3F0FF}  \definecolor{ornekframe}{HTML}{7950F2}
+\definecolor{fikirbg}{HTML}{E6FCF5}  \definecolor{fikirframe}{HTML}{0CA678}
+\definecolor{dikkatbg}{HTML}{FFF4E6} \definecolor{dikkatframe}{HTML}{E8590C}
+\definecolor{arastirmabg}{HTML}{F1F3F5}\definecolor{arastirmaframe}{HTML}{495057}
+\definecolor{tarihbg}{HTML}{FFF9DB}  \definecolor{tarihframe}{HTML}{E67700}
+\definecolor{alistirmabg}{HTML}{F8F9FA}\definecolor{alistirmaframe}{HTML}{1971C2}
+
+% ---------- Başlıklar ----------
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\baslikfont\color{koyu}}
+  {\begin{tikzpicture}[remember picture, overlay]
+     \fill[anarenk] (current page.north west) rectangle
+           ([yshift=-3.2cm]current page.north east);
+     \node[anchor=south east, text=white, font=\baslikfont\bfseries\fontsize{60}{60}\selectfont]
+          at ([xshift=-2.4cm, yshift=-3.0cm]current page.north east) {\thechapter};
+     \node[anchor=south west, text=white!85!anarenk, font=\baslikfont\large]
+          at ([xshift=2.6cm, yshift=-3.0cm]current page.north west) {\MakeUppercase{\chaptertitlename}};
+   \end{tikzpicture}}
+  {0pt}
+  {\vspace*{1.2cm}\Huge\bfseries\raggedright}
+  [\vspace{4pt}{\color{anarenk}\titlerule[1.5pt]}]
+\titlespacing*{\chapter}{0pt}{0pt}{24pt}
+
+\titleformat{\section}
+  {\baslikfont\Large\bfseries\color{koyu}}
+  {\textcolor{anarenk}{\thesection}}{0.8em}{}
+\titleformat{\subsection}
+  {\baslikfont\large\bfseries\color{koyu}}
+  {\textcolor{anarenk}{\thesubsection}}{0.8em}{}
+\titleformat{\subsubsection}
+  {\baslikfont\normalsize\bfseries\color{koyu}}
+  {\textcolor{anarenk}{\thesubsubsection}}{0.8em}{}
+\titleformat{\paragraph}[runin]
+  {\baslikfont\normalsize\bfseries\color{koyu}}{}{0pt}{}[.]
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{1}
+
+\titleformat{\part}[display]
+  {\centering\baslikfont\color{white}}
+  {\begin{tikzpicture}[remember picture, overlay]
+     \fill[koyu] (current page.south west) rectangle (current page.north east);
+     \fill[anarenk] ([yshift=-9cm]current page.north west) rectangle
+                    ([yshift=-9.4cm]current page.north east);
+   \end{tikzpicture}\Large KISIM \thepart}
+  {12pt}{\Huge\bfseries}
+
+% ---------- Üst bilgi ----------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\quad #1}}
+\fancyhead[LE]{\baslikfont\small\color{black!60}\ifnum\value{chapter}>0 \thechapter\quad\fi\leftmark}
+\fancyhead[RO]{\baslikfont\small\color{black!60}\rightmark}
+\fancyfoot[LE,RO]{\baslikfont\small\bfseries\color{anarenk}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{{\color{black!20}\hrule width\headwidth height\headrulewidth}}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\baslikfont\small\color{anarenk}\thepage}
+  \renewcommand{\headrulewidth}{0pt}}
+
+% ---------- Numaralı kutular (bölüm bazında) ----------
+\newcounter{kutusayac}[chapter]
+\renewcommand{\thekutusayac}{\thechapter.\arabic{kutusayac}}
+
+\tcbset{
+  kitapkutu/.style={
+    enhanced, breakable,
+    boxrule=0.6pt, arc=3pt, leftrule=4pt,
+    fonttitle=\baslikfont\bfseries,
+    titlerule=0pt,
+    before skip=12pt, after skip=12pt,
+    left=8pt, right=8pt,
+  }
+}
+
+\newtcbtheorem[number within=chapter]{tanim}{Tanım}{kitapkutu,
+  colback=tanimbg, colframe=tanimframe, colbacktitle=tanimbg,
+  coltitle=tanimframe!80!black, separator sign={.},
+  description font=\mdseries}{tnm}
+\newtcbtheorem[use counter from=tanim]{teorem}{Teorem}{kitapkutu,
+  colback=teorembg, colframe=teoremframe, colbacktitle=teorembg,
+  coltitle=teoremframe!80!black, separator sign={.},
+  description font=\mdseries}{trm}
+\newtcbtheorem[use counter from=tanim]{ornek}{Örnek}{kitapkutu,
+  colback=ornekbg, colframe=ornekframe, colbacktitle=ornekbg,
+  coltitle=ornekframe!80!black, separator sign={.},
+  description font=\mdseries}{orn}
+
+% Numarasız kutular
+\newtcolorbox{onemlifikir}[1][Önemli Fikir]{kitapkutu,
+  colback=fikirbg, colframe=fikirframe, colbacktitle=fikirbg,
+  coltitle=fikirframe!70!black, title={#1}}
+\newtcolorbox{gunlukornek}[1][Günlük Hayattan]{kitapkutu,
+  colback=ornekbg, colframe=ornekframe, colbacktitle=ornekbg,
+  coltitle=ornekframe!70!black, title={#1}}
+\newtcolorbox{dikkat}[1][Dikkat: Sık Yapılan Hata]{kitapkutu,
+  colback=dikkatbg, colframe=dikkatframe, colbacktitle=dikkatbg,
+  coltitle=dikkatframe!80!black, title={{\sembolfont ⚠}\enspace #1}}
+\newtcolorbox{tarihce}[1][Tarihçe]{kitapkutu,
+  colback=tarihbg, colframe=tarihframe, colbacktitle=tarihbg,
+  coltitle=tarihframe!80!black, title={#1}, fontupper=\small}
+\newtcolorbox{arastirmanotu}[1][Araştırma Notu]{kitapkutu,
+  colback=arastirmabg, colframe=arastirmaframe, colbacktitle=arastirmaframe,
+  coltitle=white, title={#1}, fontupper=\small, titlerule=0.5pt,
+  attach boxed title to top left={xshift=10pt,yshift=-2.2mm},
+  boxed title style={colback=arastirmaframe, arc=2pt, boxrule=0pt}}
+
+% Bölüm başı: hedefler kutusu
+\newtcolorbox{bolumhedefleri}{enhanced, breakable,
+  colback=white, colframe=anarenk, boxrule=0.8pt, arc=4pt,
+  title={\baslikfont\bfseries Bu bölümde öğrenecekleriniz},
+  colbacktitle=anarenk, coltitle=white,
+  before skip=6pt, after skip=16pt, left=8pt}
+
+% Bölüm sonu özeti
+\newtcolorbox{bolumozeti}{enhanced, breakable,
+  colback=fikirbg, colframe=ikincil, boxrule=0.8pt, arc=4pt,
+  title={\baslikfont\bfseries Bölüm Özeti},
+  colbacktitle=ikincil, coltitle=white,
+  before skip=12pt, after skip=12pt, left=8pt}
+
+% ---------- Alıştırmalar ----------
+\newcounter{alistirma}[chapter]
+\renewcommand{\thealistirma}{\thechapter.\arabic{alistirma}}
+\newcommand{\zorluk}[1]{%
+  {\sembolfont\footnotesize\ifcase#1\or\textcolor{ikincil}{●○○}\or\textcolor{dikkatframe}{●●○}%
+  \or\textcolor{vurgu}{●●●}\fi}}
+\newenvironment{alistirmalar}{%
+  \begin{tcolorbox}[enhanced, breakable, colback=alistirmabg,
+     colframe=alistirmaframe, boxrule=0.6pt, arc=3pt, leftrule=4pt,
+     title={\baslikfont\bfseries Alıştırmalar}, colbacktitle=alistirmabg,
+     coltitle=alistirmaframe!80!black, titlerule=0pt]
+  \small
+  Zorluk: \zorluk{1}~temel \quad \zorluk{2}~orta \quad \zorluk{3}~ileri.
+  Lean alıştırmalarının iskeletleri eşlik eden projedeki
+  \lc{Alistirmalar/} klasöründedir; \leantac{sorry} yerine kendi ispatınızı yazın.
+  \begin{description}[leftmargin=0pt, itemsep=6pt, font=\normalfont]}
+  {\end{description}\end{tcolorbox}}
+\newcommand{\alistirma}[1]{\refstepcounter{alistirma}%
+  \item[\baslikfont\bfseries\textcolor{alistirmaframe}{\thealistirma}\enspace\zorluk{#1}]}
+
+% ---------- Doğal çıkarım kuralları ----------
+\newcommand{\kural}[1]{\textcolor{vurgu}{\textsf{\small #1}}}
+\ebproofset{right label template=\kural{\inserttext}, separation=1.4em}
+
+% ---------- Tablolar ----------
+\newcommand{\tablobaslik}[1]{\textcolor{white}{\baslikfont\bfseries\small #1}}
+
+% ---------- Bağlantılar ----------
+\usepackage[hidelinks]{hyperref}
+\hypersetup{colorlinks=true, linkcolor=anarenk, citecolor=ikincil,
+            urlcolor=vurgu, pdfauthor={}, pdftitle={Lean 4 ile Modern Mantık}}
+\usepackage[english,nameinlink]{cleveref}  % polyglossia-turkish ile uyum için dil açıkça verilir
+\crefname{chapter}{Bölüm}{Bölüm}
+\crefname{section}{Kesim}{Kesim}
+\crefname{subsection}{Kesim}{Kesim}
+\crefname{figure}{Şekil}{Şekil}
+\crefname{table}{Tablo}{Tablo}
+\crefname{tcb@cnt@tanim}{Tanım}{Tanım}
+\crefname{tcb@cnt@teorem}{Teorem}{Teorem}
+\crefname{tcb@cnt@ornek}{Örnek}{Örnek}
+\crefname{alistirma}{Alıştırma}{Alıştırma}
+\crefname{part}{Kısım}{Kısım}
+
+% Şekil/tablo başlıkları
+\usepackage[font=small, labelfont={bf,color=anarenk}, labelsep=period]{caption}
+
+% Kısaltmalar
+\newcommand{\Lean}{Lean~4}
+\newcommand{\Mathlib}{\textsf{Mathlib}}
+\newcommand{\terim}[2]{\emph{#1} (İng.\ \foreignlanguage{english}{\emph{#2}})}
+
+% ---------- Taslak bölüm planı ----------
+\newtcolorbox{taslakplan}{enhanced, breakable,
+  colback=white, colframe=black!35, boxrule=0.8pt, arc=4pt,
+  borderline={0.4pt}{2pt}{black!20, dashed},
+  title={\baslikfont\bfseries Yazım planı \hfill\normalfont\small taslak},
+  colbacktitle=black!8, coltitle=black!70,
+  before skip=10pt, after skip=10pt, left=8pt}
+
+% Numaralı adım listeleri:  \begin{enumerate}[adimlar] ... \end{enumerate}
+\DeclareRobustCommand{\adimno}[1]{\tikz[baseline=(n.base)]\node[circle,
+  fill=anarenk, text=white, inner sep=1.4pt, minimum size=1.15em,
+  font=\baslikfont\scriptsize\bfseries](n){#1};}
+\SetEnumitemKey{adimlar}{label=\adimno{\arabic*}, leftmargin=2em, itemsep=5pt}
+
+% Boş kalan sol sayfalarda üst/alt bilgi gösterme
+\makeatletter
+\renewcommand{\cleardoublepage}{\clearpage\if@twoside\ifodd\c@page\else
+  \hbox{}\thispagestyle{empty}\newpage\if@twocolumn\hbox{}\newpage\fi\fi\fi}
+\makeatother
+\colorlet{gri}{black!30}
+
+% Nesne dilinin bağlaçları (Bölüm 10–13): metin içinde
+\newcommand{\ove}{\mathbin{\textstyle\bigwedge}}
+\newcommand{\oveya}{\mathbin{\textstyle\bigvee}}
+\newcommand{\oise}{\Longrightarrow}
+
+% ---- Cilt II'ye göndermeler ----
+% Kullanım: \ciltiki{4}'te  →  "Cilt II, Bölüm 4'te"
+\newcommand{\ciltiki}[1]{Cilt~II, Bölüm~#1}
+
+% ---- Proje kartları (Bölüm 17) ----
+\newtcolorbox{projekarti}[2]{kitapkutu,
+  colback=white, colframe=ornekframe, colbacktitle=ornekframe,
+  coltitle=white, title={#1\enspace\textbar\enspace #2}}
+\newcommand{\projebilgi}[3]{%
+  \noindent{\baslikfont\small
+    \textcolor{ornekframe}{\bfseries Ön koşul:}~#1\hfill
+    \textcolor{ornekframe}{\bfseries Zorluk:}~#2\hfill
+    \textcolor{ornekframe}{\bfseries Tahmini emek:}~#3}\par\medskip}

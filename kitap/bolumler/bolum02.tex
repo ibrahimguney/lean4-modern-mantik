@@ -1,0 +1,833 @@
+% =====================================================================
+%  Bölüm 2 — Önermeler Mantığı I: İmplikasyon, Ve, Veya
+% =====================================================================
+\chapter{Önermeler Mantığı I: İmplikasyon, Ve, Veya}\label{bol:onermeler1}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Önermeler mantığının bağlaçlarını ve \Lean{}'deki yazılışlarını,
+  \item Doğal çıkarımın \emph{giriş} ve \emph{eleme} kuralları fikrini,
+  \item $\to$, $\wedge$, $\vee$ için çıkarım kurallarını hem ağaç hem
+        \Lean{} biçiminde,
+  \item \leantac{intro}, \leantac{apply}, \leantac{exact},
+        \leantac{constructor}, \leantac{obtain}, \leantac{cases},
+        \leantac{rintro} taktiklerini,
+  \item Her ispatı hem taktik hem terim modunda yazmayı ve
+        Curry--Howard eşlemesinin ilk tablosunu.
+\end{itemize}
+\end{bolumhedefleri}
+
+% ---------------------------------------------------------------------
+\section{Önermeler ve bağlaçlar}\label{sec:baglaclar}
+
+\emph{Önermeler mantığı}, önermelerin iç yapısına bakmaz. ``Yağmur
+yağıyor'' gibi bir cümleyi bölünmez bir bütün olarak alır ve ona $P$ gibi
+bir harf verir. Bu tür önermelere \emph{atomik} önerme denir. Atomik
+önermeler \emph{bağlaçlarla} birleştirilerek \emph{bileşik} önermeler
+oluşturulur. \Cref{tab:baglaclar} bu kitapta kullanacağımız bağlaçları
+gösteriyor.
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\centering\arraybackslash}p{1.6cm}
+                >{\raggedright\arraybackslash}p{3.2cm}
+                >{\raggedright\arraybackslash}p{3.0cm}
+                >{\centering\arraybackslash}p{1.7cm}
+                >{\centering\arraybackslash}p{1.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Sembol} & \tablobaslik{Okunuşu} & \tablobaslik{Lean'de} &
+\tablobaslik{Yazılış} & \tablobaslik{Bölüm} \\
+$P \to Q$          & $P$ ise $Q$          & \lc{P → Q}  & \lc{\textbackslash to}  & \ref{bol:onermeler1} \\
+$P \wedge Q$       & $P$ ve $Q$           & \lc{P ∧ Q}  & \lc{\textbackslash and} & \ref{bol:onermeler1} \\
+$P \vee Q$         & $P$ veya $Q$         & \lc{P ∨ Q}  & \lc{\textbackslash or}  & \ref{bol:onermeler1} \\
+$\neg P$           & $P$ değil            & \lc{¬P}     & \lc{\textbackslash not} & \ref{bol:degilleme} \\
+$P \leftrightarrow Q$ & $P$ ancak ve ancak $Q$ & \lc{P ↔ Q} & \lc{\textbackslash iff} & \ref{bol:degilleme} \\
+$\bot$             & çelişki, yanlış      & \lc{False}  & ---                     & \ref{bol:degilleme} \\
+$\top$             & doğru                & \lc{True}   & ---                     & \ref{bol:degilleme} \\
+\end{tabular}
+\caption{Önermeler mantığının bağlaçları. Bu bölüm ilk üç satırı ele alıyor.}
+\label{tab:baglaclar}
+\end{table}
+
+\begin{dikkat}[Dikkat: $\to$ sağa doğru birleşir]
+\lc{P → Q → R} ifadesi \lc{P → (Q → R)} olarak okunur, \lc{(P → Q) → R}
+olarak değil. Yani ``$P$ ise, ($Q$ ise $R$)''. Bu kural, birden fazla
+varsayımı olan önermeleri parantezsiz yazmamızı sağlar: \lc{P → Q → R},
+``$P$ ve $Q$ verilirse $R$'' demenin \Lean{}'deki doğal yoludur.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Doğal çıkarım: giriş ve eleme}\label{sec:dogal-cikarim-fikri}
+
+Gerhard Gentzen 1935'te, matematikçilerin gerçekte nasıl akıl
+yürüttüğünü yansıtan bir ispat sistemi önerdi ve ona \emph{doğal çıkarım}
+adını verdi \citep{gentzen1935}. Sistemin zarif fikri şudur: Her bağlaç
+için iki tür kural vardır.
+
+\begin{center}
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!8, very thick, rounded corners=5pt,
+                 text width=5.6cm, minimum height=2.5cm, align=center},
+  ]
+  \node[kutu=ikincil] (g) at (0,0) {%
+    {\baslikfont\bfseries\large\color{ikincil} Giriş kuralı (G)}\\[4pt]
+    Bir bağlacı içeren bir önermeyi\\ nasıl \textbf{kanıtlarım}?\\[3pt]
+    {\small\color{black!60}``$P \wedge Q$'yu göstermek için\\ $P$'yi ve $Q$'yu göster.''}};
+  \node[kutu=vurgu] (e) at (6.6,0) {%
+    {\baslikfont\bfseries\large\color{vurgu} Eleme kuralı (E)}\\[4pt]
+    Bir bağlacı içeren bir kanıtı\\ nasıl \textbf{kullanırım}?\\[3pt]
+    {\small\color{black!60}``$P \wedge Q$ elimdeyse\\ $P$'yi de $Q$'yu da kullanabilirim.''}};
+  \draw[{Stealth[length=3mm]}-{Stealth[length=3mm]}, very thick, black!40]
+    (g.east) -- node[above, font=\baslikfont\scriptsize, text=black!60]{uyum}
+    node[below, font=\baslikfont\scriptsize, text=black!60]{(harmony)} (e.west);
+\end{tikzpicture}
+\end{center}
+
+Giriş ve eleme kuralları birbirini tam olarak dengeler: Eleme kuralları,
+giriş kuralının koyduğundan ne fazlasını ne eksiğini geri alır. Bu ilkeye
+\emph{uyum} (İng.\ \emph{harmony}) denir ve \cref{bol:dogal-cikarim}'te
+ispat normalleştirmesinin temelini oluşturacaktır.
+
+\Lean{}'de her kural bir \emph{taktiğe} karşılık gelir. Kabaca söylersek
+giriş kuralları \emph{hedef} üzerinde, eleme kuralları ise
+\emph{hipotezler} üzerinde çalışır:
+
+\begin{onemlifikir}
+\begin{tabular}{@{}l@{\quad}l}
+\textcolor{ikincil}{\bfseries Giriş kuralları} & hedefi parçalar: ``Bunu göstermek için şunu göstereyim.'' \\[2pt]
+\textcolor{vurgu}{\bfseries Eleme kuralları}  & hipotezi kullanır: ``Elimde bu var, ondan şu çıkar.''
+\end{tabular}
+\end{onemlifikir}
+
+\paragraph{Çıkarım ağaçları nasıl okunur?}
+Bir kural, çizginin üstündeki öncüllerden altındaki sonuca geçişi gösterir.
+Çizginin sağındaki etiket kuralın adıdır. Köşeli parantez içindeki
+$[P]^1$ biçimindeki varsayımlar \emph{geçici} varsayımlardır: İspatın bir
+noktasında açılır ve üst simgede aynı numarayı taşıyan kuralda
+\emph{kapatılırlar}. Kapatılmış bir varsayım artık sonucun dayandığı
+varsayımlar arasında değildir.
+
+% ---------------------------------------------------------------------
+\section{İmplikasyon (\texorpdfstring{$\to$}{→})}\label{sec:implikasyon}
+
+\subsection{Kurallar}
+
+\begin{center}
+\begin{tabular}{c@{\hspace{4em}}c}
+\begin{prooftree}
+  \hypo{[P]^{1}}
+  \ellipsis{}{Q}
+  \infer1[$\to$G$^{1}$]{P \to Q}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{P \to Q}
+  \hypo{P}
+  \infer2[$\to$E]{Q}
+\end{prooftree}
+\\[10pt]
+\small\textcolor{ikincil}{\bfseries giriş:} \leantac{intro} &
+\small\textcolor{vurgu}{\bfseries eleme (modus ponens):} \leantac{apply}, uygulama
+\end{tabular}
+\end{center}
+
+\textbf{$\to$ girişi.} $P \to Q$'yu kanıtlamak için $P$'yi geçici olarak
+varsayar, bu varsayımla $Q$'ya ulaşırız. Sonuca vardığımızda $P$
+varsayımını kapatırız: Artık $P$'yi varsaymıyoruz; ``$P$ ise $Q$''
+diyoruz. \Lean{}'de bu adım \leantac{intro} taktiğidir.
+
+\textbf{$\to$ elemesi.} Elimizde $P \to Q$ ve $P$ varsa, $Q$'yu elde
+ederiz. Bu, Orta Çağ'dan beri \emph{modus ponens} adıyla bilinen kuraldır.
+\Lean{}'de iki biçimi vardır: Hedef $Q$ iken \leantac{apply hpq} hedefi
+$P$'ye çevirir (geriye doğru); \lc{hpq hp} yazmak ise doğrudan $Q$'nun
+kanıtını üretir (ileriye doğru).
+
+\subsection{Özdeşlik: \texorpdfstring{$P \to P$}{P → P}}
+
+En basit implikasyonla başlayalım.
+
+\leandosya[Özdeşlik]{Bolum02}{ozdeslik}
+
+\noindent \leantac{intro hp} adımından önce ve sonra hedef durumu şöyledir:
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[Önce]
+P : Prop
+⊢ P → P
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{intro hp} sonrası]
+P : Prop
+hp : P
+⊢ P
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+\leantac{intro}, implikasyonun sol tarafını hedeften alıp \emph{bağlama}
+taşıdı. Bu tam olarak $\to$G kuralının yaptığı şeydir: $P$'yi geçici bir
+varsayım olarak açtık. Aynı teoremin terim modundaki ispatı ise bir
+fonksiyondur:
+
+\leandosya[Özdeşlik, terim modu]{Bolum02}{ozdeslik_terim}
+
+\noindent \lc{fun hp => hp}, ``bir \lc{hp} al, onu olduğu gibi geri ver''
+demektir: özdeşlik fonksiyonu. $P$'nin kanıtını alıp $P$'nin kanıtını
+döndüren bir fonksiyon, tam olarak $P \to P$'nin kanıtıdır.
+
+\subsection{Modus ponens}
+
+\leandosya[Modus ponens, taktik modu]{Bolum02}{modus_ponens}
+\leandosya[Modus ponens, terim modu]{Bolum02}{modus_ponens_terim}
+
+Terim modundaki ispat, Curry--Howard eşlemesinin belki de en çarpıcı
+örneğidir: \textbf{implikasyonu kullanmak, bir fonksiyonu
+çağırmaktır}. \lc{hpq}, $P$'nin kanıtını alıp $Q$'nun kanıtını üreten bir
+fonksiyondur; \lc{hpq hp} ise bu fonksiyonu \lc{hp} argümanıyla çağırır.
+
+\subsection{Gereksiz bir varsayım: \texorpdfstring{$P \to Q \to P$}{P → Q → P}}
+
+\leandosya[Sabit fonksiyon]{Bolum02}{sabit}
+
+Bu teorem, ``$P$ doğruysa, başka ne varsayarsak varsayalım $P$
+doğrudur'' der. \leantac{intro hp \_} iki varsayımı birden içeri alır;
+alt çizgi (\lc{\_}) ikinci varsayıma ad vermediğimizi, çünkü onu
+kullanmayacağımızı belirtir. Terim olarak bu teorem, ikinci argümanını
+görmezden gelen \emph{sabit fonksiyondur}: \lc{fun hp \_ => hp}.
+
+\begin{tarihce}[Tarihçe: K ve S kombinatörleri]
+$P \to Q \to P$ ve Alıştırma~\ref{alis:s-kombinator}'deki
+$(P \to Q \to R) \to (P \to Q) \to P \to R$ önermeleri, Moses
+Schönfinkel ve Haskell Curry'nin \emph{kombinatör mantığındaki} $K$ ve $S$
+kombinatörlerinin türleridir \citep{curry1958}. Bu iki önerme, modus
+ponens ile birlikte, implikasyon mantığının tamamını türetmeye yeter.
+Curry, bu gözlemi 1930'larda yaptığında henüz ``Curry--Howard''
+eşlemesinin ilk tohumunu atmış oluyordu.
+\end{tarihce}
+
+\subsection{Hipotetik kıyas}\label{sec:hipotetik-kiyas}
+
+Şimdi birden fazla adım gerektiren ilk ispatımıza geçelim. Kural şudur:
+\begin{center}
+``$P$ ise $Q$'' doğruysa ve ``$Q$ ise $R$'' doğruysa,
+o hâlde ``$P$ ise $R$'' de doğrudur.
+\end{center}
+
+\begin{gunlukornek}
+\begin{tabular}{@{}r@{\;:\;}l}
+\textcolor{ornekframe}{$P$} & Yağmur yağıyor. \\
+\textcolor{ornekframe}{$Q$} & Yer ıslak. \\
+\textcolor{ornekframe}{$R$} & Yer kaygan.
+\end{tabular}
+
+\smallskip
+``Yağmur yağarsa yer ıslanır'' ve ``yer ıslanırsa kayar'' ise,
+``yağmur yağarsa yer kayar'' sonucuna ulaşırız. Hipotetik kıyas,
+adımları bir zincirin halkaları gibi birbirine bağlamaktır.
+\end{gunlukornek}
+
+\noindent Doğal çıkarım ağacı, iki $\to$E ve bir $\to$G adımından oluşur:
+\begin{center}
+\begin{prooftree}
+  \hypo{[P]^{1}}
+  \hypo{P \to Q}
+  \infer2[$\to$E]{Q}
+  \hypo{Q \to R}
+  \infer[rule margin=0.8em]2[$\to$E]{R}
+  \infer1[$\to$G$^{1}$]{P \to R}
+\end{prooftree}
+\end{center}
+
+\noindent \Lean{} ispatı da aynı yapıyı izler:
+
+\leandosya[Hipotetik kıyas]{Bolum02}{hipotetik_kiyas}
+
+\paragraph{Teoremin başlığını okumak}
+\Cref{tab:hk-baslik}, ilk satırı parça parça açıklıyor.
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.35}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.33\linewidth}
+                >{\raggedright\arraybackslash}p{0.57\linewidth}}
+\rowcolor{tabloust}
+\tablobaslik{Parça} & \tablobaslik{Anlamı} \\
+\leankw{theorem} \lc{hipotetik\_kiyas}
+  & ``hipotetik\_kiyas'' adında bir teorem tanımlıyorum. \\
+\lc{(P Q R :} \leantype{Prop}\lc{)}
+  & $P$, $Q$, $R$ birer \emph{önerme}dir. \\
+\lc{(}\leanhyp{h1}\lc{ : P \textcolor{leansym}{→} Q)}
+  & Elimde \leanhyp{h1} adında bir kanıt var: ``$P$ ise $Q$''. \\
+\lc{(}\leanhyp{h2}\lc{ : Q \textcolor{leansym}{→} R)}
+  & Elimde \leanhyp{h2} adında bir kanıt var: ``$Q$ ise $R$''. \\
+\lc{: P \textcolor{leansym}{→} R}
+  & Kanıtlamam gereken şey, yani \emph{hedef}: ``$P$ ise $R$''. \\
+\lc{:=} \leankw{by}
+  & İspatı \emph{taktiklerle}, adım adım yapacağım. \\
+\end{tabular}
+\caption{Hipotetik kıyas teoreminin başlığı.}
+\label{tab:hk-baslik}
+\end{table}
+
+\paragraph{Kilit fikir: $\to$ bir fonksiyondur}
+\lc{h1 : P → Q} bir makinedir: İçine $P$'nin kanıtı girer, dışarı $Q$'nun
+kanıtı çıkar. \lc{h2} de aynı biçimde $Q$'yu $R$'ye çevirir.
+Hipotetik kıyas, bu iki makineyi uç uca eklemektir:
+
+\begin{center}
+\begin{tikzpicture}[
+    makine/.style={draw=leanhyp, fill=leanhyp!12, thick, rounded corners=3pt,
+                   minimum width=1.6cm, minimum height=0.9cm,
+                   font=\leanfont\bfseries\color{leanhyp}},
+    kanit/.style={draw=leanframe, fill=leanbg, thick, circle,
+                  minimum size=0.9cm, font=\bfseries\color{leanframe}},
+    ok/.style={-{Stealth[length=3mm]}, very thick, leansym},
+  ]
+  \node[kanit] (p) {$P$};
+  \node[makine, right=1cm of p] (h1) {h1};
+  \node[kanit, right=1cm of h1] (q) {$Q$};
+  \node[makine, right=1cm of q] (h2) {h2};
+  \node[kanit, right=1cm of h2] (r) {$R$};
+  \draw[ok] (p) -- (h1);
+  \draw[ok] (h1) -- (q);
+  \draw[ok] (q) -- (h2);
+  \draw[ok] (h2) -- (r);
+  \node[below=2pt of p, font=\leanfont\footnotesize, text=black!60] {p : P};
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Adım adım ispat}
+
+\noindent\textbf{Başlangıç.} Henüz hiçbir taktik uygulanmadı:
+\begin{hedefdurumu}[Başlangıç durumu]
+P Q R : Prop
+h1 : P → Q
+h2 : Q → R
+⊢ P → R
+\end{hedefdurumu}
+
+\noindent\textbf{Adım 1: \leantac{intro p}.}
+``$P \to R$'' kanıtlamak, ``$P$'nin doğru olduğunu varsayayım, $R$'yi
+göstereyim'' demektir. \leantac{intro p}, $P$ varsayımını \leanhyp{p}
+adıyla bağlama alır. Ağaçtaki $[P]^1$ varsayımı budur.
+\begin{hedefdurumu}[\texttt{intro p} sonrası]
+P Q R : Prop
+h1 : P → Q
+h2 : Q → R
+p : P
+⊢ R
+\end{hedefdurumu}
+
+\noindent\textbf{Adım 2: \leantac{apply h2}.}
+$R$'yi nasıl elde ederiz? \lc{h2 : Q → R} der ki: ``Bana $Q$ ver, sana $R$
+vereyim.'' \leantac{apply h2} şu anlama gelir: ``$R$'yi \leanhyp{h2} ile
+elde edeceğim; o hâlde $Q$'yu göstermem yeter.'' Lean burada
+\emph{geriye doğru} düşünür:
+\begin{hedefdurumu}[\texttt{apply h2} sonrası]
+⊢ Q
+\end{hedefdurumu}
+
+\noindent\textbf{Adım 3: \leantac{apply h1}.}
+Aynı mantıkla, \lc{h1 : P → Q} olduğundan $Q$ için $P$'yi göstermek yeter:
+\begin{hedefdurumu}[\texttt{apply h1} sonrası]
+⊢ P
+\end{hedefdurumu}
+
+\noindent\textbf{Adım 4: \leantac{exact p}.}
+Hedef $P$ ve elimizde zaten \lc{p : P} var:
+\ispatbitti
+
+\noindent Kolaylık olsun diye Adım~2 ve 3'te yalnızca hedefi gösterdik;
+bağlam (\lc{P Q R}, \lc{h1}, \lc{h2}, \lc{p}) değişmeden kalır.
+
+\paragraph{Akışın özeti}
+İspat \emph{sondan başa} ilerler: hedeften başlar, elimizdeki hipotezlere
+doğru geri gelir. Anlattığı mantık ise \emph{baştan sona} okunur.
+\Cref{fig:hk-akis} her iki yönü birlikte gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    hedef/.style={draw=hedefframe, fill=hedefbg, thick, rounded corners=3pt,
+                  minimum width=1.55cm, minimum height=0.85cm,
+                  font=\leanfont\small},
+    bitti/.style={hedef, draw=bittiframe, fill=bittibg},
+    kanit/.style={hedef, fill=leanbg, draw=leanframe},
+    geri/.style={-{Stealth[length=2.6mm]}, thick, leantac},
+    ileri/.style={-{Stealth[length=2.6mm]}, thick, leansym},
+    etiket/.style={font=\leanfont\bfseries\scriptsize, yshift=2pt},
+  ]
+  \node[hedef] (g1) {⊢ P → R};
+  \node[hedef, right=1.75cm of g1] (g2) {⊢ R};
+  \node[hedef, right=1.75cm of g2] (g3) {⊢ Q};
+  \node[hedef, right=1.75cm of g3] (g4) {⊢ P};
+  \node[bitti, right=1.75cm of g4] (g5) {bitti};
+
+  \draw[geri] (g1) -- node[above, etiket, text=leantac]{intro p}  (g2);
+  \draw[geri] (g2) -- node[above, etiket, text=leantac]{apply h2} (g3);
+  \draw[geri] (g3) -- node[above, etiket, text=leantac]{apply h1} (g4);
+  \draw[geri] (g4) -- node[above, etiket, text=leantac]{exact p}  (g5);
+  \node[above=0.55cm of g3, font=\baslikfont\small\bfseries, text=leantac]
+       {Taktiklerin yönü: hedeften geriye};
+
+  \node[bitti, below=1.6cm of g2] (k1) {p : P};
+  \node[kanit, below=1.6cm of g3] (k2) {Q};
+  \node[kanit, below=1.6cm of g4] (k3) {R};
+  \draw[ileri] (k1) -- node[above, etiket, text=leanhyp]{h1} (k2);
+  \draw[ileri] (k2) -- node[above, etiket, text=leanhyp]{h2} (k3);
+  \node[below=0.55cm of k2, font=\baslikfont\small\bfseries, text=leansym]
+       {Mantığın yönü: varsayımdan sonuca};
+\end{tikzpicture}
+\caption{Hipotetik kıyas ispatında taktiklerin ve mantığın yönü.}
+\label{fig:hk-akis}
+\end{figure}
+
+\paragraph{Tek satırlık ispat}
+Taktik kullanmadan, ispatı doğrudan bir fonksiyon olarak da yazabiliriz:
+
+\leandosya[Hipotetik kıyas, terim modu]{Bolum02}{hipotetik_kiyas_terim}
+
+Okunuşu: ``Bir \leanhyp{p} al. Onu \leanhyp{h1}'e ver, $Q$'nun kanıtı
+çıksın. Onu \leanhyp{h2}'ye ver, $R$'nin kanıtı çıksın.'' Bu, matematikteki
+\textbf{fonksiyon bileşkesidir}: $h_2 \circ h_1 : P \to R$. Hipotetik kıyas,
+mantıkta tam olarak fonksiyonları ard arda uygulamaya karşılık gelir.
+
+% ---------------------------------------------------------------------
+\section{Ve (\texorpdfstring{$\wedge$}{∧})}\label{sec:ve}
+
+\subsection{Kurallar}
+
+\begin{center}
+\begin{tabular}{c@{\hspace{3em}}c@{\hspace{2.2em}}c}
+\begin{prooftree}
+  \hypo{P}
+  \hypo{Q}
+  \infer2[$\wedge$G]{P \wedge Q}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{P \wedge Q}
+  \infer1[$\wedge$E$_1$]{P}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{P \wedge Q}
+  \infer1[$\wedge$E$_2$]{Q}
+\end{prooftree}
+\\[10pt]
+\small\textcolor{ikincil}{\bfseries giriş:} \leantac{constructor}, \lc{⟨hp, hq⟩} &
+\multicolumn{2}{c}{\small\textcolor{vurgu}{\bfseries eleme:} \lc{h.left}, \lc{h.right}, \leantac{obtain}}
+\end{tabular}
+\end{center}
+
+``$P$ ve $Q$'' kanıtlamak için ikisini de ayrı ayrı kanıtlarız
+($\wedge$G). Elimizde ``$P$ ve $Q$'' varsa, ikisini de ayrı ayrı
+kullanabiliriz ($\wedge$E$_1$, $\wedge$E$_2$).
+
+\subsection{Ve'ye giriş}
+
+\leandosya[Ve'ye giriş, taktik modu]{Bolum02}{ve_giris}
+
+\leantac{constructor} taktiği hedefi iki alt hedefe böler. Bu noktada
+\Lean{} iki ayrı hedef gösterir:
+
+\begin{hedefdurumu}[\texttt{constructor} sonrası: iki hedef]
+case left
+P Q : Prop
+hp : P
+hq : Q
+⊢ P
+
+case right
+P Q : Prop
+hp : P
+hq : Q
+⊢ Q
+\end{hedefdurumu}
+
+Her alt hedefi bir \lc{·} (orta nokta) ile başlayan girintili bir blokta
+kapatırız. Terim modunda ise ``ve''nin kanıtı basitçe bir \emph{çifttir}:
+
+\leandosya[Ve'ye giriş, terim modu]{Bolum02}{ve_giris_terim}
+
+\begin{dikkat}[Dikkat: Orta nokta ve girinti]
+\lc{·} karakteri sıradan bir nokta (\lc{.}) değildir; VS Code'da
+\lc{\textbackslash.} yazıp boşluk tuşuna basarak elde edilir. Bloklardaki
+girinti de önemlidir: \Lean{}, girintiye bakarak hangi taktiğin hangi alt
+hedefe ait olduğunu anlar. Girintiyi bozarsanız ``\emph{unsolved goals}''
+hatası alırsınız.
+\end{dikkat}
+
+\subsection{Ve'nin elemesi ve değişme özelliği}
+
+\leandosya[Ve'nin elemesi]{Bolum02}{ve_eleme}
+
+\lc{h.left} ve \lc{h.right} (ya da kısaca \lc{h.1}, \lc{h.2}), çiftin sol
+ve sağ bileşenlerini alır. Birden çok bileşeni aynı anda almak için
+\leantac{obtain} kullanılır:
+
+\leandosya[Ve'nin değişme özelliği]{Bolum02}{ve_degisme}
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[\texttt{intro h} sonrası]
+P Q : Prop
+h : P ∧ Q
+⊢ Q ∧ P
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{obtain} sonrası]
+P Q : Prop
+hp : P
+hq : Q
+⊢ Q ∧ P
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+\leantac{obtain ⟨hp, hq⟩ := h}, \lc{h} kanıtını iki parçasına ayırır ve
+\lc{h}'yi bağlamdan kaldırır. Terim modunda aynı ayırma işlemi
+\emph{örüntü eşleme} ile yapılır:
+
+\leandosya[Ve'nin değişme özelliği, terim modu]{Bolum02}{ve_degisme_terim}
+
+\noindent Okunuşu: ``Bir çift al, bileşenlerine \lc{hp} ve \lc{hq} de;
+sonra bileşenlerin yerini değiştirerek yeni bir çift döndür.''
+
+% ---------------------------------------------------------------------
+\section{Veya (\texorpdfstring{$\vee$}{∨})}\label{sec:veya}
+
+\subsection{Kurallar}
+
+\begin{center}
+\begin{tabular}{c@{\hspace{2em}}c@{\hspace{3em}}c}
+\begin{prooftree}
+  \hypo{P}
+  \infer1[$\vee$G$_1$]{P \vee Q}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{Q}
+  \infer1[$\vee$G$_2$]{P \vee Q}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{P \vee Q}
+  \hypo{[P]^{1}}
+  \ellipsis{}{R}
+  \hypo{[Q]^{2}}
+  \ellipsis{}{R}
+  \infer3[$\vee$E$^{1,2}$]{R}
+\end{prooftree}
+\\[10pt]
+\multicolumn{2}{c}{\small\textcolor{ikincil}{\bfseries giriş:} \lc{Or.inl}, \lc{Or.inr}} &
+\small\textcolor{vurgu}{\bfseries eleme:} \leantac{cases}, \leantac{rcases}, \lc{Or.elim}
+\end{tabular}
+\end{center}
+
+Veya'nın kuralları, ve'ninkilerin bir tür \emph{aynadaki görüntüsüdür}.
+``$P$ veya $Q$'' kanıtlamak için ikisinden \emph{birini} kanıtlamak yeter.
+Buna karşılık ``$P$ veya $Q$''yu kullanmak daha zahmetlidir: Hangisinin
+doğru olduğunu bilmediğimiz için \emph{her iki durumda da} hedefe
+ulaşabildiğimizi göstermek zorundayız. Bu \emph{durum ayırma}
+yöntemidir (\cref{fig:durum-ayirma}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    durum/.style={draw=#1, fill=#1!8, thick, rounded corners=4pt,
+                  minimum width=2.8cm, minimum height=0.9cm, align=center,
+                  font=\small},
+    ok/.style={-{Stealth[length=2.6mm]}, thick, #1},
+  ]
+  \node[durum=leanframe] (h) at (0,0) {\lc{h : P ∨ Q}};
+  \node[durum=ikincil]   (a) at (-3.2,-1.7) {1. durum\\ \lc{hp : P}};
+  \node[durum=vurgu]     (b) at (3.2,-1.7)  {2. durum\\ \lc{hq : Q}};
+  \node[durum=ikincil]   (ar) at (-3.2,-3.4) {$\vdots$\\ \lc{⊢ R} kapatılır};
+  \node[durum=vurgu]     (br) at (3.2,-3.4)  {$\vdots$\\ \lc{⊢ R} kapatılır};
+  \node[durum=bittiframe] (r) at (0,-5.0) {\lc{R} kanıtlandı};
+
+  \draw[ok=ikincil] (h) -- node[left=8pt, font=\leanfont\scriptsize\bfseries, text=ikincil]{inl} (a);
+  \draw[ok=vurgu]   (h) -- node[right=8pt, font=\leanfont\scriptsize\bfseries, text=vurgu]{inr} (b);
+  \draw[ok=ikincil] (a) -- (ar);
+  \draw[ok=vurgu]   (b) -- (br);
+  \draw[ok=bittiframe] (ar) -- (r);
+  \draw[ok=bittiframe] (br) -- (r);
+\end{tikzpicture}
+\caption{Veya'nın elemesi: Her iki durumda da aynı hedefe ulaşılmalıdır.}
+\label{fig:durum-ayirma}
+\end{figure}
+
+\subsection{Veya'ya giriş}
+
+\leandosya[Veya'ya giriş]{Bolum02}{veya_giris}
+
+\lc{Or.inl} (``sola ekle'', İng.\ \emph{in left}) sol taraftaki önermenin
+kanıtından bir veya kanıtı üretir; \lc{Or.inr} sağ taraf için aynısını
+yapar. \Lean{}'in güncel sürümlerinde \leantac{left} ve \leantac{right}
+taktikleri de aynı işi görür; kullandığınız sürümde tanınmazlarsa
+\leantac{apply Or.inl} biçimini kullanın.
+
+\subsection{Veya'nın elemesi ve değişme özelliği}
+
+\leandosya[Veya'nın değişme özelliği]{Bolum02}{veya_degisme}
+
+\leantac{cases h with} satırı \lc{h : P ∨ Q} hipotezini iki duruma ayırır.
+Her durum \lc{|} ile başlar ve durumun adını (\lc{inl} ya da \lc{inr})
+ve o durumda elde ettiğimiz kanıtın adını verir. Aynı ispat
+\leantac{rintro} ile daha kısa yazılabilir; burada \lc{(hp | hq)}
+örüntüsü ``ya \lc{hp} ya \lc{hq}'' diye okunur:
+
+\leandosya[rintro ile]{Bolum02}{veya_degisme_rcases}
+
+\noindent Terim modunda durum ayırma \lc{Or.elim} ile yapılır; iki durumun
+her biri için bir fonksiyon veririz:
+
+\leandosya[Veya'nın değişme özelliği, terim modu]{Bolum02}{veya_degisme_terim}
+
+\subsection{Dağılma: kuralları birleştirmek}
+
+Şimdi üç bağlacın kurallarını tek bir ispatta kullanalım. Ve'nin veya
+üzerine dağılması şöyle ifade edilir:
+\[
+  P \wedge (Q \vee R) \;\to\; (P \wedge Q) \vee (P \wedge R)
+\]
+
+\begin{figure}[htbp]
+\centering
+\small
+\begin{prooftree}
+  \hypo{[P \wedge (Q \vee R)]^{3}}
+  \infer1[$\wedge$E$_2$]{Q \vee R}
+  %
+  \hypo{[P \wedge (Q \vee R)]^{3}}
+  \infer1[$\wedge$E$_1$]{P}
+  \hypo{[Q]^{1}}
+  \infer2[$\wedge$G]{P \wedge Q}
+  \infer1[$\vee$G$_1$]{(P \wedge Q) \vee (P \wedge R)}
+  %
+  \hypo{[P \wedge (Q \vee R)]^{3}}
+  \infer1[$\wedge$E$_1$]{P}
+  \hypo{[R]^{2}}
+  \infer2[$\wedge$G]{P \wedge R}
+  \infer1[$\vee$G$_2$]{(P \wedge Q) \vee (P \wedge R)}
+  %
+  \infer3[$\vee$E$^{1,2}$]{(P \wedge Q) \vee (P \wedge R)}
+  \infer1[$\to$G$^{3}$]{P \wedge (Q \vee R) \to (P \wedge Q) \vee (P \wedge R)}
+\end{prooftree}
+\caption{Dağılma yasasının doğal çıkarım ağacı. Üç kural ailesi de
+kullanılıyor: $\to$G, $\wedge$G/E ve $\vee$G/E.}
+\label{fig:dagilma-agaci}
+\end{figure}
+
+\leandosya[Dağılma]{Bolum02}{dagilma}
+
+\Cref{fig:dagilma-agaci} ile \Lean{} ispatını satır satır karşılaştırın:
+\leantac{intro h} en alttaki $\to$G$^3$ adımıdır; \leantac{obtain}
+$\wedge$E$_1$ ve $\wedge$E$_2$'yi tek seferde uygular; \leantac{cases hqr}
+$\vee$E$^{1,2}$'dir; her durumdaki \lc{Or.inl ⟨hp, hq⟩} ise önce
+$\wedge$G, sonra $\vee$G uygular. Kâğıt üzerindeki ağaç ile \Lean{} ispatı
+aynı mantıksal içeriğin iki farklı yazılışıdır.
+
+% ---------------------------------------------------------------------
+\section{Curry--Howard: ilk tablo}\label{sec:curry-howard-1}
+
+Bu bölüm boyunca her ispatı iki biçimde yazdık. Terim modundaki
+ispatlara geri dönüp bakarsak, her bağlacın bir \emph{programlama
+kavramına} karşılık geldiğini görürüz (\cref{tab:curry-howard-1}).
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.7cm}
+                >{\raggedright\arraybackslash}p{3.5cm}
+                >{\raggedright\arraybackslash}p{5.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Mantık} & \tablobaslik{Programlama} & \tablobaslik{Lean'deki kanıt} \\
+$P \to Q$          & fonksiyon tipi        & \lc{fun hp => ...} \\
+$\to$ eleme        & fonksiyon çağırma     & \lc{hpq hp} \\
+$P \wedge Q$       & çift (çarpım tipi)    & \lc{⟨hp, hq⟩} \\
+$\wedge$ eleme     & bileşen alma          & \lc{h.1}, \lc{h.2} \\
+$P \vee Q$         & etiketli seçim (toplam tipi) & \lc{Or.inl hp}, \lc{Or.inr hq} \\
+$\vee$ eleme       & durum analizi         & \lc{Or.elim}, \leantac{cases} \\
+hipotetik kıyas    & fonksiyon bileşkesi   & \lc{fun p => h2 (h1 p)} \\
+\end{tabular}
+\caption{Curry--Howard eşlemesinin ilk tablosu. \Cref{bol:degilleme}'te
+\lc{True} ve \lc{False}, \cref{bol:yuklemler}'da $\forall$ ve $\exists$
+satırları eklenecek.}
+\label{tab:curry-howard-1}
+\end{table}
+
+\leandosya[Curry ve uncurry]{Bolum02}{curry}
+
+Bu iki teorem, programlamada \emph{currying} adıyla bilinen dönüşümün
+mantıktaki karşılığıdır: İki argüman alan bir fonksiyon (\lc{P ∧ Q → R}),
+argümanlarını tek tek alan bir fonksiyona (\lc{P → Q → R}) dönüştürülebilir
+ve tersi de doğrudur. \lc{P → Q → R} yazımını neden bu kadar sık
+kullandığımızın açıklaması da budur.
+
+\begin{onemlifikir}[Önemli Fikir: Curry--Howard eşlemesi]
+\begin{center}
+\textcolor{leantype}{\bfseries önermeler = türler}, \qquad
+\textcolor{leanhyp}{\bfseries kanıtlar = programlar}.
+\end{center}
+Bu bölümdeki her teorem bir tür, her ispat o türden bir programdı.
+Taktik modu bu programı adım adım inşa etmemizi sağlayan bir araçtır;
+\Lean{} her taktik ispatını arka planda bir terime çevirir ve çekirdeğe
+bu terimi denetletir. Eşlemenin kesin ifadesini \cref{bol:lambda}'te
+vereceğiz \citep{howard1980, sorensen2006}.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Kanıt ve doğruluk tablosu}\label{sec:dogruluk-tablosu}
+
+Önermeler mantığını belki okulda \emph{doğruluk tablolarıyla}
+öğrendiniz. \Cref{fig:dogruluk-tablosu}'deki tablo, $P \to Q$'nun hangi
+durumlarda doğru olduğunu gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \matrix[matrix of nodes, nodes={minimum width=1.5cm, minimum height=0.75cm,
+          anchor=center, font=\small}, column sep=0pt, row sep=0pt,
+          row 1/.style={nodes={fill=tabloust, text=white, font=\baslikfont\bfseries\small}}] (t) {
+    $P$ & $Q$ & $P \to Q$ \\
+    D & D & |[fill=bittibg, text=bittiframe]| \textbf{D} \\
+    D & Y & |[fill=hatabg,  text=hataframe]|  \textbf{Y} \\
+    Y & D & |[fill=bittibg, text=bittiframe]| \textbf{D} \\
+    Y & Y & |[fill=bittibg, text=bittiframe]| \textbf{D} \\
+  };
+  \draw[black!25] (t.north west) rectangle (t.south east);
+  \draw[black!25] (t-1-3.north west) -- (t-5-3.south west);
+  \node[right=0.4cm of t-3-3, font=\small, text=hataframe, align=left]
+       {Tek yanlış durum:\\ öncül doğru, sonuç yanlış.};
+\end{tikzpicture}
+\caption{İmplikasyonun doğruluk tablosu (D: doğru, Y: yanlış).}
+\label{fig:dogruluk-tablosu}
+\end{figure}
+
+Doğruluk tablosu \emph{anlambilimsel} bir yaklaşımdır: Bir önermenin
+doğruluğunu, atomlarına verilebilecek bütün doğruluk değerlerini tek tek
+deneyerek belirler. Bu bölümde yaptığımız ise \emph{sözdizimsel} bir
+yaklaşımdır: Bir önermeyi, çıkarım kurallarını adım adım uygulayarak
+\emph{inşa ederiz}.
+
+İki yaklaşım arasındaki ilişki mantığın en önemli sorularından biridir.
+Kanıtlayabildiğimiz her şey doğruluk tablosuna göre doğru mudur
+(\emph{geçerlilik})? Doğruluk tablosuna göre doğru olan her şeyi
+kanıtlayabilir miyiz (\emph{tamlık})? İlk sorunun cevabı evettir
+(\cref{bol:gecerlilik}). İkinci sorunun cevabı ise şaşırtıcıdır:
+\emph{Bu bölümün kurallarıyla, hayır.} Alıştırma~\ref{alis:peirce}'deki
+Peirce yasası doğruluk tablosuna göre her zaman doğrudur, ama yalnızca bu
+bölümün kurallarıyla kanıtlanamaz. Bu gizemi \cref{bol:yapici-klasik}'te
+çözeceğiz.
+
+% ---------------------------------------------------------------------
+\section{Taktik özeti}\label{sec:taktik-ozeti-2}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.0cm}
+                             >{\raggedright\arraybackslash}p{1.6cm}
+                             >{\raggedright\arraybackslash}X
+                             >{\raggedright\arraybackslash}p{2.9cm}}
+\rowcolor{tabloust}
+\tablobaslik{Taktik} & \tablobaslik{Kural} & \tablobaslik{Ne yapar?} & \tablobaslik{Terim karşılığı} \\
+\leantac{intro h}                   & $\to$G      & Hedef \lc{A → B} ise \lc{h : A} varsayar, hedef \lc{B} olur. & \lc{fun h => ...} \\
+\leantac{apply h}                   & $\to$E      & \lc{h : A → B} ile hedef \lc{B}'yi \lc{A}'ya çevirir. & \lc{h ...} \\
+\leantac{exact t}                   & ---         & Hedefi \lc{t} ile kapatır. & \lc{t} \\
+\leantac{constructor}               & $\wedge$G   & \lc{⊢ A ∧ B} hedefini iki hedefe böler. & \lc{⟨a, b⟩} \\
+\leantac{obtain ⟨a, b⟩ := h}        & $\wedge$E   & \lc{h : A ∧ B}'yi iki hipoteze ayırır. & \lc{h.1}, \lc{h.2} \\
+\lc{exact Or.inl a}                 & $\vee$G$_1$ & Veya'nın sol tarafını kanıtlar. & \lc{Or.inl a} \\
+\leantac{cases h with ...}          & $\vee$E     & \lc{h : A ∨ B} için iki durum açar. & \lc{Or.elim h f g} \\
+\leantac{rintro (a | b)}            & $\to$G, $\vee$E & Varsayımı alır ve hemen durumlara ayırır. & --- \\
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Doğal çıkarımın kaynakları.} Gentzen'in 1935 tarihli makalesi
+hem doğal çıkarımı hem de \cref{bol:ardisik}'te göreceğimiz ardışık hesabı
+tanıtır \citep{gentzen1935}. Doğal çıkarım ispatlarının
+\emph{normalleştirilebileceği}, yani giriş--eleme çiftlerinin silinerek
+daha dolaysız ispatlara indirgenebileceği \citet{prawitz1965} tarafından
+gösterildi. Bu sonuç, Curry--Howard eşlemesi altında programların
+\emph{çalıştırılmasına} karşılık gelir \citep{howard1980}.
+
+\textbf{İleri okuma.} Ders kitabı düzeyinde doğal çıkarım için
+\citet{vandalen2013}; ispat kuramının ayrıntılı ve modern bir sunumu
+için \citet{troelstra2000}; Curry--Howard eşlemesinin kapsamlı bir
+incelemesi için \citet{sorensen2006}. \Lean{} odaklı bir anlatım için
+\citet{logicandproof} ve \citet{tpil4}.
+
+\textbf{Açık bir soru.} Taktik ispatları okunabilir midir? Uzun taktik
+ispatları, ara hedefler görünmediğinde okunması zor metinlere dönüşebilir.
+\emph{İspat mühendisliği} alanında okunabilir ve bakımı kolay ispat
+yazmaya dair yöntemler hâlâ etkin biçimde tartışılmaktadır;
+\ciltiki{9}'da bu konuya \Mathlib{} deneyimi üzerinden döneceğiz.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Doğal çıkarımda her bağlacın bir \textbf{giriş} (kanıtlama) ve bir
+        \textbf{eleme} (kullanma) kuralı vardır.
+  \item $\to$G = \leantac{intro}; $\to$E = \leantac{apply} ya da fonksiyon
+        uygulaması. İmplikasyonun kanıtı bir fonksiyondur.
+  \item $\wedge$G = \leantac{constructor} ya da \lc{⟨hp, hq⟩};
+        $\wedge$E = \lc{h.1}, \lc{h.2}, \leantac{obtain}. Ve'nin kanıtı bir çifttir.
+  \item $\vee$G = \lc{Or.inl}, \lc{Or.inr}; $\vee$E = \leantac{cases},
+        \leantac{rintro}. Veya'yı kullanmak durum ayırmayı gerektirir.
+  \item Her taktik ispatı arka planda bir terimdir: \textbf{önermeler
+        türler, kanıtlar programlardır}.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} \lc{P ∧ Q → P} önermesini taktik modunda ve terim modunda
+ispatlayın. (\lc{Alistirmalar/Bolum02.lean}, \lc{a2\_1})
+
+\alistirma{1} \lc{P → P ∨ Q} önermesini ispatlayın. Hangi giriş kuralını
+kullandınız? (\lc{a2\_2})
+
+\alistirma{1} \lc{(P → Q) → (P → R) → P → Q ∧ R} önermesini ispatlayın ve
+doğal çıkarım ağacını çizin. (\lc{a2\_3})
+
+\alistirma{2} Ve'nin birleşme özelliğini ispatlayın:
+\lc{P ∧ (Q ∧ R) → (P ∧ Q) ∧ R}. İpucu: \leantac{obtain ⟨hp, hq, hr⟩ := h}
+iç içe çiftleri tek seferde açar. (\lc{a2\_4})
+
+\alistirma{2} Veya'nın birleşme özelliğini ispatlayın:
+\lc{P ∨ (Q ∨ R) → (P ∨ Q) ∨ R}. Kaç durum ayırmanız gerekti? (\lc{a2\_5})
+
+\alistirma{2} \emph{Durum ayırma ilkesini} ispatlayın:
+\lc{(P → R) → (Q → R) → P ∨ Q → R}. Bu önermenin $\vee$E kuralının
+kendisi olduğunu gösterin. (\lc{a2\_6})
+
+\alistirma{2} Dağılmanın tersini ispatlayın:
+\lc{(P ∧ Q) ∨ (P ∧ R) → P ∧ (Q ∨ R)}. (\lc{a2\_7})
+
+\alistirma{2}\label{alis:s-kombinator} $S$ kombinatörünü terim modunda
+ispatlayın: \lc{(P → Q → R) → (P → Q) → P → R}. İspatınızın bir
+fonksiyon olarak ne yaptığını tek cümleyle açıklayın. (\lc{a2\_8})
+
+\alistirma{2} \lc{P ∨ (Q ∧ R) → (P ∨ Q) ∧ (P ∨ R)} önermesini
+ispatlayın. (\lc{a2\_9})
+
+\alistirma{3} Bir önceki alıştırmanın tersini ispatlayın:
+\lc{(P ∨ Q) ∧ (P ∨ R) → P ∨ (Q ∧ R)}. İç içe kaç durum ayırması gerekti?
+Daha azıyla yapılabilir mi? (\lc{a2\_10})
+
+\alistirma{3} (Kâğıt-kalem) \Cref{fig:dagilma-agaci}'deki ağaçta hangi
+varsayımın hangi kuralda kapandığını gösterin. Aynı ağaçta $[P \wedge
+(Q \vee R)]^3$ varsayımının üç kez göründüğüne dikkat edin. \Lean{}
+ispatında bu varsayıma karşılık gelen tek bir \lc{h} vardır. Bu fark
+neden ortaya çıkıyor?
+
+\alistirma{3}\label{alis:peirce} \textbf{Peirce yasası:}
+\lc{((P → Q) → P) → P}. Önce doğruluk tablosuyla her zaman doğru
+olduğunu gösterin. Sonra yalnızca bu bölümün araçlarıyla \Lean{}'de
+ispatlamayı deneyin ve nerede takıldığınızı not edin. Neden takıldığınızı
+\cref{bol:yapici-klasik}'te göreceğiz.
+\end{alistirmalar}

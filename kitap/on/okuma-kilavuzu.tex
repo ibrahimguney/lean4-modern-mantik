@@ -1,0 +1,85 @@
+\chapter*{Bu Kitap Nasıl Okunur?}
+\addcontentsline{toc}{chapter}{Bu Kitap Nasıl Okunur?}
+\markboth{Bu Kitap Nasıl Okunur?}{Bu Kitap Nasıl Okunur?}
+
+\section*{Okuma yolları}
+
+Cilt~I beş kısımdan oluşur. Her okurun bütün kısımları sırayla okuması
+gerekmez. \Cref{fig:okuma-yollari} üç tipik okuma yolunu gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kisim/.style={draw, thick, rounded corners=4pt, minimum width=2.15cm,
+                  minimum height=1.3cm, align=center, font=\baslikfont\small},
+    yol/.style={-{Stealth[length=2.6mm]}, line width=1.3pt},
+    etiket/.style={font=\baslikfont\footnotesize\bfseries, anchor=west},
+  ]
+  \node[kisim, fill=tanimbg, draw=anarenk]          (k1) at (0,0)   {I\\Temeller};
+  \node[kisim, fill=tanimbg, draw=anarenk]          (k2) at (2.6,0) {II\\Yüklemler};
+  \node[kisim, fill=teorembg, draw=teoremframe]     (k3) at (5.2,0) {III\\Metamantık};
+  \node[kisim, fill=teorembg, draw=teoremframe]     (k4) at (7.8,0) {IV\\Tip Kuramı};
+  \node[kisim, fill=ornekbg, draw=ornekframe]         (k5) at (10.4,0){V\\Projeler};
+  \node[kisim, fill=arastirmabg, draw=arastirmaframe, dashed] (k6) at (13.0,0){Cilt II\\İleri Konular};
+
+  % Lisans dersi
+  \draw[yol, ikincil] ([yshift=0.95cm]k1.west) -- ([yshift=0.95cm]k2.east);
+  \node[etiket, text=ikincil] at ([xshift=0.15cm, yshift=0.95cm]k2.east)
+       {Lisans dersi (1 dönem)};
+  % Yüksek lisans
+  \draw[yol, teoremframe] ([yshift=-0.95cm]k1.west) -- ([yshift=-0.95cm]k4.east);
+  \node[etiket, text=teoremframe] at ([xshift=0.15cm, yshift=-0.95cm]k4.east)
+       {Yüksek lisans (2 dönem) + projeler};
+  % Araştırmacı
+  \draw[yol, arastirmaframe] ([yshift=-1.55cm]k2.west) -- ([yshift=-1.55cm]k4.east);
+  \draw[yol, arastirmaframe, dashed] ([yshift=-1.55cm]k4.east) -- ([yshift=-1.55cm]k6.east);
+  \node[etiket, text=arastirmaframe, anchor=north] at ([yshift=-1.65cm]k4.south)
+       {Araştırmacı: Bölüm 1--2'yi gözden geçirip Kısım III--IV'e, ardından Cilt II'ye};
+\end{tikzpicture}
+\caption{Cilt~I'in kısımları ve önerilen okuma yolları. Kesikli kutu, ayrı bir kitap olarak hazırlanan Cilt~II'dir.}
+\label{fig:okuma-yollari}
+\end{figure}
+
+\section*{Kutular ve renkler}
+
+Kitap boyunca aynı renk dili kullanılır. Bir kutunun rengine bakarak ne tür
+bir içerikle karşılaştığınızı hemen anlayabilirsiniz.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{>{\centering\arraybackslash}m{0.9cm} >{\raggedright\arraybackslash}m{3.2cm} >{\raggedright\arraybackslash}m{8.6cm}}
+\tikz\fill[tanimframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Tanım} & Yeni bir kavramın kesin tanımı. \\
+\tikz\fill[teoremframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Teorem} & Kanıtlanmış bir önerme; çoğunun \Lean{} ispatı da verilir. \\
+\tikz\fill[ornekframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Örnek} & Kavramın somut bir uygulaması. \\
+\tikz\fill[leanframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Lean kodu} & Eşlik eden projeden alınan, derlenmiş kod. \\
+\tikz\fill[hedefframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Hedef durumu} & \Lean{}'in o anda gösterdiği hipotezler ve hedef. \\
+\tikz\fill[fikirframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Önemli Fikir} & Bölümün özünü oluşturan kavrayış. \\
+\tikz\fill[dikkatframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Dikkat} & Yeni başlayanların sık yaptığı hatalar. \\
+\tikz\fill[tarihframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Tarihçe} & Kavramın tarihsel arka planı. \\
+\tikz\fill[arastirmaframe, rounded corners=2pt] (0,0) rectangle (0.6,0.4); & \textbf{Araştırma Notu} & Güncel literatür, açık problemler, ileri okuma. \\
+\end{tabular}
+\end{center}
+
+\section*{Lean kodunun renkleri}
+
+\begin{leankod}[Renk örneği]
+theorem ornek (P Q : Prop) (hp : P) (hpq : P → Q) : Q := by
+  apply hpq   -- taktikler pembe
+  exact hp    -- hipotez adları turuncu
+#check ornek  -- komutlar mor
+\end{leankod}
+
+\noindent
+Anahtar kelimeler (\leankw{theorem}, \leankw{fun}, \leankw{by}) mor,
+taktikler (\leantac{apply}, \leantac{exact}) pembe, türler
+(\leantype{Prop}) camgöbeği, hipotez adları (\leanhyp{hp}) turuncu,
+mantık sembolleri (\lc{\textcolor{leansym}{→ ∧ ∨ ⊢}}) mavi, yorumlar
+yeşil italik yazılır.
+
+\section*{Alıştırmaların zorluk dereceleri}
+
+\begin{itemize}
+  \item \zorluk{1}\quad Temel: Bölümdeki örneklerin doğrudan uygulaması.
+  \item \zorluk{2}\quad Orta: Birkaç fikrin birleştirilmesini gerektirir.
+  \item \zorluk{3}\quad İleri: Yaratıcılık ya da sonraki bölümlerden bir fikir gerektirir.
+\end{itemize}

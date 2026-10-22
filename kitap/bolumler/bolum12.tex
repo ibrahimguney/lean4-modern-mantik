@@ -1,0 +1,754 @@
+% =====================================================================
+%  Bölüm 12 — Tamlık Teoremi
+% =====================================================================
+\chapter{Tamlık Teoremi}\label{bol:tamlik}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Tamlık teoreminin ne söylediğini, zayıf ve güçlü biçimlerini
+        ayırt etmeyi,
+  \item Uzun bir metamantık ispatını küçük, bağımsız önsavlara bölmeyi,
+  \item Kalmár'ın yöntemiyle doğruluk tablosunun her satırını bir
+        türetime dönüştürmeyi,
+  \item Atomları teker teker eleyerek önermeler mantığının tamlık
+        teoremini \Lean{}'de eksiksiz ispatlamayı,
+  \item Lindenbaum önsavı ve Henkin yöntemiyle birinci mertebe mantığın
+        tamlık teoremine giden yolu görmeyi.
+\end{itemize}
+\end{bolumhedefleri}
+
+Bölüm~11'de köprünün bir ayağını kurduk: Türetilebilen her şey
+doğrudur. Bu bölümde öteki ayağı kuruyoruz:
+\[
+  \Gamma \models A \quad\Longrightarrow\quad \Gamma \vdash A.
+\]
+İki teorem birlikte, ispat sistemimizin iki değerli anlambilimi
+\emph{tam olarak} yakaladığını söyler. Ne fazla şey türetir, ne eksik.
+Geçerlilik ispatı, türetim ağacı üzerinde düz bir tümevarımdı. Tamlık
+ise bambaşka bir iş ister: Elimizde yalnızca ``her değerlemede doğru''
+bilgisi vardır ve bu bilgiden, hiç görmediğimiz bir türetim ağacını
+\emph{inşa etmemiz} gerekir.
+
+% ---------------------------------------------------------------------
+\section{Tamlığın ifadesi}\label{sec:tamlik-ifade}
+
+\begin{tanim}{Zayıf ve güçlü tamlık}{tamlik-turleri}
+Bir ispat sistemi, bir anlambilime göre
+\begin{itemize}
+  \item \textbf{zayıf tamdır}, eğer her totoloji türetilebiliyorsa:
+        $\models A \Rightarrow\; \vdash A$;
+  \item \textbf{güçlü tamdır}, eğer her mantıksal sonuç
+        türetilebiliyorsa: $\Gamma \models A \Rightarrow \Gamma \vdash
+        A$. Burada $\Gamma$ sonsuz bir küme de olabilir.
+\end{itemize}
+\end{tanim}
+
+\noindent Bizim \lc{Sonuc} ve \lc{Turetilir} tanımlarımızda $\Gamma$ bir
+\emph{liste}, dolayısıyla sonludur. Sonlu $\Gamma$ için güçlü tamlık
+zayıf tamlıktan kolayca çıkar: Varsayımları birer öncül olarak formülün
+içine taşırız (\cref{sec:tamlik-teoremi}). Sonsuz $\Gamma$ için ise ek
+bir fikir, \emph{tıkızlık} gerekir (\cref{sec:lindenbaum}).
+
+\begin{tarihce}[Tarihçe: Tamlığın kısa tarihi]
+Önermeler mantığının tamlığı ilk olarak Paul Bernays'in 1918 tarihli
+(yayımlanmamış) habilitasyon tezinde ve bağımsız olarak Emil Post'un
+1921'deki makalesinde ispatlandı \citep{post1921}. Post'un ispatı,
+doğruluk tablolarının bugünkü biçimini de ilk kez sistemli olarak
+kullanır. Bu bölümde izleyeceğimiz yöntem, Macar matematikçi László
+Kalmár'ın 1935'te verdiği zarif ispattır \citep{kalmar1935}. Mendelson'ın
+klasik ders kitabı da bu ispatı kullanır \citep{mendelson2015}. Birinci
+mertebe mantığın tamlığını ise Kurt Gödel 1929'daki doktora teziyle
+ispatladı \citep{godel1930}. Bugün ders kitaplarında okutulan ispat, Leon
+Henkin'in 1949'daki ispatıdır \citep{henkin1949}.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{İspatın haritası}\label{sec:tamlik-harita}
+
+Tamlık ispatı, kitabın şimdiye kadarki en uzun \Lean{} ispatı olacak.
+Uzun bir ispatı yönetmenin yolu, onu her biri tek başına anlaşılabilen ve
+tek başına derlenen \emph{önsavlara} bölmektir.
+\Cref{fig:tamlik-harita}, ispatın beş aşamasını ve birbirine nasıl
+bağlandığını gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    asama/.style={draw=#1, fill=#1!8, very thick, rounded corners=5pt,
+                  text width=3.0cm, align=center, inner sep=5pt,
+                  font=\small, minimum height=1.35cm},
+    ok/.style={-{Stealth[length=2.6mm]}, very thick, black!45},
+    no/.style={font=\baslikfont\scriptsize\bfseries, text=white,
+               fill=#1, circle, inner sep=1.6pt},
+  ]
+  \node[asama=anarenk]     (a1) at (0,0)    {\textbf{Türetilmiş kurallar}\\{\scriptsize \lc{zay}, \lc{ucuncu\_hal}, \dots}};
+  \node[asama=ornekframe]  (a2) at (4.2,0)  {\textbf{Kalmár önsavı}\\{\scriptsize her satır bir türetim}};
+  \node[asama=ikincil]     (a3) at (8.4,0)  {\textbf{Atom eleme}\\{\scriptsize $p \oveya {\sim}p$ ile birleştir}};
+  \node[asama=dikkatframe] (a4) at (8.4,-2.4) {\textbf{Zayıf tamlık}\\{\scriptsize $\models A \Rightarrow\; \vdash A$}};
+  \node[asama=teoremframe] (a5) at (4.2,-2.4) {\textbf{Tamlık}\\{\scriptsize $\Gamma \models A \Rightarrow \Gamma \vdash A$}};
+  \node[asama=arastirmaframe] (a6) at (0,-2.4) {\textbf{$\vdash \;=\; \models$}\\{\scriptsize geçerlilik ile birlikte}};
+  \draw[ok] (a1) -- (a2); \draw[ok] (a2) -- (a3); \draw[ok] (a3) -- (a4);
+  \draw[ok] (a4) -- node[above, font=\baslikfont\scriptsize]{\lc{kapat}} (a5);
+  \draw[ok] (a5) -- (a6);
+  \foreach \n/\c/\k in {a1/anarenk/1, a2/ornekframe/2, a3/ikincil/3, a4/dikkatframe/4, a5/teoremframe/5}
+    \node[no=\c] at (\n.north west) {\k};
+\end{tikzpicture}
+\caption{Tamlık ispatının haritası. Her kutu, \lc{Bolum12.lean}
+dosyasında bir ya da birkaç önsava karşılık gelir.}
+\label{fig:tamlik-harita}
+\end{figure}
+
+\noindent Ana fikir şudur. Bir $A$ totolojisinin doğruluk tablosunun her
+satırı, atomlara birer değer verir. Kalmár, \emph{her satırın kendisinin
+bir türetime dönüştürülebildiğini} gözlemledi. Satırda doğru olan
+atomları, yanlış olanların ise değillerini varsayarsak, bu varsayımlardan
+$A$ türetilebilir. Sonra satırları ikişer ikişer birleştirerek
+varsayımlardan kurtuluruz.
+
+\subsection{Türetilmiş kurallar}
+
+\Lean{}'deki \lc{Turetilir} yüklemi yalnızca on bir temel kurala sahip.
+Uzun türetimler yazarken aynı küçük kalıpları tekrar tekrar kullanırız.
+Matematikte bir önsavı bir kez ispatlayıp sonra kullanırız; aynı şeyi
+ispat sistemimizde de yapabiliriz. Bir \emph{türetilmiş kural},
+temel kurallardan ispatlanan ve sonra temel kural gibi kullanılan bir
+teoremdir.
+
+En sık kullanacağımız iki araç, bağlamın başındaki varsayımı kullanmak ve
+bağlamın başına yeni bir varsayım eklemektir:
+
+\leandosya[Temel araçlar]{Bolum12}{temel_araclar}
+
+\noindent Klasik mantığın kalbi olan üçüncü hâlin olanaksızlığını
+Bölüm~11'in alıştırmalarında boş bağlamda türetmiştik (\lc{a11\_7}).
+Şimdi onu \emph{her} bağlamda ve \emph{her} formül için türetiyor, ondan
+da \emph{durum ayrımı} kuralını çıkarıyoruz:
+
+\leandosya[Üçüncü hâl ve durum ayrımı]{Bolum12}{ucuncu_hal}
+
+\begin{center}
+\begin{prooftree}
+  \hypo{B, \Gamma \vdash A}
+  \hypo{{\sim}B, \Gamma \vdash A}
+  \infer2[Durum]{\Gamma \vdash A}
+\end{prooftree}
+\end{center}
+
+\noindent Bu kural, ispatın son aşamasında atomları elemek için
+kullanılacak. Kalmár önsavı içinse her bağlacın doğruluk tablosunu
+taklit eden kurallara ihtiyacımız var (\cref{tab:turetilmis-kurallar}).
+
+\leandosya[Bağlaçlar için türetilmiş kurallar]{Bolum12}{turetilmis_kurallar}
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.0cm}
+                >{\centering\arraybackslash}p{4.4cm}
+                >{\raggedright\arraybackslash}p{5.0cm}}
+\rowcolor{tabloust}
+\tablobaslik{Lean adı} & \tablobaslik{Kural} & \tablobaslik{Doğruluk tablosundaki karşılığı} \\
+\lc{ve\_yanlis1}    & ${\sim}A \;\vdash\; {\sim}(A \ove B)$          & $A$ yanlışsa $A \ove B$ yanlış \\
+\lc{ve\_yanlis2}    & ${\sim}B \;\vdash\; {\sim}(A \ove B)$          & $B$ yanlışsa $A \ove B$ yanlış \\
+\lc{veya\_yanlis}   & ${\sim}A,\, {\sim}B \;\vdash\; {\sim}(A \oveya B)$ & ikisi de yanlışsa $A \oveya B$ yanlış \\
+\lc{ise\_on\_yanlis} & ${\sim}A \;\vdash\; A \oise B$                 & öncül yanlışsa $A \oise B$ doğru \\
+\lc{ise\_son\_dogru} & $B \;\vdash\; A \oise B$                      & sonuç doğruysa $A \oise B$ doğru \\
+\lc{ise\_yanlis}    & $A,\, {\sim}B \;\vdash\; {\sim}(A \oise B)$    & tek yanlış satır \\
+\end{tabular}
+\caption{Kalmár önsavı için gereken türetilmiş kurallar. Doğru durumlar
+($A, B \vdash A \ove B$ gibi) zaten temel kurallardır.}
+\label{tab:turetilmis-kurallar}
+\end{table}
+
+\begin{onemlifikir}[Önemli Fikir: İspat sistemi içinde ispat sistemi]
+Türetilmiş kurallar, \Lean{}'in kendi ispatlarında yaptığımız şeyin nesne
+dilindeki yansımasıdır. \lc{ve\_yanlis1} bir kez ispatlandıktan sonra
+\lc{Turetilir}'in on ikinci kuralıymış gibi kullanılabilir. Sistemi
+değiştirmeyiz; yalnızca onun hakkında bir teorem ispatlarız. Bu, ispat
+sistemini küçük tutup (geçerlilik ispatı kısa kalsın diye) kullanımını
+zenginleştirmenin standart yoludur.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Kalmár yöntemi}\label{sec:kalmar}
+
+\subsection{İşaretli atomlar}
+
+Bir $v$ değerlemesi ve bir $p_n$ atomu için \emph{işaretli atomu}
+\[
+  p_n^v \;=\;
+  \begin{cases}
+    p_n        & v(n) = \mathsf{true} \text{ ise},\\
+    {\sim}p_n  & v(n) = \mathsf{false} \text{ ise}
+  \end{cases}
+\]
+diye tanımlarız. $p_n^v$, $v$ altında her zaman doğrudur. İlk $k$ atomun
+işaretli hâllerinden oluşan bağlama $\Delta_v^k = [p_{k-1}^v, \dots,
+p_1^v, p_0^v]$ diyelim. Bu bağlam, doğruluk tablosunun bir satırının
+nesne dilindeki ifadesidir.
+
+\leandosya[İşaretli atomlar]{Bolum12}{isaretli}
+
+\noindent \lc{atomBaglami}'nın sayı üzerinde özyinelemeyle tanımlanması,
+ileride atomları teker teker elemeyi kolaylaştıracak: \lc{atomBaglami v
+(k + 1)} bağlamının başında her zaman $p_k^v$ durur. İki basit özellik
+daha ispatlıyoruz. İşaretli atomun açık biçimi ve bağlamda bulunması:
+
+\leandosya[İşaretli atomların özellikleri]{Bolum12}{isaretli_ozellik}
+
+\subsection{Kalmár önsavı}
+
+\begin{teorem}{Kalmár önsavı}{kalmar}
+$A$'nın bütün atomları $p_0, \dots, p_{k-1}$ arasındaysa, her $v$ için
+\[
+  \Delta_v^k \vdash A^v,
+  \qquad\text{burada}\qquad
+  A^v =
+  \begin{cases}
+    A        & \lBrack A \rBrack_v = \mathsf{true} \text{ ise},\\
+    {\sim}A  & \lBrack A \rBrack_v = \mathsf{false} \text{ ise}.
+  \end{cases}
+\]
+\end{teorem}
+
+\noindent Önsav, \emph{doğru olanı da yanlış olanı da} türetebildiğimizi
+söylüyor. Bu güçlendirme, tümevarımın işlemesi için şarttır. $A \oise B$
+yanlış olduğunda ${\sim}(A \oise B)$'yi türetmek için $A$'yı ve
+${\sim}B$'yi türetebiliyor olmamız gerekir. Yani tümevarım hipotezinin
+hem doğru hem yanlış yüzüne ihtiyaç vardır (Bölüm~7'deki ``önermeyi
+güçlendirme'' tekniği). \Cref{fig:kalmar-tablo}, önsavın $p \oise q$ için
+ne söylediğini satır satır gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.6}
+\setlength{\tabcolsep}{9pt}
+\begin{tabular}{cc c >{\centering\arraybackslash}p{3.0cm} c >{\raggedright\arraybackslash}p{3.3cm}}
+\rowcolor{tabloust}
+\tablobaslik{$p$} & \tablobaslik{$q$} & \tablobaslik{$p \oise q$} &
+\tablobaslik{Bağlam $\Delta_v$} & & \tablobaslik{Türetilen ($A^v$)} \\
+\cellcolor{ikincil!15}\textsf{D} & \cellcolor{ikincil!15}\textsf{D} & \textsf{D} &
+  $q,\; p$ & $\vdash$ & $p \oise q$ \quad{\scriptsize\textcolor{leantac}{\lc{ise\_son\_dogru}}} \\
+\cellcolor{ikincil!15}\textsf{D} & \cellcolor{vurgu!15}\textsf{Y} & \cellcolor{vurgu!15}\textsf{Y} &
+  ${\sim}q,\; p$ & $\vdash$ & \textcolor{teoremframe}{${\sim}(p \oise q)$} \quad{\scriptsize\textcolor{leantac}{\lc{ise\_yanlis}}} \\
+\cellcolor{vurgu!15}\textsf{Y} & \cellcolor{ikincil!15}\textsf{D} & \textsf{D} &
+  $q,\; {\sim}p$ & $\vdash$ & $p \oise q$ \quad{\scriptsize\textcolor{leantac}{\lc{ise\_on\_yanlis}}} \\
+\cellcolor{vurgu!15}\textsf{Y} & \cellcolor{vurgu!15}\textsf{Y} & \textsf{D} &
+  ${\sim}q,\; {\sim}p$ & $\vdash$ & $p \oise q$ \quad{\scriptsize\textcolor{leantac}{\lc{ise\_on\_yanlis}}} \\
+\end{tabular}
+\caption{Kalmár önsavı $p \oise q$ için. Doğruluk tablosunun her satırı
+bir türetime dönüşür: Bağlam satırdaki atom değerlerini, sağ taraf ise
+formülün o satırdaki değerini kodlar. Son sütun, satırın hangi türetilmiş
+kuralla elde edildiğini gösterir.}
+\label{fig:kalmar-tablo}
+\end{figure}
+
+\noindent Önsavı \Lean{}'de ifade etmek için ``$b$ değerine uygun
+biçimde türetir'' anlamına gelen küçük bir yüklem tanımlıyoruz. $A^v$'yi
+bir \leankw{if} ifadesiyle tanımlamak yerine iki yönü bir \lc{∧} ile
+yazmak, ispatlarda \leankw{if} ifadelerini açma zahmetinden kurtarır:
+
+\leandosya[Kalmár yüklemi]{Bolum12}{kalmar_tanim}
+
+\noindent \leankw{abbrev} kullanmamızın sebebi, \lc{Kalmar}'ın \lc{∧}
+olarak açılabilmesidir. Böylece \lc{⟨\_, \_⟩} ile kurulabilir ve
+\lc{hA.1}, \lc{hA.2} ile parçalanabilir. Şimdi her bağlaç için ayrı bir
+önsav ispatlıyoruz. Her önsav, o bağlacın doğruluk tablosunu satır
+satır ele alır:
+
+\leandosya[Bağlaç adımları]{Bolum12}{kalmar_baglaclar}
+
+\noindent Bu önsavlarda \lc{a} ve \lc{b}, alt formüllerin doğruluk
+değerleridir. \leantac{cases a with} her satırı ayrı bir hedefe
+dönüştürür. Olanaksız yönler (örneğin \lc{(false \&\& b) = true}) tek bir
+\leantac{simp at h} ile kapanır. Geri kalan her hedef, ya bir temel
+kuralla ya da \cref{tab:turetilmis-kurallar}'deki bir türetilmiş
+kuralla tek satırda biter.
+
+Önsavın kendisi artık yalnızca bir yapısal tümevarımdır. Her durum, ilgili
+bağlaç önsavına yönlendirilir:
+
+\leandosya[Kalmár önsavı]{Bolum12}{kalmar}
+
+\begin{dikkat}[Dikkat: Tanımsal eşitlik iş başında]
+\lc{kalmar\_ve}'nin sonucu \lc{Kalmar Δ (a \&\& b) (A {\sembolkodfont ⋀} B)} biçimindedir.
+Hedef ise \lc{Kalmar Δ (deger v (A {\sembolkodfont ⋀} B)) (A {\sembolkodfont ⋀} B)}'dir. \Lean{} bu ikisini
+\emph{tanımsal olarak} eşit görür, çünkü \lc{deger}'in tanımı açıldığında
+ikisi aynı terim olur. Bu sayede \leantac{exact} hiçbir yeniden yazma
+olmadan çalışır. \lc{deger}'i bir tablo yerine özyinelemeli bir fonksiyon
+olarak tanımlamanın bir kazancı da budur.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Atomların elenmesi}\label{sec:atom-eleme}
+
+$A$ bir totolojiyse, Kalmár önsavı \emph{her} $v$ için $\Delta_v^k
+\vdash A$ verir; çünkü $A^v$ her zaman $A$'nın kendisidir. Elimizde
+$2^k$ tane türetim var, her satır için bir tane. Bunları birleştirip
+bağlamı boşaltmak istiyoruz.
+
+Fikir şudur: Yalnızca $p_{k-1}$'in değerinde farklılaşan iki satırı
+alalım. Bu satırların bağlamları
+\[
+  p_{k-1},\, \Delta \vdash A
+  \qquad\text{ve}\qquad
+  {\sim}p_{k-1},\, \Delta \vdash A
+\]
+biçimindedir; durum ayrımı kuralı $\Delta \vdash A$ verir. Böylece
+$p_{k-1}$'i bağlamdan çıkarmış oluruz. Bunu $k$ kez tekrarlarız
+(\cref{fig:atom-eleme}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    yaprak/.style={draw=ornekframe, fill=ornekbg, thick, rounded corners=3pt,
+                   font=\small, inner sep=4pt, minimum width=2.6cm},
+    ara/.style={draw=ikincil, fill=fikirbg, thick, rounded corners=3pt,
+                font=\small, inner sep=4pt, minimum width=2.4cm},
+    kok/.style={draw=teoremframe, fill=teorembg, very thick, rounded corners=4pt,
+                font=\small\bfseries, inner sep=5pt},
+    ok/.style={-{Stealth[length=2.2mm]}, thick, black!45},
+    etiket/.style={font=\baslikfont\scriptsize\bfseries, text=ikincil},
+  ]
+  \node[yaprak] (l1) at (-5.1,0) {$q,\; p \vdash A$};
+  \node[yaprak] (l2) at (-1.7,0) {${\sim}q,\; p \vdash A$};
+  \node[yaprak] (l3) at (1.7,0)  {$q,\; {\sim}p \vdash A$};
+  \node[yaprak] (l4) at (5.1,0)  {${\sim}q,\; {\sim}p \vdash A$};
+  \node[ara] (m1) at (-3.4,-1.7) {$p \vdash A$};
+  \node[ara] (m2) at (3.4,-1.7)  {${\sim}p \vdash A$};
+  \node[kok] (r) at (0,-3.3) {$\vdash A$};
+  \draw[ok] (l1) -- (m1); \draw[ok] (l2) -- (m1);
+  \draw[ok] (l3) -- (m2); \draw[ok] (l4) -- (m2);
+  \draw[ok] (m1) -- (r);  \draw[ok] (m2) -- (r);
+  \node[etiket] at (-3.4,-0.85) {$q \oveya {\sim}q$};
+  \node[etiket] at (3.4,-0.85)  {$q \oveya {\sim}q$};
+  \node[etiket] at (0,-2.35)    {$p \oveya {\sim}p$};
+  \node[font=\baslikfont\scriptsize, text=ornekframe, anchor=west] at (6.6,0)
+       {\begin{tabular}{@{}l@{}}Kalmár:\\ $2^k$ satır\end{tabular}};
+  \node[font=\baslikfont\scriptsize, text=ikincil, anchor=west] at (6.6,-1.7)
+       {\begin{tabular}{@{}l@{}}\lc{atom\_ele}\\(1. adım)\end{tabular}};
+  \node[font=\baslikfont\scriptsize, text=teoremframe, anchor=west] at (6.6,-3.3)
+       {\begin{tabular}{@{}l@{}}\lc{atom\_ele}\\(2. adım)\end{tabular}};
+\end{tikzpicture}
+\caption{İki atomlu bir $A$ totolojisi için atomların elenmesi.
+Yapraklar Kalmár önsavından gelir. Her birleştirme, bir atom için durum
+ayrımıdır. $k$ atom için ağaç $k$ katlıdır ve $2^k$ yaprağı vardır.}
+\label{fig:atom-eleme}
+\end{figure}
+
+\noindent Bunu \Lean{}'de yapmak için, bir $v$ değerlemesinden yalnızca
+$j$'inci atomu değiştirilmiş yeni değerlemeler üretebilmeliyiz. Ayrıca
+$j$'den küçük atomlarda anlaşan değerlemelerin aynı atom bağlamını
+verdiğini bilmeliyiz:
+
+\leandosya[Değerlemeyi güncellemek]{Bolum12}{ata}
+
+\noindent Artık eleme adımını yazabiliriz. Hipotez, $j+1$ atomlu
+\emph{her} satırın $A$'yı türettiğini söylüyor. $v$'yi verilmiş kabul
+edip $j$'inci atomu bir kez \lc{true}, bir kez \lc{false} yapıyoruz.
+İki türetimi durum ayrımıyla birleştirince $j$ atomlu satır elde ediliyor:
+
+\leandosya[Atom eleme]{Bolum12}{atom_ele}
+
+\noindent \lc{atomlari\_ele}, \lc{atom\_ele}'yi $k$ kez uygular. Sayı
+üzerinde yapısal özyinelemeyle tanımlanmış bir \emph{teoremdir}:
+\lc{k + 1} durumu, \lc{k} durumunu çağırır. $k = 0$ olduğunda atom
+bağlamı boştur, dolayısıyla herhangi bir değerleme (burada hep yanlış
+olanı) işimizi görür.
+
+% ---------------------------------------------------------------------
+\section{Tamlık teoremi}\label{sec:tamlik-teoremi}
+
+Parçaları birleştirelim. $A$'nın atomları $p_0, \dots, p_m$
+arasındadır; burada $m$, \lc{enBuyukAtom A} değeridir. Dolayısıyla
+$k = m + 1$ yeterlidir.
+
+\begin{teorem}{Zayıf tamlık}{zayif-tamlik}
+Her $A$ totolojisi türetilebilir: $\models A \Rightarrow\; \vdash A$.
+\end{teorem}
+
+\leandosya[Zayıf tamlık]{Bolum12}{zayif_tamlik}
+
+\noindent Varsayımlı hâl için, varsayımları öncül olarak formülün içine
+taşıyan bir \lc{kapat} fonksiyonu tanımlıyoruz. Sonra iki şey
+gösteriyoruz: Anlamsal sonuç ilişkisi bu taşımayla korunur, türetim ise
+geri alınabilir. İkincisi, Bölüm~5'teki \emph{çıkarım teoreminin} ($\to$G
+kuralının) tersidir:
+
+\leandosya[Varsayımları içeri taşımak]{Bolum12}{kapat}
+
+\begin{teorem}{Tamlık (önermeler mantığı)}{tamlik}
+Her sonlu $\Gamma$ ve her $A$ için, $\Gamma \models A$ ise $\Gamma
+\vdash A$. Geçerlilikle birlikte:
+\[
+  \Gamma \vdash A \quad\Longleftrightarrow\quad \Gamma \models A .
+\]
+\end{teorem}
+
+\leandosya[Tamlık teoremi]{Bolum12}{tamlik}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!8, very thick, rounded corners=6pt,
+                 text width=3.6cm, align=center, inner sep=8pt},
+  ]
+  \node[kutu=anarenk] (s) at (0,0)
+       {\baslikfont\bfseries Sözdizim\\[2pt]\normalfont $\Gamma \vdash A$\\[2pt]
+        {\scriptsize türetim ağaçları}\\{\scriptsize \lc{Turetilir}}};
+  \node[kutu=ikincil] (a) at (8,0)
+       {\baslikfont\bfseries Anlambilim\\[2pt]\normalfont $\Gamma \models A$\\[2pt]
+        {\scriptsize değerlemeler}\\{\scriptsize \lc{Sonuc}}};
+  \draw[-{Stealth[length=3.2mm]}, very thick, teoremframe]
+       ([yshift=6pt]s.east) -- node[above, font=\baslikfont\small\bfseries]{geçerlilik}
+       node[below, font=\scriptsize]{Bölüm 11} ([yshift=6pt]a.west);
+  \draw[-{Stealth[length=3.2mm]}, very thick, dikkatframe]
+       ([yshift=-18pt]a.west) -- node[below, font=\baslikfont\small\bfseries]{tamlık}
+       node[above, font=\scriptsize]{Bölüm 12} ([yshift=-18pt]s.east);
+\end{tikzpicture}
+\caption{Önermeler mantığının iki yüzü. Geçerlilik ve tamlık birlikte,
+türetilebilirlik ile mantıksal sonucun \emph{aynı} ilişki olduğunu
+söyler: \lc{turetilir\_iff\_sonuc}.}
+\label{fig:iki-yuz}
+\end{figure}
+
+\begin{onemlifikir}[Önemli Fikir: Tamlık bir ispat \emph{üretir}]
+Tamlık ispatımız yapıcıdır: \lc{tamlik\_bos}, verilen bir totoloji
+için gerçek bir türetim ağacı inşa eder. Bu ağaç büyüktür. $k$ atomlu bir
+formül için $2^k$ Kalmár türetimini birleştirir. Ama vardır ve
+mekaniktir. Bu yüzden önermeler mantığında ``türetilebilir mi?''
+sorusu, ``doğruluk tablosu her satırda doğru mu?'' sorusuna indirgenir.
+Bölüm~10'daki \lc{totolojiMi} fonksiyonu, aslında bir \emph{ispat arama}
+algoritmasıdır.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Sonuçlar}\label{sec:tamlik-sonuclar}
+
+Tamlığın ilk getirisi pratiktir: Artık bir türetimi elle kurmak zorunda
+değiliz. Bölüm~11'de Peirce yasasını on adımlık bir türetimle elde
+etmiştik. Şimdi doğruluk tablosunu kontrol etmek yeterli. İkinci getiri
+kuramsaldır: Tutarlılık ile sağlanabilirlik aynı şeydir.
+
+\leandosya[Tamlığın sonuçları]{Bolum12}{sonuclar}
+
+\begin{teorem}{Model varlığı}{model-varligi}
+$\Gamma \nvdash \bot$ ise $\Gamma$'nın bütün formüllerini doğrulayan bir
+$v$ değerlemesi vardır.
+\end{teorem}
+
+\noindent Bu teoremin ispatında \lc{Classical.byContradiction}
+kullandık, çünkü değerlemenin \emph{varlığını} çelişki yoluyla
+gösteriyoruz. Aslında burada da yapıcı bir ispat mümkündür:
+Formülün atomları sonlu olduğu için doğruluk tablosunun satırlarını tek
+tek deneyebiliriz (\lc{tumDegerlemeler}). Bu ispat \lc{a12\_8}'in
+ötesinde bir alıştırma olarak bırakılmıştır.
+
+\begin{dikkat}[Dikkat: Hesaplama karmaşıklığı]
+\lc{tamlik\_bos}'un ürettiği türetim, atom sayısında üsteldir. Daha
+kısa türetimler var mı? Bu, \emph{ispat karmaşıklığı} alanının temel
+sorusudur. Cook ve Reckhow, her totolojinin polinom boyutlu bir türetimi
+olan bir ispat sistemi bulunmasının $\mathrm{NP} = \mathrm{coNP}$'ye denk
+olduğunu gösterdi \citep{cookreckhow1979}. Bu, açık bir problemdir. Belirli
+sistemler için alt sınırlar bilinir: Örneğin güvercin yuvası ilkesinin
+\emph{çözünürlük} (resolution) türetimleri üstel uzunluktadır
+\citep{haken1985}. Yani tamlık ``bir türetim vardır'' der; ``kısa bir
+türetim vardır'' demez.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Maksimal tutarlı kümeler ve Lindenbaum önsavı}\label{sec:lindenbaum}
+
+Kalmár yöntemi, sonlu sayıda atom ve sonlu bir $\Gamma$ için çalışır.
+$\Gamma$ sonsuz olduğunda, ya da birinci mertebe mantığa geçtiğimizde,
+doğruluk tablosu kullanılamaz. Bu durumlarda kullanılan genel yöntem,
+modeli \emph{sözdizimin kendisinden} inşa etmektir. Bu kesimin
+ispatlarını kâğıt üzerinde veriyoruz. Birinci mertebe mantık için
+\Lean{} formalizasyonu Cilt~II'nin ilk bölümünün konusudur.
+
+\begin{tanim}{Maksimal tutarlı küme}{maksimal-tutarli}
+Bir $\Delta$ formül kümesi
+\begin{itemize}
+  \item \textbf{tutarlıdır}, eğer $\Delta \nvdash \bot$ ise;
+  \item \textbf{maksimal tutarlıdır}, eğer tutarlıysa ve kendisine
+        eklenen her yeni formül onu tutarsız yapıyorsa.
+\end{itemize}
+\end{tanim}
+
+\noindent Maksimal tutarlı bir $\Delta$, ``her soruya kesin bir cevap
+veren'' bir kümedir. Her $A$ için ya $A \in \Delta$ ya da ${\sim}A \in
+\Delta$'dır, ikisi birden asla. Üstelik $\Delta$ türetim altında
+kapalıdır ve bağlaçlarla uyumludur:
+\[
+  A \oise B \in \Delta \iff (A \notin \Delta \text{ ya da } B \in \Delta),
+  \qquad
+  A \ove B \in \Delta \iff (A \in \Delta \text{ ve } B \in \Delta).
+\]
+Bu yüzden $v_\Delta(n) = \mathsf{true} \iff p_n \in \Delta$ diye
+tanımlanan \emph{kanonik değerleme}, yapısal tümevarımla şunu sağlar:
+$\lBrack A \rBrack_{v_\Delta} = \mathsf{true} \iff A \in \Delta$
+(\emph{doğruluk önsavı}).
+
+\begin{teorem}{Lindenbaum önsavı}{lindenbaum}
+Her tutarlı $\Gamma$ kümesi, maksimal tutarlı bir $\Delta \supseteq
+\Gamma$ kümesine genişletilebilir.
+\end{teorem}
+
+\noindent \emph{İspat taslağı.} Formüller sayılabilir olduğu için onları
+$\varphi_0, \varphi_1, \varphi_2, \dots$ diye sıralayabiliriz
+(\lc{Formul} için böyle bir sıralama, Bölüm~8'deki sayılabilirlik
+tekniğiyle kurulur). Sonra adım adım genişletiriz
+(\cref{fig:lindenbaum}):
+\[
+  \Delta_0 = \Gamma, \qquad
+  \Delta_{n+1} =
+  \begin{cases}
+    \Delta_n \cup \{\varphi_n\} & \text{bu küme tutarlıysa},\\
+    \Delta_n \cup \{{\sim}\varphi_n\} & \text{değilse},
+  \end{cases}
+  \qquad
+  \Delta = \bigcup_n \Delta_n .
+\]
+Her adım tutarlılığı korur. Çünkü hem $\Delta_n, \varphi_n \vdash \bot$
+hem $\Delta_n, {\sim}\varphi_n \vdash \bot$ olsaydı, durum ayrımı
+$\Delta_n \vdash \bot$ verirdi. Birleşim de tutarlıdır, çünkü bir
+türetim yalnızca sonlu sayıda varsayım kullanır ve bunlar bir
+$\Delta_n$'nin içindedir. \hfill\textcolor{teoremframe}{\rule{0.55em}{0.55em}}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kume/.style={draw=#1, fill=#1!7, thick, rounded corners=6pt},
+  ]
+  \draw[kume=teoremframe] (-0.3,-1.25) rectangle (11.0,1.25);
+  \draw[kume=ikincil]     (-0.15,-1.0) rectangle (7.6,1.0);
+  \draw[kume=ornekframe]  (0.0,-0.8) rectangle (5.1,0.8);
+  \draw[kume=anarenk]     (0.15,-0.6) rectangle (2.6,0.6);
+  \node[font=\small] at (1.35,0) {$\Delta_0 = \Gamma$};
+  \node[font=\small] at (3.85,0.2) {$\Delta_1$};
+  \node[font=\small] at (6.35,0.2) {$\Delta_2$\;\;$\cdots$};
+  \node[font=\small\bfseries, text=teoremframe] at (9.3,0) {$\Delta = \bigcup_n \Delta_n$};
+  \node[font=\baslikfont\scriptsize, text=ornekframe] at (3.85,-0.45) {$+\,\varphi_0$ ya da ${\sim}\varphi_0$};
+  \node[font=\baslikfont\scriptsize, text=ikincil] at (6.35,-0.55) {$+\,\varphi_1$ ya da ${\sim}\varphi_1$};
+  \node[font=\baslikfont\scriptsize, text=teoremframe, anchor=north] at (9.3,-0.35) {maksimal tutarlı};
+\end{tikzpicture}
+\caption{Lindenbaum yapısı. Her adımda sıradaki formül ya da değili
+eklenir; tutarlılık her adımda korunur. Sonsuz birleşim, her formül
+hakkında karar vermiş maksimal tutarlı bir kümedir.}
+\label{fig:lindenbaum}
+\end{figure}
+
+\noindent Lindenbaum önsavı ile kanonik değerleme birleşince, model
+varlığı teoremi \emph{sonsuz} $\Gamma$ için de elde edilir: Tutarlı
+$\Gamma$'yı maksimal tutarlı $\Delta$'ya genişletiriz ve $v_\Delta$,
+$\Gamma$'nın her formülünü doğrular. Buradan güçlü tamlık çıkar:
+$\Gamma \nvdash A$ ise $\Gamma \cup \{{\sim}A\}$ tutarlıdır, bir modeli
+vardır ve bu model $\Gamma \nvDash A$'ya tanıklık eder.
+
+\begin{teorem}{Tıkızlık}{tikizlik}
+Bir $\Gamma$ kümesinin her sonlu alt kümesi sağlanabilirse, $\Gamma$'nın
+kendisi de sağlanabilirdir.
+\end{teorem}
+
+\noindent \emph{İspat.} $\Gamma$ sağlanamasaydı, güçlü tamlıkla $\Gamma
+\vdash \bot$ olurdu. Bu türetim sonlu sayıda varsayım kullanır; o sonlu
+alt küme geçerlilik teoremiyle sağlanamaz olurdu. \hfill\textcolor{teoremframe}{\rule{0.55em}{0.55em}}
+
+\begin{dikkat}[Dikkat: Lindenbaum ve seçim]
+Formüller sayılabilir olduğu için yukarıdaki yapı seçim aksiyomu
+gerektirmez. Ama ``$\Delta_n \cup \{\varphi_n\}$ tutarlı mı?'' sorusuna
+her adımda cevap verebilmemiz gerekir. Önermeler mantığında bu karar
+verilebilirdir (tamlık ile doğruluk tablosuna indirgenir). Birinci
+mertebe mantıkta değildir (\ciltiki{4}). Bu yüzden \Lean{}'de Lindenbaum
+yapısı genellikle \leankw{Classical} ile, ya da sayılamaz diller için
+Zorn önsavıyla yapılır. Mathlib'deki \lc{zorn\_subset} buna hazır bir
+araçtır.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Birinci mertebe mantık: Henkin yöntemi}\label{sec:henkin}
+
+Birinci mertebe mantıkta bir model, bir \emph{tanım evreni} ve bu evren
+üzerinde yüklemlerin yorumlarından oluşur. Model varlığını göstermek
+için Henkin'in fikri, evreni \emph{terimlerin kendisinden} kurmaktır.
+Ancak bir sorun vardır. $\exists x\, \varphi(x) \in \Delta$ olabilir,
+ama hiçbir $t$ terimi için $\varphi(t) \in \Delta$ olmayabilir. Terim
+modelinde varoluş iddiasının bir tanığı yoktur.
+
+Henkin'in çözümü, dile her varoluş formülü için yeni bir \emph{tanık
+sabiti} eklemektir: $c_{\exists x\varphi}$. Bu sabitle birlikte
+\[
+  \exists x\, \varphi(x) \;\oise\; \varphi(c_{\exists x\varphi})
+\]
+\emph{Henkin aksiyomu} da kümeye katılır. Bu aksiyomların eklenmesi
+tutarlılığı korur. Sonra Lindenbaum önsavı uygulanır ve terim modeli
+tanımlanır (\cref{fig:henkin}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    adim/.style={draw=#1, fill=#1!8, very thick, rounded corners=5pt,
+                 text width=2.55cm, align=center, inner sep=5pt,
+                 font=\small, minimum height=1.6cm},
+    ok/.style={-{Stealth[length=2.6mm]}, very thick, black!45},
+  ]
+  \node[adim=anarenk]     (a) at (0,0)     {tutarlı\\$\Gamma$};
+  \node[adim=ornekframe]  (b) at (3.3,0)   {Henkin\\genişlemesi\\{\scriptsize tanık sabitleri}};
+  \node[adim=ikincil]     (c) at (6.6,0)   {maksimal\\tutarlı $\Delta$\\{\scriptsize Lindenbaum}};
+  \node[adim=teoremframe] (d) at (9.9,0)   {terim\\modeli $\mathcal{M}_\Delta$\\{\scriptsize $\mathcal{M}_\Delta \models \Gamma$}};
+  \draw[ok] (a) -- (b); \draw[ok] (b) -- (c); \draw[ok] (c) -- (d);
+\end{tikzpicture}
+\caption{Henkin'in tamlık ispatının dört adımı. Evren, terimlerden oluşur
+(eşitlik varsa eşit terimlerin denklik sınıflarından). $\Delta$'nın
+kapalılık özellikleri, terim modelinin $\Delta$'yı, dolayısıyla
+$\Gamma$'yı doğrulamasını sağlar.}
+\label{fig:henkin}
+\end{figure}
+
+\begin{teorem}{Gödel'in tamlık teoremi}{godel-tamlik}
+Birinci mertebe mantıkta, her $\Gamma$ cümle kümesi ve her $\varphi$
+cümlesi için $\Gamma \models \varphi$ ise $\Gamma \vdash \varphi$.
+\end{teorem}
+
+\noindent Bu teoremin şaşırtıcı sonuçları vardır. Tıkızlık birinci mertebe
+mantık için de geçerlidir. Sayılabilir bir dildeki her tutarlı kuramın
+sayılabilir bir modeli vardır (aşağı Löwenheim--Skolem teoremi): Terim
+modeli sayılabilirdir. Gerçel sayılar kuramının bile sayılabilir bir
+modeli vardır! Bu ``paradoks'' \ciltiki{5}'te küme kuramıyla birlikte ele
+alınacak.
+
+\begin{dikkat}[Dikkat: Tamlık ve eksiklik]
+Gödel'in \emph{tamlık} teoremi (1930) ile \emph{eksiklik} teoremleri
+(1931) çelişmez, çünkü farklı şeylerden söz ederler. Tamlık, \emph{ispat
+sistemi} hakkındadır: Bir kuramın bütün modellerinde doğru olan her cümle
+o kuramdan türetilebilir. Eksiklik ise \emph{kuramlar} hakkındadır:
+Aritmetiğin, örneğin Peano aritmetiğinin, hem $\varphi$'yi hem
+${\sim}\varphi$'yi doğrulayan farklı modelleri olduğu için ikisi de
+türetilemez. ``Standart modelde doğru'' ile ``her modelde doğru''
+arasındaki fark, \ciltiki{4}'ün konusudur.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Formalizasyondaki tasarım kararları}\label{sec:tamlik-tasarim}
+
+Bu bölümün \Lean{} ispatı birkaç tasarım kararının ürünüdür. Bunlar,
+kendi metamantık formalizasyonunuzu yaparken karşılaşacağınız
+seçimlerdir.
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\rowcolor{tabloust}
+\tablobaslik{Karar} & \tablobaslik{Bizim seçimimiz} & \tablobaslik{Alternatif ve bedeli} \\
+Anlambilim değerleri & \lc{Bool}: \leantac{cases} ile satır satır ilerlemek kolay & \lc{Prop}: daha genel, ama RAA ve Kalmár için klasik mantık gerekir \\
+Bağlam & \lc{List Formul}: sonlu, \leantac{decide} ile denetlenebilir & \lc{Set Formul}: sonsuz $\Gamma$ mümkün, ama tıkızlık ayrıca ispatlanmalı \\
+Tamlık yöntemi & Kalmár: yapıcı, sonlu, ek kütüphane gerektirmez & Lindenbaum: birinci mertebeye genellenir, ama sayma ve seçim gerektirir \\
+Atomlar & \lc{Nat} indisli: \lc{enBuyukAtom} ile sınırlanır & Herhangi bir tip: atomların sonlu kümesini ayrıca hesaplamak gerekir \\
+Önsav biçimi & \lc{Kalmar Δ b A}: iki yönlü \lc{∧} & \leankw{if}--\leankw{then}: daha kısa ifade, ama her adımda \leankw{if} açılmalı \\
+\end{tabularx}
+\caption{Tamlık formalizasyonunda yapılan seçimler.}
+\label{tab:tamlik-tasarim}
+\end{table}
+
+\noindent Bu kararların hiçbiri ``doğru'' ya da ``yanlış'' değildir. Her
+biri, ispatın bir bölümünü kolaylaştırırken başka bir bölümünü
+zorlaştırır. Formalizasyonda deneyim, büyük ölçüde bu dengeleri önceden
+görebilmektir. Michaelis ve Nipkow, Isabelle'de önermeler mantığının dört
+farklı ispat sistemini (doğal çıkarım, ardışık hesap, Hilbert sistemi,
+çözünürlük) aynı çatı altında formalize etmiş ve bu tür seçimleri
+ayrıntılı biçimde tartışmıştır \citep{michaelis2018}.
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Birinci mertebe tamlığın formalizasyonları.} Gödel'in tamlık
+teoremi birçok ispat asistanında formalize edilmiştir. Lean~3'teki
+\emph{Flypitch} projesi, süreklilik hipotezinin bağımsızlığını
+ispatlarken birinci mertebe mantığın tamlığını da formalize etti
+\citep{han2020flypitch}. Lean~4'teki Foundation kütüphanesi
+\citep{foundation} tamlık, tıkızlık ve Gödel'in eksiklik teoremlerini
+birlikte içerir \citep{saitou2026}. Bu projelerde en çok emek isteyen
+kısım, çoğu zaman tamlık ispatının kendisi değil, \emph{bağlı
+değişkenlerin} ve \emph{yerine koymanın} doğru yönetimidir. Bölüm~14'te
+bu sorunu de~Bruijn indisleriyle ele alacağız \citep{debruijn1970}.
+
+\textbf{İspat karmaşıklığı.} Cook--Reckhow programı \citep{cookreckhow1979},
+$\mathrm{NP} \neq \mathrm{coNP}$'yi ispat sistemleri için alt sınırlar
+yoluyla göstermeyi hedefler. SAT çözücülerinin ürettiği çözünürlük
+türetimleri bu alanın pratik yüzüdür. \Lean{}'deki \leantac{bv\_decide}
+taktiği, bir SAT çözücünün sonucunu \lc{LRAT} sertifikası olarak
+denetler ve böylece tamlık teoreminin ``bir türetim vardır'' vaadini
+verimli bir biçimde gerçekleştirir (\ciltiki{6}).
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Tamlık teoremi, geçerliliğin tersidir: $\Gamma \models A
+        \Rightarrow \Gamma \vdash A$. Geçerlilikle birlikte $\vdash$ ve
+        $\models$ aynı ilişkidir (\lc{turetilir\_iff\_sonuc}).
+  \item Uzun bir ispat, türetilmiş kurallar, Kalmár önsavı, atom eleme
+        ve varsayımları içeri taşıma gibi bağımsız önsavlara bölünerek
+        yönetilir.
+  \item Kalmár önsavı: Doğruluk tablosunun her satırı, işaretli
+        atomlardan $A^v$'nin bir türetimidir. Önsav, hem doğru hem yanlış
+        durumu birlikte taşıyacak biçimde güçlendirilir.
+  \item Atom eleme: Bir atomda farklılaşan iki satır, $p \oveya {\sim}p$
+        üzerinden durum ayrımıyla birleşir. $k$ adımda bağlam boşalır.
+  \item Tamlık ispatı yapıcıdır ve gerçek bir türetim üretir; ancak
+        türetimin boyutu atom sayısında üsteldir.
+  \item Sonsuz $\Gamma$ ve birinci mertebe mantık için Lindenbaum önsavı,
+        maksimal tutarlı kümeler ve Henkin'in terim modeli kullanılır.
+        Tıkızlık ve Löwenheim--Skolem teoremleri bu yöntemin
+        sonuçlarıdır.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} $\vdash p \oise p \oveya q$. Türetim yazmayın: Doğruluk
+tablosunu kontrol edip \lc{tamlik\_bos} kullanın. (\lc{a12\_1})
+
+\alistirma{1} Çift değilleme giriş: $\Delta \vdash A$ ise $\Delta \vdash
+{\sim}{\sim}A$. Bu kural RAA gerektiriyor mu? (\lc{a12\_2})
+
+\alistirma{2} $p \ove q \vdash q \ove p$. Bölüm~11'deki \lc{a11\_3}'ü
+bu kez \lc{tamlik} ile ispatlayın ve iki ispatı karşılaştırın.
+(\lc{a12\_3})
+
+\alistirma{2} Kontrapozisyon, türetilmiş kural olarak: $\Delta \vdash A
+\oise B$ ise $\Delta \vdash {\sim}B \oise {\sim}A$. (\lc{a12\_4})
+
+\alistirma{2} $p \oise q \nvdash q \oise p$. (\lc{a12\_5})
+
+\alistirma{1} Kesme kuralı: $\Gamma \vdash A$ ve $A, \Gamma \vdash B$ ise
+$\Gamma \vdash B$. Bu kuralın sistemde neden \emph{temel} kural olarak
+bulunmadığını tartışın. (\lc{a12\_6})
+
+\alistirma{2} Denklik bağlacı $A \leftrightarrow B$ (\lc{esd A B}) için
+Kalmár adımını ispatlayın. \lc{esd}'nin tanımı sayesinde tek satır
+yeterli olmalı. (\lc{a12\_7})
+
+\alistirma{3} Tutarlılık ile sağlanabilirlik: $[A] \nvdash \bot \iff A$
+sağlanabilirdir. (\lc{a12\_8})
+
+\alistirma{2} (Kâğıt-kalem) $(p \ove q) \oise p$ için
+\cref{fig:kalmar-tablo} benzeri dört satırlık tabloyu yazın. Her satırda
+hangi türetilmiş kuralların kullanıldığını belirtin.
+
+\alistirma{3} (Proje) Model varlığı teoremini \lc{Classical} kullanmadan
+ispatlayın. İpucu: \lc{tumDegerlemeler}'in her değerlemeyi
+\lc{enBuyukAtom}'a kadar ``kapsadığını'' gösterin, sonra listeyi
+\lc{List.find?} ile tarayın.
+
+\alistirma{3} (Proje) \lc{Turetilir}'in RAA'sız yapıcı versiyonu
+\lc{TuretilirY} için Kalmár önsavının hangi adımı başarısız olur? İpucu:
+\lc{ucuncu\_hal}.
+
+\alistirma{3} (Araştırma) \lc{tamlik\_bos}'un ürettiği türetimin
+boyutunu (kural sayısını) hesaplayan bir fonksiyon yazmak için
+\lc{Turetilir}'i \lc{Prop} yerine \lc{Type} değerli yapmak gerekir.
+Neden? Kanıt-ilgisizliği (Bölüm~9) burada nasıl bir engel oluşturuyor?
+\end{alistirmalar}

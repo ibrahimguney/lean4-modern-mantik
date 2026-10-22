@@ -1,0 +1,461 @@
+% =====================================================================
+%  Bölüm 11 — Geçerlilik Teoremi
+% =====================================================================
+\chapter{Geçerlilik Teoremi}\label{bol:gecerlilik}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Bir ispat sistemini \Lean{}'de tümevarımsal bir yüklem olarak
+        tanımlamayı,
+  \item Nesne dilinde türetimler kurmayı ve onları ağaç olarak okumayı,
+  \item Geçerlilik teoremini (``türetilebilen her şey doğrudur'') kural
+        tümevarımıyla tam olarak ispatlamayı,
+  \item Geçerlilikten tutarlılığı ve türetilemezlik sonuçlarını
+        çıkarmayı,
+  \item Yapısal kuralları (zayıflatma) ve bir ispat sisteminin
+        anlambilimine göre neyi ``yakalayıp'' neyi yakalayamadığını.
+\end{itemize}
+\end{bolumhedefleri}
+
+Bölüm~10'da mantığın iki yüzünden birini, anlambilimi tanımladık:
+$\Gamma \models A$. Bu bölümde öteki yüzü, sözdizimini tanımlıyor ve
+ikisi arasındaki ilk köprüyü kuruyoruz:
+\[
+  \Gamma \vdash A \quad\Longrightarrow\quad \Gamma \models A.
+\]
+Bu, kitabın ilk tam \emph{metamantık} teoremi olacak: Bir mantık sistemi
+\emph{hakkında}, o sistemin dışından ispatlanan bir teorem.
+
+% ---------------------------------------------------------------------
+\section{Bir ispat sistemi, veri olarak}\label{sec:ispat-sistemi}
+
+Bölüm~5'te doğal çıkarım kurallarını ardışık biçiminde, yani her
+düğümde bağlamı açıkça yazarak ifade etmiştik. O kuralları şimdi
+\Lean{}'de bir \emph{tümevarımsal yüklem} olarak yazıyoruz. Her kural bir
+kurucu, her türetim ağacı ise bu yüklemin bir kanıtı olacak:
+
+\leandosya[Klasik doğal çıkarım]{Bolum11}{turetilir}
+
+\noindent \lc{Turetilir Γ A}, kâğıt üzerinde $\Gamma \vdash A$ diye
+yazdığımız şeydir. Bağlamı (\lc{Γ}) bir liste olarak tutuyoruz;
+yeni bir varsayım listenin başına eklenir. \Cref{fig:kural-sistemi},
+on bir kuralın tamamını ardışık biçiminde gösteriyor.
+
+\begin{figure}[htbp]
+\centering
+\setlength{\tabcolsep}{16pt}
+\renewcommand{\arraystretch}{3.0}
+\begin{tabular}{ccc}
+\begin{prooftree}
+  \hypo{A \in \Gamma}
+  \infer1[Var]{\Gamma \vdash A}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma \vdash A}
+  \hypo{\Gamma \vdash B}
+  \infer2[$\wedge$G]{\Gamma \vdash A \ove B}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma \vdash A \ove B}
+  \infer1[$\wedge$E$_{1,2}$]{\Gamma \vdash A \quad (B)}
+\end{prooftree}
+\\
+\begin{prooftree}
+  \hypo{\Gamma \vdash A \quad (B)}
+  \infer1[$\vee$G$_{1,2}$]{\Gamma \vdash A \oveya B}
+\end{prooftree}
+&
+\multicolumn{2}{c}{%
+\begin{prooftree}
+  \hypo{\Gamma \vdash A \oveya B}
+  \hypo{A, \Gamma \vdash C}
+  \hypo{B, \Gamma \vdash C}
+  \infer3[$\vee$E]{\Gamma \vdash C}
+\end{prooftree}}
+\\
+\begin{prooftree}
+  \hypo{A, \Gamma \vdash B}
+  \infer1[$\to$G]{\Gamma \vdash A \oise B}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma \vdash A \oise B}
+  \hypo{\Gamma \vdash A}
+  \infer2[$\to$E]{\Gamma \vdash B}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\Gamma \vdash \bot}
+  \infer1[$\bot$E]{\Gamma \vdash A}
+\end{prooftree}
+\\
+\multicolumn{3}{c}{%
+\colorbox{teorembg}{\begin{prooftree}
+  \hypo{{\sim}A, \Gamma \vdash \bot}
+  \infer1[RAA]{\Gamma \vdash A}
+\end{prooftree}\quad\raisebox{0.4em}{\textcolor{teoremframe}{\baslikfont\scriptsize\bfseries klasik kural}}}}
+\\
+\end{tabular}
+\caption{\lc{Turetilir} yükleminin on bir kuralı. Her kural, \Lean{}
+tanımındaki bir kurucuya karşılık gelir.}
+\label{fig:kural-sistemi}
+\end{figure}
+
+\begin{onemlifikir}[Önemli Fikir: Türetim = kanıt terimi]
+\lc{Turetilir Γ A} türünde bir \Lean{} terimi, bir türetim ağacının
+ta kendisidir: Her kurucu bir düğüm, kurucunun argümanları o düğümün
+çocuklarıdır. Bölüm~9'daki \lc{Cift} yükleminde \lc{Cift 4}'ün kanıtı
+nasıl bir türetim ağacıysa, \lc{Turetilir [] peirce}'in kanıtı da bir
+doğal çıkarım ağacıdır. Böylece ``türetim ağaçları üzerinde tümevarım'',
+\Lean{}'de sıradan bir kural tümevarımına dönüşür.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Nesne dilinde türetimler}\label{sec:nesne-turetim}
+
+En basit türetim, özdeşlik yasasıdır: $\vdash A \oise A$.
+
+\leandosya[Özdeşlik]{Bolum11}{ornek_ozdeslik}
+
+\begin{center}
+\begin{prooftree}
+  \hypo{A \in [A]}
+  \infer1[Var]{A \vdash A}
+  \infer1[$\to$G]{\vdash A \oise A}
+\end{prooftree}
+\end{center}
+
+\noindent Bu ispat ile Bölüm~2'deki \lc{theorem ozdeslik (P : Prop) : P → P}
+arasındaki farka dikkat edin. Orada \Lean{}'in \emph{kendi} mantığında bir
+önerme ispatlıyorduk (sığ gömme). Burada ise nesne dilinin bir formülünün,
+nesne dilinin ispat sisteminde \emph{türetilebilir} olduğunu, üst dilde
+ispatlıyoruz (derin gömme).
+
+\subsection{Peirce yasasının türetimi}
+
+Bölüm~4'te Peirce yasasının ancak klasik mantıkla ispatlanabildiğini
+görmüştük. Nesne dilindeki ispat sistemimiz klasik olduğu için (RAA
+kuralı sayesinde), Peirce yasası burada türetilebilir:
+
+\leandosya[Peirce yasasının türetimi]{Bolum11}{ornek_peirce}
+
+\begin{figure}[htbp]
+\centering
+\footnotesize
+\begin{prooftree}
+  \infer0[Var]{\Gamma_1 \vdash {\sim}p}
+  \infer0[Var]{\Gamma_1 \vdash (p \oise q) \oise p}
+  \infer0[Var]{\Gamma_2 \vdash {\sim}p}
+  \infer0[Var]{\Gamma_2 \vdash p}
+  \infer2[$\to$E]{\Gamma_2 \vdash \bot}
+  \infer1[$\bot$E]{\Gamma_2 \vdash q}
+  \infer1[$\to$G]{\Gamma_1 \vdash p \oise q}
+  \infer2[$\to$E]{\Gamma_1 \vdash p}
+  \infer2[$\to$E]{\Gamma_1 \vdash \bot}
+  \infer1[\textcolor{teoremframe}{RAA}]{\Gamma_0 \vdash p}
+  \infer1[$\to$G]{\vdash ((p \oise q) \oise p) \oise p}
+\end{prooftree}
+
+\vspace{6pt}
+\normalsize
+\begin{tabular}{r@{\;=\;}l}
+$\Gamma_0$ & $[(p \oise q) \oise p]$ \\
+$\Gamma_1$ & ${\sim}p :: \Gamma_0$ \\
+$\Gamma_2$ & $p :: \Gamma_1$
+\end{tabular}
+\caption{Peirce yasasının türetim ağacı. Ağacın her düğümü, \Lean{}
+ispatındaki bir \leantac{apply} ya da \leantac{exact} adımına karşılık
+gelir. Klasik kural RAA yalnızca bir kez kullanılır.}
+\label{fig:peirce-turetim}
+\end{figure}
+
+\noindent \Lean{} ispatındaki her \leantac{apply} adımı ağaçta bir
+düğümü, her \lc{by decide} ise bir varsayımın bağlamda bulunduğunu
+denetleyen bir hesabı temsil eder. \lc{by decide}'ın burada işe yaraması,
+\lc{Formul} tipinin karar verilebilir eşitliğe sahip olmasındandır
+(Bölüm~10'daki \leankw{deriving} \lc{DecidableEq}).
+
+% ---------------------------------------------------------------------
+\section{Geçerlilik teoremi}\label{sec:gecerlilik-teoremi}
+
+\begin{teorem}{Geçerlilik}{gecerlilik}
+Her $\Gamma$ ve $A$ için, $\Gamma \vdash A$ ise $\Gamma \models A$.
+Yani türetilebilen her formül, varsayımlarının mantıksal sonucudur.
+\end{teorem}
+
+\subsection{İspatın fikri}
+
+$\Gamma \vdash A$'nın bir türetimi verilsin. Türetim üzerinde kural
+tümevarımı yapıyoruz. Her kural için şunu göstermeliyiz: Kuralın
+\emph{öncülleri} geçerliyse (tümevarım hipotezleri), \emph{sonucu} da
+geçerlidir. Başka bir deyişle, \textbf{her kural doğruluğu korur}
+(\cref{fig:dogruluk-korunur}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    dugum/.style={draw=bittiframe, fill=bittibg, thick, rounded corners=3pt,
+                  font=\small, inner sep=4pt, minimum height=0.7cm},
+    kural/.style={font=\baslikfont\scriptsize\bfseries, text=leantac},
+    ok/.style={-{Stealth[length=2.4mm]}, thick, bittiframe},
+  ]
+  \node[dugum] (y1) at (-2.6,3.0) {$\Gamma \models A$};
+  \node[dugum] (y2) at (-0.2,3.0) {$\Gamma \models A \oise B$};
+  \node[dugum] (y3) at (2.6,3.0) {$\Gamma \models C$};
+  \node[dugum] (o1) at (-1.4,1.5) {$\Gamma \models B$};
+  \node[dugum] (k) at (0.6,0.0) {$\Gamma \models B \ove C$};
+  \draw[ok] (y1) -- (o1); \draw[ok] (y2) -- (o1);
+  \draw[ok] (o1) -- (k); \draw[ok] (y3) -- (k);
+  \node[kural] at (-0.2,2.2) {$\to$E};
+  \node[kural] at (1.4,0.85) {$\wedge$G};
+  \node[font=\baslikfont\scriptsize, text=black!60, align=left, anchor=west] at (3.8,2.3)
+       {yapraklar: Var\\(varsayım doğrudur)};
+  \node[font=\baslikfont\scriptsize, text=black!60, align=left, anchor=west] at (3.8,0.6)
+       {her kural:\\öncüller geçerliyse\\sonuç da geçerlidir};
+  \draw[decorate, decoration={brace, amplitude=6pt, mirror}, thick, black!35]
+       (-3.6,-0.4) -- (3.4,-0.4) node[midway, below=8pt, font=\baslikfont\small\bfseries, text=bittiframe]{doğruluk ağaç boyunca aşağı akar};
+\end{tikzpicture}
+\caption{Geçerlilik ispatının fikri. Yapraklardaki varsayımlar doğrudur;
+her kural, öncüllerindeki doğruluğu sonucuna taşır. Dolayısıyla kökteki
+formül de doğrudur.}
+\label{fig:dogruluk-korunur}
+\end{figure}
+
+\noindent Her kuralın durumu, Bölüm~10'daki \lc{deger} tanımından
+kolayca çıkar (\cref{tab:gecerlilik-durumlar}).
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{1.6cm} X}
+\rowcolor{tabloust}
+\tablobaslik{Kural} & \tablobaslik{Neden doğruluğu korur? ($v$, $\Gamma$'yı doğrulayan bir değerleme)} \\
+Var       & $A \in \Gamma$ ve $v$, $\Gamma$'nın her formülünü doğrular. \\
+$\wedge$G & $A$ ve $B$ doğruysa \lc{true \&\& true = true}. \\
+$\wedge$E & \lc{a \&\& b = true} ise \lc{a = true} ve \lc{b = true}. \\
+$\vee$G   & $A$ doğruysa \lc{true || b = true}. \\
+$\vee$E   & $A \oveya B$ doğruysa $A$ ya da $B$ doğrudur; o durumda genişletilmiş bağlam $v$ altında doğrudur ve tümevarım hipotezi $C$'yi verir. \\
+$\to$G    & $A$ yanlışsa $A \oise B$ doğrudur; $A$ doğruysa $A{::}\Gamma$ doğrulanır ve hipotez $B$'yi verir. \\
+$\to$E    & \lc{!a || b = true} ve \lc{a = true} ise \lc{b = true}. \\
+$\bot$E   & $\bot$ hiçbir değerlemede doğru değildir: öncül \emph{boş yere} geçerlidir. \\
+RAA       & $A$ yanlış olsaydı ${\sim}A$ doğru olurdu ve hipotez $\bot$'u doğrulardı. \textbf{Bu adım, $A$'nın değerinin yalnızca iki seçenekten biri olmasına dayanır.} \\
+\end{tabularx}
+\caption{Geçerlilik ispatının on bir durumu.}
+\label{tab:gecerlilik-durumlar}
+\end{table}
+
+\subsection{Lean ispatı}
+
+Önce, bağlama doğru bir formül eklemenin bağlamın doğruluğunu
+bozmadığını gösteren küçük bir önsava ihtiyacımız var. Bu önsav,
+bağlamı genişleten üç kuralda ($\vee$E, $\to$G, RAA) kullanılacak:
+
+\leandosya[Bağlamı genişletmek]{Bolum11}{baglam_ekle}
+
+\noindent Şimdi teoremin kendisi:
+
+\leandosya[Geçerlilik teoremi]{Bolum11}{gecerlilik}
+
+\noindent İspatta dikkat edilmesi gereken birkaç nokta:
+
+\begin{itemize}
+  \item \leantac{induction h with} satırındaki \lc{@varsayim Γ A hA}
+        gibi örüntüler, kurucunun \emph{örtük} argümanlarına (\lc{Γ},
+        \lc{A}, \lc{B}) ad vermemizi sağlar. Bu adlar, \leantac{show}
+        ile hedefi açık yazabilmek için gereklidir.
+  \item İkili bağlaçların durumlarında \leantac{simp}, Bölüm~10'daki
+        \lc{Bool} işlemlerini (\lc{\&\&}, \lc{||}, \lc{!}) mantık
+        bağlaçlarına çevirir: \lc{(a \&\& b) = true} hipotezi
+        \lc{a = true ∧ b = true} olur.
+  \item $\to$G ve RAA durumlarında \lc{deger v A}'nın \lc{true} mu
+        \lc{false} mu olduğuna göre durum ayırırız. İki değerli
+        anlambilimin gücü buradan gelir.
+\end{itemize}
+
+\begin{dikkat}[Dikkat: RAA neden geçerli?]
+RAA kuralının geçerlilik ispatı, \lc{cases hA : deger v A} satırına
+dayanır: Bir formülün değeri ya \lc{true} ya da \lc{false}'tur. Bu,
+\Lean{}'in üst dilinde klasik mantık \emph{kullandığımız} anlamına
+gelmez: \lc{Bool} üzerinde durum ayırmak tamamen yapıcıdır, çünkü
+\lc{Bool}'un iki kurucusu vardır. Klasik olan, nesne dilinin \emph{anlambilimidir}: Her formüle
+iki değerden birini veriyoruz. RAA bu anlambilime göre geçerlidir;
+Bölüm~4'teki Kripke anlambilimine göre ise geçerli değildir.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Sonuçlar}\label{sec:gecerlilik-sonuclar}
+
+Geçerlilik teoreminin en önemli kullanımı, bir şeyin \emph{türetilemez}
+olduğunu göstermektir. Bir formülü türetmeye çalışıp başarısız olmak hiçbir
+şey kanıtlamaz; ama formülü yanlış yapan bir değerleme bulursak, geçerlilik
+teoremi formülün hiçbir zaman türetilemeyeceğini garanti eder
+(\cref{fig:karsi-model}).
+
+\leandosya[Tutarlılık ve türetilemezlik]{Bolum11}{sonuclar}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!8, thick, rounded corners=5pt,
+                 text width=2.6cm, align=center, inner sep=6pt, font=\small},
+    ok/.style={-{Stealth[length=3mm]}, very thick, #1},
+  ]
+  \node[kutu=hataframe] (k) at (0,0) {$A$'yı yanlış yapan\\bir değerleme $v$};
+  \node[kutu=ikincil]  (s) at (5.2,0) {$\not\models A$};
+  \node[kutu=anarenk]  (t) at (10.4,0) {$\nvdash A$\\{\scriptsize hiçbir türetim yok}};
+  \draw[ok=hataframe] (k) -- node[above, font=\baslikfont\scriptsize]{tanım} (s);
+  \draw[ok=teoremframe] (s) -- node[above, font=\baslikfont\scriptsize\bfseries, text=teoremframe]{geçerlilik} node[below, font=\baslikfont\scriptsize]{(kontrapozisyon)} (t);
+\end{tikzpicture}
+\caption{Türetilemezliği göstermenin yolu: bir karşı değerleme bulmak.
+Geçerlilik teoreminin kontrapozisyonu, sonsuz sayıdaki olası türetimin
+hiçbirinin $A$'yı vermeyeceğini garanti eder.}
+\label{fig:karsi-model}
+\end{figure}
+
+\begin{teorem}{Tutarlılık}{tutarlilik-klasik}
+Klasik doğal çıkarım tutarlıdır: $\nvdash \bot$.
+\end{teorem}
+
+\noindent Bölüm~5'te yapıcı mantığın tutarlılığını normalleştirme ve alt
+formül özelliğiyle, yani \emph{sözdizimsel} yollarla göstermiştik. Burada
+aynı sonuca, klasik sistem için, \emph{anlambilimsel} yoldan ulaşıyoruz:
+$\bot$ hiçbir değerlemede doğru olmadığı için türetilemez. İki yöntem
+birbirini tamamlar; ispat kuramında her ikisi de kullanılır.
+
+% ---------------------------------------------------------------------
+\section{Yapısal özellikler}\label{sec:yapisal}
+
+Doğal çıkarımın kuralları belirli bir bağlaca bağlıdır. Bunların yanında
+bir de bağlamın kendisiyle ilgili \emph{yapısal} özellikler vardır:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.8cm}
+                >{\centering\arraybackslash}p{4.6cm}
+                >{\raggedright\arraybackslash}p{4.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Özellik} & \tablobaslik{Kural} & \tablobaslik{Bizim sistemimizde} \\
+zayıflatma  & $\Gamma \vdash A \;\Rightarrow\; B, \Gamma \vdash A$ & bir teorem (\lc{zayiflatma}) \\
+değiştirme  & $A, B, \Gamma \vdash C \;\Rightarrow\; B, A, \Gamma \vdash C$ & zayıflatmanın özel hâli \\
+daraltma    & $A, A, \Gamma \vdash C \;\Rightarrow\; A, \Gamma \vdash C$ & zayıflatmanın özel hâli \\
+\end{tabular}
+\end{center}
+
+\noindent Bağlamı bir liste olarak tutsak da Var kuralı yalnızca
+\emph{üyeliğe} baktığı için sıra ve tekrar önemli değildir. Bu yüzden
+üç özelliğin üçü de tek bir teoremden çıkar: Bağlam genişletilirse
+(daha doğrusu, bağlamın her elemanı yeni bağlamda da bulunuyorsa)
+türetilebilirlik korunur.
+
+\leandosya[Zayıflatma]{Bolum11}{zayiflatma}
+
+\noindent \leantac{induction h generalizing Δ} satırına dikkat edin. Bağlamı
+genişleten kurallarda (\lc{veyaE}, \lc{iseG}, \lc{raa}) tümevarım
+hipotezini \emph{farklı} bir \lc{Δ} ile, yani \lc{A :: Δ} ile kullanmamız
+gerekir. Bunun için tümevarımdan önce \lc{Δ}'yı genelleştiririz; böylece
+tümevarım hipotezi her \lc{Δ} için geçerli olur. Bölüm~7'deki ``önermeyi
+güçlendirme'' tekniğinin bir başka örneği budur.
+
+% ---------------------------------------------------------------------
+\section{Geçerlilik neyi söylemez?}\label{sec:gecerlilik-sinir}
+
+Geçerlilik teoremi bir yöndedir: Türetilebilen her şey doğrudur. Ters
+yön, yani doğru olan her şeyin türetilebilir olması, \emph{tamlık}
+teoremidir ve ispatı çok daha zordur (\cref{bol:tamlik}).
+
+Bu noktada RAA kuralının rolü önemlidir. RAA'yı sistemden çıkarırsak,
+geri kalan on kural \emph{yapıcı} doğal çıkarımı oluşturur. Bu sistem de
+iki değerli anlambilime göre geçerlidir: Ne de olsa RAA'sız her türetim,
+RAA'lı sistemde de bir türetimdir. Ama tam değildir: Peirce yasası bir
+totolojidir, yine de RAA olmadan türetilemez. Bunu ispatlamak için iki
+değerli anlambilim yetmez; Kripke modellerine ihtiyaç vardır
+(\ciltiki{2}).
+
+\begin{onemlifikir}[Önemli Fikir: İspat sistemi ile anlambilimin uyumu]
+Bir ispat sistemi ile bir anlambilim arasında iki ilişki olabilir:
+Sistem anlambilime göre \emph{geçerli} olabilir (çok fazla şey
+türetmez) ve \emph{tam} olabilir (yeterince şey türetir). Klasik doğal
+çıkarım, iki değerli anlambilime göre hem geçerli hem tamdır. Yapıcı
+doğal çıkarım ise iki değerli anlambilime göre geçerli ama tam
+değildir; Kripke anlambilimine göre hem geçerli hem tamdır. Her mantığın
+kendine uygun anlambilimi vardır.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Yapısal kuralların ötesi.} Zayıflatma ve daraltma kurallarının
+\emph{kısıtlandığı} mantıklara \emph{alt yapısal mantıklar} denir.
+Jean-Yves Girard'ın \emph{doğrusal mantığı} \citep{girard1987}, her
+varsayımın tam olarak bir kez kullanılmasını ister ve kaynak kullanımını
+modellemek için bilgisayar biliminde önemli bir rol oynar; programlama
+dillerindeki kaynak ve sahiplik tiplerinin kuramsal arka planında yer alır. Bu tür
+mantıkları \Lean{}'de formalize etmek için bağlamı liste yerine çoklu
+küme (\emph{multiset}) olarak tutmak gerekir.
+
+\textbf{Metamantığın formalizasyonu.} Önermeler mantığı için geçerlilik
+ve tamlık teoremlerinin formalizasyonu, ispat asistanları için klasik
+bir alıştırmadır; birinci mertebe mantık ve Gödel teoremleri ise çok daha
+zordur. John Harrison'ın HOL Light'taki çalışmaları \citep{harrison2009}
+ve Lean~4'teki Foundation projesi \citep{foundation, saitou2026} bu
+alanın önemli örnekleridir.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Klasik doğal çıkarım, \Lean{}'de on bir kurucusu olan
+        tümevarımsal bir yüklemdir: \lc{Turetilir Γ A} ($\Gamma \vdash A$).
+        Bir türetim, bu yüklemin bir kanıtıdır.
+  \item Nesne dilinde türetimler \leantac{apply} ile kurucuları
+        uygulayarak kurulur; bağlam üyelikleri \lc{by decide} ile
+        denetlenir.
+  \item Geçerlilik teoremi ($\Gamma \vdash A \Rightarrow \Gamma \models A$)
+        kural tümevarımıyla ispatlanır: Her kural doğruluğu korur.
+  \item Geçerlilik, türetilemezliği karşı değerlemelerle göstermeyi ve
+        sistemin tutarlılığını ($\nvdash \bot$) sağlar.
+  \item Zayıflatma, değiştirme ve daraltma tek bir teoremden çıkar;
+        ispatında bağlam genelleştirilir.
+  \item RAA, iki değerli anlambilime göre geçerlidir; RAA'sız yapıcı
+        sistem geçerlidir ama bu anlambilime göre tam değildir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} $p \vdash p$. (\lc{a11\_1})
+
+\alistirma{1} $K$ aksiyomu: her $A, B$ için $\vdash A \oise B \oise A$.
+Bağlamın hangi elemanını kullandığınıza dikkat edin. (\lc{a11\_2})
+
+\alistirma{2} $p \ove q \vdash q \ove p$. (\lc{a11\_3})
+
+\alistirma{2} Hipotetik kıyas, nesne dilinde:
+$p \oise q,\; q \oise r \vdash p \oise r$. Türetim ağacını da çizin ve
+Bölüm~2'deki \lc{hipotetik\_kiyas} ile karşılaştırın. (\lc{a11\_4})
+
+\alistirma{2} $\nvdash p \oise q$. Hangi değerlemeyi seçtiniz?
+(\lc{a11\_5})
+
+\alistirma{2} $p \oveya q \nvdash p$. (\lc{a11\_6})
+
+\alistirma{3} Üçüncü hâlin olanaksızlığı: $\vdash p \oveya {\sim}p$.
+Bölüm~3'teki \lc{em\_yanlis\_olamaz} ispatıyla karşılaştırın: RAA hangi
+adımın yerini tutuyor? (\lc{a11\_7})
+
+\alistirma{3} Çift değilleme eleme: ${\sim}{\sim}A \vdash A$. (\lc{a11\_8})
+
+\alistirma{2} (Kâğıt-kalem) \Cref{tab:gecerlilik-durumlar}'deki $\vee$E
+satırını ayrıntılı bir matematiksel ispata dönüştürün.
+
+\alistirma{3} (Proje) RAA kuralı olmayan bir \lc{TuretilirY} yüklemi
+tanımlayın. \lc{TuretilirY Γ A → Turetilir Γ A} önermesini ispatlayın ve
+buradan yapıcı sistemin geçerliliğini tek satırda çıkarın.
+
+\alistirma{3} (Tartışma) Bir arkadaşınız, geçerlilik teoreminin
+\lc{simp} kullanmadan ispatlanmasını istiyor. Hangi durumlar zorlaşır?
+\lc{Bool} yerine \lc{Prop} değerli bir anlambilim (\lc{deger v A : Prop})
+kullansaydık RAA durumunda ne değişirdi?
+\end{alistirmalar}

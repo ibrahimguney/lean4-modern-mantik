@@ -1,0 +1,737 @@
+% =====================================================================
+%  Bölüm 6 — Yüklemler Mantığı: ∀, ∃ ve Eşitlik
+% =====================================================================
+\chapter{Yüklemler Mantığı: \texorpdfstring{$\forall$}{∀}, \texorpdfstring{$\exists$}{∃} ve Eşitlik}\label{bol:yuklemler}
+
+\begin{bolumhedefleri}
+\begin{itemize}
+  \item Yüklemleri \emph{önerme değerli fonksiyonlar} olarak görmeyi ve
+        \Lean{}'de \lc{α → Prop} türüyle yazmayı,
+  \item $\forall$ ve $\exists$ için giriş ve eleme kurallarını, özellikle
+        \emph{öz değişken koşulunu},
+  \item Niceleyicilerin değilleme ve sırayla nasıl etkileştiğini; hangi
+        etkileşimlerin yapıcı, hangilerinin klasik olduğunu,
+  \item Serbest ve bağlı değişkenleri, yerine koymayı ve değişken
+        yakalama tuzağını,
+  \item Eşitliği: \lc{rfl}, \leantac{rw}, \lc{▸}, \lc{calc} ve Leibniz ilkesini,
+  \item Berber paradoksunu \Lean{}'de ispatlamayı ve boş evren inceliğini,
+  \item Curry--Howard tablosunun bağımlı tiplere genişlemesini:
+        $\forall = \Pi$, $\exists = \Sigma$.
+\end{itemize}
+\end{bolumhedefleri}
+
+Önermeler mantığı, ``Sokrates ölümlüdür'' cümlesini bölünmez bir $P$
+harfi olarak görür. Oysa Bölüm~1'deki kıyasın geçerliliği tam da bu
+cümlenin \emph{içindeki} yapıya dayanıyordu: ``Bütün insanlar
+ölümlüdür; Sokrates bir insandır; o hâlde Sokrates ölümlüdür.'' Bu
+çıkarımı ifade etmek için önermelerin içine bakmamız, \emph{bireyler} ve
+onların \emph{özellikleri} hakkında konuşmamız gerekir. Bu bölümün konusu
+budur.
+
+% ---------------------------------------------------------------------
+\section{Önermelerden yüklemlere}\label{sec:yuklemler}
+
+\begin{tanim}{Yüklem}{yuklem}
+Bir $\alpha$ \textbf{tanım evreni} üzerindeki bir \textbf{yüklem},
+$\alpha$'nın her elemanına bir önerme karşılık getiren bir
+fonksiyondur:
+\[
+  P : \alpha \to \mathsf{Prop}.
+\]
+$P(a)$, ``$a$, $P$ özelliğini taşır'' diye okunur. İki argümanlı bir
+yüklem ($R : \alpha \to \beta \to \mathsf{Prop}$) bir \textbf{ilişkidir}.
+\end{tanim}
+
+\Lean{}'de yüklemler sıradan fonksiyonlardır. ``Çifttir'' yüklemi, bir
+doğal sayı alıp bir önerme döndüren fonksiyondur:
+
+\leandosya[Yüklemlerin türleri]{Bolum06}{yuklem_tip}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    eleman/.style={circle, fill=anarenk, inner sep=1.8pt},
+    onerme/.style={draw=#1, fill=#1!8, rounded corners=3pt, font=\small,
+                   inner sep=4pt, minimum width=2.2cm},
+    ok/.style={-{Stealth[length=2.2mm]}, thick, black!45},
+  ]
+  \draw[anarenk, thick, fill=tanimbg, rounded corners=10pt] (-0.9,-2.6) rectangle (0.9,1.0);
+  \node[font=\baslikfont\bfseries\small, text=anarenk] at (0,1.35) {$\alpha = \mathbb{N}$};
+  \foreach \n/\y in {0/0.5, 1/-0.2, 2/-0.9, 3/-1.6} {
+    \node[font=\small] (n\n) at (0,\y) {$\n$};
+  }
+  \node[font=\small] at (0,-2.2) {$\vdots$};
+  \node[onerme=bittiframe] (p0) at (4.6,0.5)  {$0 \% 2 = 0$};
+  \node[onerme=hataframe]  (p1) at (4.6,-0.2) {$1 \% 2 = 0$};
+  \node[onerme=bittiframe] (p2) at (4.6,-0.9) {$2 \% 2 = 0$};
+  \node[onerme=hataframe]  (p3) at (4.6,-1.6) {$3 \% 2 = 0$};
+  \foreach \n in {0,1,2,3} \draw[ok] (n\n) -- (p\n);
+  \draw[ok, dashed] (0.3,-2.2) -- (3.4,-2.2);
+  \node[font=\baslikfont\bfseries\small, text=vurgu] at (2.1,1.35) {$P$};
+  \node[font=\baslikfont\bfseries\small, text=koyu] at (4.6,1.35) {$\mathsf{Prop}$};
+  \node[font=\baslikfont\scriptsize, text=bittiframe, anchor=west] at (6.0,0.15) {doğru (kanıtı var)};
+  \node[font=\baslikfont\scriptsize, text=hataframe, anchor=west] at (6.0,-0.55) {yanlış (kanıtı yok)};
+\end{tikzpicture}
+\caption{``Çifttir'' yüklemi $P(n) := (n \% 2 = 0)$, her doğal sayıya
+bir önerme karşılık getirir. Önermelerin bazıları doğru, bazıları
+yanlıştır; ama hepsi birer önermedir.}
+\label{fig:yuklem}
+\end{figure}
+
+Artık Bölüm~1'deki kıyası tam olarak yazabiliriz:
+
+\leandosya[Sokrates kıyası]{Bolum06}{sokrates}
+
+\noindent İspatın tamamı \lc{h1 sokrates h2}'dir. \lc{h1}'i önce
+\lc{sokrates}'e, sonra \lc{h2}'ye uyguluyoruz. ``Bütün insanlar
+ölümlüdür'' önermesinin kanıtı, \emph{her birey için} ``insansa
+ölümlüdür'' kanıtını üreten bir fonksiyondur.
+
+% ---------------------------------------------------------------------
+\section{Evrensel niceleyici (\texorpdfstring{$\forall$}{∀})}\label{sec:forall}
+
+\begin{center}
+\begin{tabular}{c@{\hspace{5em}}c}
+\begin{prooftree}
+  \hypo{\mathcal{D}}
+  \ellipsis{}{P(a)}
+  \infer1[$\forall$G$^{*}$]{\forall x,\; P(x)}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\forall x,\; P(x)}
+  \infer1[$\forall$E]{P(t)}
+\end{prooftree}
+\\[10pt]
+\small\textcolor{ikincil}{\bfseries giriş:} \leantac{intro x} &
+\small\textcolor{vurgu}{\bfseries eleme:} \lc{h t}, \leantac{specialize h t}
+\end{tabular}
+\end{center}
+
+\noindent {\small $^{*}$\,\textbf{Öz değişken koşulu:} $a$, $\mathcal{D}$
+türetiminin açık varsayımlarında geçmemelidir.}
+
+\textbf{$\forall$ girişi.} ``Her $x$ için $P(x)$'' göstermek için
+\emph{keyfi} bir $a$ seçer ve $P(a)$'yı gösteririz. Matematikçilerin
+``keyfi bir $x$ alalım'' cümlesi budur. Kilit sözcük \emph{keyfi}dir:
+$a$ hakkında hiçbir özel varsayım yapmamış olmalıyız. Aksi hâlde
+``$a = 2$ olsun; $a$ çifttir; o hâlde her sayı çifttir'' gibi bir saçmalık
+türetirdik. Bu kısıta \textbf{öz değişken koşulu} (İng.\
+\emph{eigenvariable condition}) denir.
+
+\textbf{$\forall$ elemesi.} ``Her $x$ için $P(x)$'' biliyorsak, herhangi bir
+$t$ terimi için $P(t)$'yi biliriz. Bu, ``genelden özele'' geçiştir.
+
+\leandosya[$\forall$ girişi]{Bolum06}{forall_giris}
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[Önce]
+α : Type
+⊢ ∀ (x : α), x = x
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{intro x} sonrası]
+α : Type
+x : α
+⊢ x = x
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+\noindent \leantac{intro x}, bağlama yeni bir \lc{x : α} ekler. \Lean{},
+öz değişken koşulunu kendiliğinden sağlar: \lc{x} yeni bir addır ve
+bağlamdaki hiçbir hipotez onun hakkında bir şey söylemez.
+
+\begin{onemlifikir}[Önemli Fikir: $\forall$ bir fonksiyondur, $\to$ onun özel hâlidir]
+\leantac{intro}'nun hem $\to$ hem $\forall$ için çalışması bir rastlantı
+değildir. \Lean{}'de \lc{∀ x : α, P x} türünde bir kanıt, her \lc{a : α}
+için \lc{P a} türünde bir kanıt üreten bir fonksiyondur. Tek fark,
+\emph{dönüş türünün argümana bağlı olmasıdır}: \lc{h 3 : P 3},
+\lc{h 5 : P 5}. Böyle fonksiyonlara \textbf{bağımlı fonksiyon} denir.
+\lc{P → Q} ise dönüş türü argümana bağlı olmayan özel bir durumdur.
+\end{onemlifikir}
+
+\leandosya[$\forall$ elemesi]{Bolum06}{forall_eleme}
+
+\noindent İki kuralı birlikte kullanan bir örnek:
+
+\leandosya[$\forall$ ve $\wedge$]{Bolum06}{forall_ve}
+
+\noindent Bazen bir genel hipotezi belirli bir bireye ``indirgemek''
+isteriz. \leantac{specialize} taktiği, hipotezi o bireye uygulanmış
+hâliyle değiştirir:
+
+\leandosya[\texttt{specialize}]{Bolum06}{specialize}
+
+% ---------------------------------------------------------------------
+\section{Varoluşsal niceleyici (\texorpdfstring{$\exists$}{∃})}\label{sec:exists}
+
+\begin{center}
+\begin{tabular}{c@{\hspace{5em}}c}
+\begin{prooftree}
+  \hypo{P(t)}
+  \infer1[$\exists$G]{\exists x,\; P(x)}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{\exists x,\; P(x)}
+  \hypo{[P(a)]^{n}}
+  \ellipsis{}{R}
+  \infer2[$\exists$E$^{n,*}$]{R}
+\end{prooftree}
+\\[10pt]
+\small\textcolor{ikincil}{\bfseries giriş:} \lc{⟨t, h⟩} &
+\small\textcolor{vurgu}{\bfseries eleme:} \leantac{obtain ⟨a, ha⟩ := h}
+\end{tabular}
+\end{center}
+
+\noindent {\small $^{*}$\,\textbf{Öz değişken koşulu:} $a$, $R$'de ve
+$P(a)$ dışındaki açık varsayımlarda geçmemelidir.}
+
+\textbf{$\exists$ girişi.} ``$P$'yi sağlayan bir $x$ vardır'' göstermek
+için somut bir \textbf{tanık} $t$ verir ve $P(t)$'yi gösteririz.
+BHK yorumuyla uyumlu olarak, bir varlık kanıtı \emph{tanığını taşır}.
+
+\textbf{$\exists$ elemesi.} ``$P$'yi sağlayan bir $x$ vardır'' biliyorsak,
+ona bir ad veririz: ``Öyle bir $a$ olsun ki $P(a)$.'' Bu $a$ hakkında
+$P(a)$'dan başka hiçbir şey bilmeyiz. Öz değişken koşulu, $a$'nın
+sonuca ``sızmasını'' engeller: $a$ yalnızca ispatın içinde yaşayan geçici
+bir addır.
+
+\leandosya[$\exists$ girişi]{Bolum06}{exists_giris}
+
+\noindent Köşeli ayraçlar, \lc{∧}'deki gibi bir çift kurar: Birinci
+bileşen tanık, ikinci bileşen tanığın özelliğinin kanıtıdır. İkinci
+ispatta \leantac{refine} önce tanığı verir; geriye kalan hedef \lc{4 > 3}
+olur.
+
+\leandosya[$\exists$ elemesi]{Bolum06}{exists_eleme}
+
+\begin{hedefgecisi}
+\begin{hedefdurumu}[\texttt{obtain} öncesi]
+h1 : ∀ (x : α), P x → Q x
+h2 : ∃ x, P x
+⊢ ∃ x, Q x
+\end{hedefdurumu}
+\sonra
+\begin{hedefdurumu}[\texttt{obtain} sonrası]
+h1 : ∀ (x : α), P x → Q x
+a : α
+ha : P a
+⊢ ∃ x, Q x
+\end{hedefdurumu}
+\end{hedefgecisi}
+
+\noindent Terim modunda aynı ispat, \leankw{let} ile örüntü eşleme
+kullanır:
+
+\leandosya[$\exists$ elemesi, terim modu]{Bolum06}{exists_eleme_terim}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    evren/.style={draw=#1, thick, fill=#1!6, rounded corners=12pt,
+                  minimum width=4.2cm, minimum height=2.8cm},
+    nokta/.style={circle, inner sep=2.4pt, fill=#1},
+  ]
+  % ∀
+  \node[evren=ikincil] (A) at (0,0) {};
+  \foreach \x/\y in {-1.3/0.7, -0.4/0.9, 0.6/0.6, 1.4/0.8, -1.1/-0.3, 0.0/-0.1,
+                     1.0/-0.4, -0.5/-0.9, 0.5/-1.0, 1.5/-0.9}
+    \node[nokta=bittiframe] at (\x,\y) {};
+  \node[font=\baslikfont\bfseries, text=ikincil] at (0,1.75) {$\forall x,\; P(x)$};
+  \node[font=\baslikfont\scriptsize, text=black!60, align=center] at (0,-1.85)
+       {\emph{her} eleman $P$'yi sağlar\\kanıt: her eleman için bir kanıt (fonksiyon)};
+  % ∃
+  \node[evren=vurgu] (B) at (6.4,0) {};
+  \foreach \x/\y in {-1.3/0.7, -0.4/0.9, 0.6/0.6, 1.4/0.8, -1.1/-0.3,
+                     1.0/-0.4, -0.5/-0.9, 0.5/-1.0, 1.5/-0.9}
+    \node[nokta=black!25] at ({6.4+\x},\y) {};
+  \node[nokta=bittiframe, minimum size=9pt] (t) at (6.4,-0.1) {};
+  \node[font=\baslikfont\scriptsize\bfseries, text=bittiframe, right=1pt of t] {tanık $t$};
+  \node[font=\baslikfont\bfseries, text=vurgu] at (6.4,1.75) {$\exists x,\; P(x)$};
+  \node[font=\baslikfont\scriptsize, text=black!60, align=center] at (6.4,-1.85)
+       {\emph{en az bir} eleman $P$'yi sağlar\\kanıt: bir tanık ve onun kanıtı (çift)};
+\end{tikzpicture}
+\caption{İki niceleyicinin anlamı ve BHK yorumuna göre kanıtları.}
+\label{fig:niceleyiciler}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\section{Niceleyicilerin etkileşimi}\label{sec:niceleyici-etkilesim}
+
+\subsection{Değilleme ve niceleyiciler}
+
+Niceleyiciler değillemeyle De Morgan yasalarına benzer biçimde etkileşir.
+Hatta $\forall$, büyük bir ``ve'', $\exists$ ise büyük bir ``veya''
+gibidir: Evren $\{a, b\}$ ise $\forall x\,P(x) = P(a) \wedge P(b)$ ve
+$\exists x\,P(x) = P(a) \vee P(b)$ olur. Bölüm~3'teki asimetri burada
+da karşımıza çıkar:
+
+\leandosya[``Hiç kimse'' = ``herkes değil'']{Bolum06}{degil_exists}
+\leandosya[Yapıcı yön]{Bolum06}{degil_forall_kolay}
+\leandosya[Klasik yön]{Bolum06}{degil_forall_klasik}
+
+\noindent Son ispatın neden klasik mantık gerektirdiğini BHK yorumuyla
+anlayabiliriz. Hedef bir $\exists$ önermesi olduğuna göre bir tanık
+vermemiz gerekir. Elimizdeki tek bilgi ise ``herkesin $P$'yi sağladığı
+doğru değildir''dir. Bu bilgi, $P$'yi sağlamayan bireyin \emph{kim}
+olduğunu söylemez.
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\centering\arraybackslash}p{5.6cm}
+                >{\centering\arraybackslash}p{2.0cm}
+                >{\centering\arraybackslash}p{2.0cm}
+                >{\raggedright\arraybackslash}p{2.6cm}}
+\rowcolor{tabloust}
+\tablobaslik{Önerme} & \tablobaslik{$\to$} & \tablobaslik{$\leftarrow$} & \tablobaslik{Lean} \\
+$\neg\exists x\,P(x) \leftrightarrow \forall x\,\neg P(x)$ & \textcolor{bittiframe}{yapıcı} & \textcolor{bittiframe}{yapıcı} & \lc{degil\_exists} \\
+$\neg\forall x\,P(x) \leftrightarrow \exists x\,\neg P(x)$ & \textcolor{hataframe}{klasik} & \textcolor{bittiframe}{yapıcı} & \lc{degil\_forall} \\
+$\forall x\,(P \wedge Q) \leftrightarrow \forall x\,P \wedge \forall x\,Q$ & \textcolor{bittiframe}{yapıcı} & \textcolor{bittiframe}{yapıcı} & Alıştırma~6.4 \\
+$\exists x\,(P \vee Q) \leftrightarrow \exists x\,P \vee \exists x\,Q$ & \textcolor{bittiframe}{yapıcı} & \textcolor{bittiframe}{yapıcı} & Alıştırma~6.5 \\
+$\exists x\,(P \wedge Q) \to \exists x\,P \wedge \exists x\,Q$ & \textcolor{bittiframe}{yapıcı} & \textcolor{hataframe}{yanlış} & Alıştırma~6.6 \\
+$\exists x\,\forall y\,R \to \forall y\,\exists x\,R$ & \textcolor{bittiframe}{yapıcı} & \textcolor{hataframe}{yanlış} & \lc{exists\_forall\_sira} \\
+\end{tabular}
+\caption{Niceleyicilerin etkileşimleri. ``Yanlış'', o yönün genel olarak
+geçerli olmadığı, yani bir karşı örneği bulunduğu anlamına gelir.}
+\label{tab:niceleyici-etkilesim}
+\end{table}
+
+\subsection{Niceleyicilerin sırası}
+
+Niceleyicilerin sırası anlamı kökten değiştirir:
+\begin{center}
+\begin{tabular}{rl}
+$\forall y\,\exists x\; \mathit{Sever}(x, y)$: & ``Herkesi seven \emph{biri} vardır'' \emph{değil}, ``herkesin bir seveni vardır.'' \\
+$\exists x\,\forall y\; \mathit{Sever}(x, y)$: & ``Herkesi seven biri vardır.''
+\end{tabular}
+\end{center}
+
+\noindent İkincisi birincisinden güçlüdür:
+
+\leandosya[$\exists\forall \Rightarrow \forall\exists$]{Bolum06}{sira}
+
+\noindent Ters yön yanlıştır. Doğal sayılarda ``her sayıdan büyük bir sayı
+vardır'' doğrudur, ama ``her sayıdan büyük bir sayı'' yoktur
+(\cref{fig:sira}):
+
+\leandosya[Karşı örnek]{Bolum06}{sira_karsi}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    sayi/.style={circle, draw=anarenk, fill=tanimbg, thick, minimum size=0.75cm,
+                 font=\small},
+    ok/.style={-{Stealth[length=2.2mm]}, thick, #1},
+  ]
+  \node[font=\baslikfont\bfseries\small, text=bittiframe] at (2.5,1.3) {$\forall y\,\exists x,\; x > y$ \quad (doğru)};
+  \foreach \i in {0,...,4} {
+    \node[sayi] (y\i) at ({1.25*\i},0) {$\i$};
+    \node[sayi, draw=bittiframe, fill=bittibg] (x\i) at ({1.25*\i},-1.6) {$\pgfmathparse{int(\i+1)}\pgfmathresult$};
+    \draw[ok=bittiframe] (y\i) -- (x\i);
+  }
+  \node[font=\small] at (6.25,0) {$\cdots$};
+  \node[font=\baslikfont\scriptsize, text=black!60] at (2.5,-2.4) {her $y$ için ayrı bir tanık: $x = y+1$};
+
+  \node[font=\baslikfont\bfseries\small, text=hataframe] at (10.3,1.3) {$\exists x\,\forall y,\; x > y$ \quad (yanlış)};
+  \node[sayi, draw=hataframe, fill=hatabg] (X) at (10.3,-1.6) {$x$};
+  \foreach \i in {0,...,3} {
+    \node[sayi] (z\i) at ({8.4+1.25*\i},0) {};
+    \draw[ok=hataframe] (X) -- (z\i);
+  }
+  \node[font=\baslikfont\scriptsize, text=hataframe, align=center] at (10.3,-2.5)
+       {tek bir $x$ hepsinden büyük olamaz:\\$y = x$ seçilince $x > x$ gerekir};
+\end{tikzpicture}
+\caption{Niceleyicilerin sırası. $\forall\exists$'de tanık $y$'ye bağlı
+olabilir; $\exists\forall$'de tek bir tanık herkese yetmelidir.}
+\label{fig:sira}
+\end{figure}
+
+\begin{dikkat}[Dikkat: Tanık neye bağlıdır?]
+$\forall y\,\exists x$ önermesinin kanıtı, Curry--Howard altında, her
+$y$ için bir $x$ \emph{üreten bir fonksiyondur}: \lc{fun y => ⟨y + 1, \ldots⟩}.
+Tanık $y$'ye bağlıdır. $\exists x\,\forall y$ ise tek bir sabit tanık
+ister. Analizdeki ``sürekli'' ile ``düzgün sürekli'' arasındaki farkın
+özü de budur: $\delta$, $x$ noktasına bağlı olabilir mi?
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Serbest ve bağlı değişkenler}\label{sec:serbest-bagli}
+
+$\forall x,\; x + y = y + x$ önermesinde $x$ ve $y$ değişkenlerinin
+rolleri farklıdır. $x$ niceleyiciye \emph{bağlıdır}: Onun yerine başka
+bir ad koysak ($\forall z,\; z + y = y + z$) önermenin anlamı değişmez.
+$y$ ise \emph{serbesttir}: Önermenin doğruluğu $y$'nin ne olduğuna
+bağlıdır.
+
+\begin{tanim}{Serbest ve bağlı değişken}{serbest-bagli}
+Bir önermede bir $x$ değişkeninin bir geçişi, bir $\forall x$ ya da
+$\exists x$ niceleyicisinin kapsamı içindeyse \textbf{bağlı}, değilse
+\textbf{serbesttir}. Bağlı değişkenlerin adları değiştirilerek elde
+edilen önermelere \textbf{$\alpha$-denk} önermeler denir ve aynı önerme
+sayılırlar.
+\end{tanim}
+
+\paragraph{Yerine koyma ve değişken yakalama}
+$\forall$E kuralı $\forall x\,P(x)$'ten $P(t)$'ye geçer: $x$'in yerine $t$
+terimini koyar. Burada ince bir tuzak vardır (\cref{fig:yakalama}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kutu/.style={draw=#1, fill=#1!7, thick, rounded corners=4pt,
+                 text width=5.6cm, align=center, inner sep=6pt, font=\small},
+    ok/.style={-{Stealth[length=2.6mm]}, very thick, #1},
+  ]
+  \node[kutu=anarenk] (a) at (0,0)
+    {$\forall x,\; \exists y,\; y > x$\\[2pt]{\scriptsize ``Her sayıdan büyük bir sayı vardır.'' (doğru)}};
+  \node[kutu=hataframe] (b) at (-3.4,-2.6)
+    {$\exists y,\; y > \textcolor{hataframe}{\mathbf{y}}$\\[2pt]{\scriptsize $x$ yerine $y$ konuldu; $y$ \emph{yakalandı}. (yanlış!)}};
+  \node[kutu=bittiframe] (c) at (3.4,-2.6)
+    {$\exists z,\; z > \textcolor{bittiframe}{\mathbf{y}}$\\[2pt]{\scriptsize Önce bağlı $y$, $z$ yapıldı; sonra yerine koyma. (doğru)}};
+  \draw[ok=hataframe] (a) -- node[left=6pt, font=\baslikfont\scriptsize, text=hataframe]{saf yerine koyma} (b);
+  \draw[ok=bittiframe] (a) -- node[right=6pt, font=\baslikfont\scriptsize, text=bittiframe]{yakalamadan kaçınan} (c);
+\end{tikzpicture}
+\caption{Değişken yakalama: $\forall$E ile $x$ yerine $y$ terimini koyarken
+içerideki $\exists y$ niceleyicisi, dışarıdan gelen $y$'yi ``yakalar''.}
+\label{fig:yakalama}
+\end{figure}
+
+Doğru yerine koyma, gerektiğinde bağlı değişkenlerin adlarını değiştirir.
+Kâğıt üzerinde bu dikkat gerektiren bir iştir ve mantık kitaplarının
+tanımlarında sık rastlanan hataların kaynağıdır. \Lean{} ise bağlı
+değişkenleri içeride ad yerine \emph{de Bruijn indeksleriyle} (``kaç
+niceleyici yukarıdaki değişken'') tutar; böylece yakalama hiç oluşmaz.
+Bu temsili \cref{bol:sozdizim}'te kendi formül tipimizi tanımlarken
+kullanacağız.
+
+% ---------------------------------------------------------------------
+\section{Eşitlik}\label{sec:esitlik}
+
+Eşitlik, yüklemler mantığının özel bir ilişkisidir. Kuralları şöyledir:
+
+\begin{center}
+\begin{tabular}{c@{\hspace{5em}}c}
+\begin{prooftree}
+  \infer0[$=$G]{t = t}
+\end{prooftree}
+&
+\begin{prooftree}
+  \hypo{s = t}
+  \hypo{P(s)}
+  \infer2[$=$E]{P(t)}
+\end{prooftree}
+\\[10pt]
+\small\textcolor{ikincil}{\bfseries giriş (yansıma):} \lc{rfl} &
+\small\textcolor{vurgu}{\bfseries eleme (yerine koyma):} \leantac{rw}, \lc{h ▸ hp}
+\end{tabular}
+\end{center}
+
+\noindent Yalnızca bu iki kuraldan eşitliğin bütün bilinen özellikleri
+türer: simetri, geçişlilik, fonksiyonlarla uyum.
+
+\leandosya[Simetri ve geçişlilik]{Bolum06}{esitlik_temel}
+\leandosya[Yeniden yazma]{Bolum06}{esitlik_rw}
+
+\noindent \leantac{rw [h]}, \lc{h : a = b} eşitliğini kullanarak hedefteki
+her \lc{a}'yı \lc{b} yapar. Yeniden yazdıktan sonra hedef \lc{c + 1 = c + 1}
+gibi apaçık bir eşitliğe dönüşürse, \leantac{rw} onu \lc{rfl} ile
+kendiliğinden kapatır. Ters yönde yazmak için \lc{rw [← h]} kullanılır.
+
+\leandosya[Yerine koyma]{Bolum06}{esitlik_subst}
+\leandosya[Fonksiyonlarla uyum]{Bolum06}{esitlik_congr}
+
+\paragraph{calc: eşitlik zincirleri}
+Matematikte uzun hesapları bir eşitlik zinciri olarak yazarız:
+$a = b = c = d$. \leankw{calc} bloğu bunun \Lean{}'deki karşılığıdır.
+Her satır bir adımı ve gerekçesini verir; alt çizgi bir önceki satırın
+sağ tarafını gösterir:
+
+\leandosya[Eşitlik zinciri]{Bolum06}{calc_ornek}
+
+\noindent \leankw{calc}, \cref{bol:tumevarim}'de aritmetik ispatlarda ve
+\lc{<}, \lc{≤} gibi ilişkilerin zincirlerinde çok işimize yarayacak.
+
+\paragraph{Leibniz ilkesi}
+Gottfried Leibniz'e göre iki şey, bütün özellikleri ortaksa aynıdır.
+Bu ilke, eşitliğin $=$E kuralının tersidir ve \Lean{}'de tek satırla
+ispatlanır:
+
+\leandosya[Leibniz ilkesi]{Bolum06}{leibniz}
+
+\noindent İspattaki hile, ``$a$'ya eşit olmak'' özelliğini seçmektir:
+$a$ bu özelliği \lc{rfl} ile taşır, o hâlde $b$ de taşır, yani $a = b$.
+
+% ---------------------------------------------------------------------
+\section{Berber paradoksu}\label{sec:berber}
+
+\begin{gunlukornek}[Bir köyün berberi]
+Bir köyde bir berber, ``kendini tıraş etmeyen herkesi tıraş eder,
+kendini tıraş edeni ise tıraş etmez.'' Berber kendini tıraş eder mi?
+\begin{itemize}
+  \item Ederse, kendini tıraş eden biri olur; o hâlde onu tıraş etmez.
+  \item Etmezse, kendini tıraş etmeyen biri olur; o hâlde onu tıraş eder.
+\end{itemize}
+Her iki durumda da çelişki çıkar. Sonuç: Böyle bir berber \emph{yoktur}.
+\end{gunlukornek}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    kisi/.style={circle, draw=anarenk, fill=tanimbg, thick, minimum size=0.9cm,
+                 font=\small},
+    ok/.style={-{Stealth[length=2.4mm]}, thick, #1},
+  ]
+  \node[kisi, draw=vurgu, fill=teorembg, minimum size=1.1cm] (b) at (0,0) {$b$};
+  \node[kisi] (a) at (-2.6,1.2) {$a$};
+  \node[kisi] (c) at (2.6,1.2) {$c$};
+  \node[kisi] (d) at (-2.6,-1.2) {$d$};
+  \node[kisi] (e) at (2.6,-1.2) {$e$};
+  % kendini tıraş edenler: a, c (döngü)
+  \draw[ok=black!45] (a) to[loop above, looseness=6] (a);
+  \draw[ok=black!45] (c) to[loop above, looseness=6] (c);
+  % berber d ve e'yi tıraş eder
+  \draw[ok=vurgu] (b) -- (d);
+  \draw[ok=vurgu] (b) -- (e);
+  \draw[ok=vurgu, dashed] (b) to[loop below, looseness=6] node[below, font=\baslikfont\large\bfseries, text=vurgu]{?} (b);
+  \node[font=\baslikfont\scriptsize, text=black!60, align=left, anchor=west] at (4.0,0.6)
+       {$a$, $c$: kendini tıraş eder\\$\Rightarrow$ berber onları tıraş etmez};
+  \node[font=\baslikfont\scriptsize, text=vurgu, align=left, anchor=west] at (4.0,-0.6)
+       {$d$, $e$: kendini tıraş etmez\\$\Rightarrow$ berber onları tıraş eder};
+\end{tikzpicture}
+\caption{Berber $b$'nin kendine giden oku çizilmeli midir? Çizilse de
+çizilmese de kural bozulur.}
+\label{fig:berber}
+\end{figure}
+
+\leandosya[Berber paradoksu]{Bolum06}{berber}
+
+\noindent İspatın çekirdeği Alıştırma~3.8 ile aynıdır: Hiçbir önerme
+kendi değillemesine denk olamaz. \lc{hb b} bize
+\lc{TirasEder b b ↔ ¬ TirasEder b b} denkliğini verir; geri kalanı
+önermeler mantığıdır. Dikkat edin, ispat \emph{yapıcıdır}: Paradoks,
+klasik mantığa hiç ihtiyaç duymaz.
+
+\begin{tarihce}[Tarihçe: Russell'ın mektubu]
+Berber hikâyesi, Bertrand Russell'ın 1901'de bulduğu ve 1902'de Frege'ye
+bir mektupla bildirdiği paradoksun popüler bir anlatımıdır. Russell'ın
+asıl sorusu şuydu: ``Kendini eleman olarak içermeyen bütün kümelerin
+kümesi'' kendini içerir mi? Frege'nin aritmetiği mantıktan türetme
+programı, sınırsız küme oluşturmaya izin veren bir ilkeye dayandığı için
+bu paradoksla çöktü \citep{vanheijenoort1967}. Paradoksa verilen
+cevaplardan biri Russell'ın \emph{tip kuramıydı}: Bir kümenin elemanları
+ile kümenin kendisi farklı ``tiplerde'' olmalıdır. \Lean{}'in tip
+sistemi, bu fikrin yüz yıllık evriminin bir ürünüdür.
+\end{tarihce}
+
+% ---------------------------------------------------------------------
+\section{Boş evren inceliği}\label{sec:bos-evren}
+
+Klasik mantık kitaplarının çoğunda şu kural geçerlidir:
+$\forall x\,P(x) \to \exists x\,P(x)$. ``Herkes $P$ ise, $P$ olan biri
+vardır.'' Kulağa apaçık geliyor, ama evrende \emph{hiç kimse yoksa}
+ne olur?
+
+\leandosya[Boş ve boş olmayan evrenler]{Bolum06}{bos_evren}
+
+\noindent Boş tip \lc{Empty} üzerinde $\forall x\,P(x)$ \emph{boş yere
+doğrudur}: Kontrol edilecek hiç eleman yoktur. Ama $\exists x\,P(x)$
+yanlıştır: Tanık bulunamaz. Dolayısıyla $\forall \to \exists$ geçişi,
+yalnızca evren boş değilse geçerlidir. \Lean{}'de bu varsayım
+\lc{[Inhabited α]} ile açıkça yazılır.
+
+\begin{dikkat}[Dikkat: Geleneksel mantık evreni boş olmayan kabul eder]
+Birinci mertebe mantığın geleneksel sunumlarında tanım evreninin boş
+olmadığı \emph{sessizce} varsayılır. \Lean{}'de ise tipler boş olabilir
+ve bu varsayım her seferinde açıkça yapılmalıdır. Bir kitaptaki ispatı
+\Lean{}'e aktarırken \lc{Inhabited} ya da \lc{Nonempty} varsayımının
+eksik olduğu yerler, çoğu zaman bu inceliğin gözden kaçtığı yerlerdir.
+\end{dikkat}
+
+% ---------------------------------------------------------------------
+\section{Curry--Howard: bağımlı tipler}\label{sec:curry-howard-3}
+
+Niceleyiciler, Curry--Howard tablosuna iki yeni satır ekler. Bunlar
+tablonun en derin satırlarıdır, çünkü \emph{bağımlı tiplere} karşılık
+gelirler (\cref{tab:curry-howard-3}).
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.55}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.6cm}
+                >{\raggedright\arraybackslash}p{4.6cm}
+                >{\raggedright\arraybackslash}p{4.4cm}}
+\rowcolor{tabloust}
+\tablobaslik{Mantık} & \tablobaslik{Tip kuramı} & \tablobaslik{Lean'deki kanıt} \\
+$P \to Q$                & fonksiyon tipi $P \to Q$                      & \lc{fun hp => ...} \\
+$\forall x{:}\alpha,\; P(x)$ & \textbf{bağımlı fonksiyon} tipi $\Pi_{x:\alpha} P(x)$ & \lc{fun x => ...} \\
+$P \wedge Q$             & çarpım tipi $P \times Q$                      & \lc{⟨hp, hq⟩} \\
+$\exists x{:}\alpha,\; P(x)$ & \textbf{bağımlı çift} tipi $\Sigma_{x:\alpha} P(x)$ & \lc{⟨t, ht⟩} \\
+$t = s$                  & eşitlik tipi                                   & \lc{rfl} \\
+\end{tabular}
+\caption{Curry--Howard eşlemesinin niceleyicilere genişlemesi. $\forall$,
+$\to$'nun; $\exists$ ise $\wedge$'nin bağımlı biçimidir.}
+\label{tab:curry-howard-3}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    lif/.style={draw=#1, fill=#1!8, thick, rounded corners=2pt,
+                minimum width=0.8cm, minimum height=1.7cm},
+  ]
+  % Π
+  \node[font=\baslikfont\bfseries\small, text=ikincil] at (2.2,2.75) {$\Pi_{x} P(x)$: her liften bir seçim};
+  \foreach \i in {0,...,4} {
+    \node[lif=ikincil] (l\i) at ({1.1*\i},0.9) {};
+    \node[font=\scriptsize, text=ikincil] at ({1.1*\i},2.0) {$P(\i)$};
+    \node[font=\scriptsize] at ({1.1*\i},-0.2) {$\i$};
+  }
+  \draw[ikincil, very thick] (0,0.6) -- (1.1,1.25) -- (2.2,0.75) -- (3.3,1.3) -- (4.4,0.8);
+  \foreach \i/\y in {0/0.6, 1/1.25, 2/0.75, 3/1.3, 4/0.8} \fill[ikincil] ({1.1*\i},\y) circle (2.6pt);
+  \draw[black!40] (-0.5,0.0) -- (4.9,0.0);
+  \node[font=\baslikfont\scriptsize, text=black!60] at (2.2,-0.65) {fonksiyon: her $x$ için bir kanıt};
+  % Σ
+  \node[font=\baslikfont\bfseries\small, text=vurgu] at (9.0,2.75) {$\Sigma_{x} P(x)$: bir lif ve ondan bir nokta};
+  \foreach \i in {0,...,4} {
+    \node[lif=vurgu, opacity=0.55] (m\i) at ({6.8+1.1*\i},0.9) {};
+    \node[font=\scriptsize, text=vurgu] at ({6.8+1.1*\i},2.0) {$P(\i)$};
+    \node[font=\scriptsize] at ({6.8+1.1*\i},-0.2) {$\i$};
+  }
+  \node[lif=vurgu, very thick] at (9.0,0.9) {};
+  \fill[vurgu] (9.0,1.05) circle (3pt);
+  \node[font=\baslikfont\scriptsize\bfseries, text=vurgu, anchor=west] (et) at (12.0,1.55) {$\langle 2, h\rangle$};
+  \draw[vurgu, thin, -{Stealth[length=1.6mm]}] (et.west) to[bend right=15] (9.08,1.1);
+  \draw[black!40] (6.3,0.0) -- (11.7,0.0);
+  \node[font=\baslikfont\scriptsize, text=black!60] at (9.0,-0.65) {çift: bir tanık ve onun lifinde bir kanıt};
+\end{tikzpicture}
+\caption{Bağımlı tiplerin geometrik resmi. Her $x$ üzerinde bir ``lif''
+$P(x)$ durur. $\Pi$ her liften bir eleman seçer; $\Sigma$ ise bir lif
+ve o liften bir eleman seçer.}
+\label{fig:pi-sigma}
+\end{figure}
+
+\begin{onemlifikir}[Önemli Fikir: Bağımlı tipler mantığın tamamını taşır]
+Bölüm~2'de \lc{→}, \lc{∧}, \lc{∨} için başlattığımız tablo, bağımlı
+tiplerle yüklemler mantığının tamamını kapsar. \Lean{}'in mantığı,
+özünde \emph{bağımlı tip kuramıdır}: Yeni bir mantık kuralı
+eklememize gerek kalmadan, yalnızca tipler ve fonksiyonlarla bütün
+matematiği ifade edebiliriz. Bu kuramın kesin tanımını
+\cref{bol:bagimli}'te vereceğiz \citep{martinlof1984, coquand1988}.
+\end{onemlifikir}
+
+% ---------------------------------------------------------------------
+\section{Taktik özeti}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\rowcolors{2}{tablosatir}{white}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.6cm}
+                             >{\raggedright\arraybackslash}p{1.5cm}
+                             >{\raggedright\arraybackslash}X}
+\rowcolor{tabloust}
+\tablobaslik{Taktik / terim} & \tablobaslik{Kural} & \tablobaslik{Ne yapar?} \\
+\leantac{intro x}                   & $\forall$G & Keyfi bir \lc{x} alır; hedef \lc{P x} olur. \\
+\lc{h t}, \leantac{specialize h t}  & $\forall$E & Genel hipotezi \lc{t}'ye uygular. \\
+\lc{⟨t, ht⟩}, \leantac{refine ⟨t, ?\_⟩} & $\exists$G & Tanığı \lc{t} olan bir varlık kanıtı kurar. \\
+\leantac{obtain ⟨a, ha⟩ := h}       & $\exists$E & Tanığa ad verir: \lc{a} ve \lc{ha : P a}. \\
+\lc{rfl}                            & $=$G       & \lc{t = t} hedefini kapatır. \\
+\leantac{rw [h]}, \leantac{rw [← h]} & $=$E      & Hedefte \lc{a}'yı \lc{b}'ye (ya da tersine) çevirir. \\
+\lc{h ▸ hp}                         & $=$E       & \lc{P a}'yı \lc{P b}'ye taşır. \\
+\lc{h.symm}, \lc{h₁.trans h₂}       & ---        & Simetri, geçişlilik. \\
+\lc{congrArg f h}                   & ---        & \lc{a = b}'den \lc{f a = f b}. \\
+\leankw{calc}                       & ---        & Eşitlik ya da eşitsizlik zinciri. \\
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\begin{arastirmanotu}
+\textbf{Tanıklar Prop'tan kaçamaz.} \Lean{}'de \lc{∃ x, P x} bir
+\lc{Prop}'tur ve \lc{Prop} kanıt-ilgisizdir. Bu yüzden bir varlık
+kanıtından tanığı \emph{bir program olarak} çıkaramayız: \leantac{obtain}
+yalnızca hedef de bir \lc{Prop} ise çalışır. Tanığı veri olarak
+istediğimizde ya \lc{Type} düzeyindeki bağımlı çifti (\lc{Σ x, P x} ya da
+\lc{\{x // P x\}}) kullanırız, ya da hesaplanamayan
+\lc{Classical.choose}'a başvururuz. Bu tasarım, \cref{bol:yapici-klasik}'teki
+``klasik akıl yürütme hesaplamayı bozmaz'' dengesinin bedelidir
+\citep{carneiro2019}.
+
+\textbf{Hilbert'in $\varepsilon$ operatörü.} Hilbert ve Ackermann'ın
+mantık sisteminde $\varepsilon x.\,P(x)$ terimi, $P$'yi sağlayan
+\emph{bir} nesneyi (varsa) gösterir \citep{hilbert1928}.
+\lc{Classical.choose}, bu fikrin tip kuramındaki karşılığıdır.
+
+\textbf{İleri okuma.} Birinci mertebe mantığın klasik bir sunumu için
+\citet{vandalen2013}; içki içen paradoksu ve benzeri mantık bulmacaları
+için \citet{smullyan1978}; tip kuramı açısından niceleyiciler için
+\citet{nederpelt2014}.
+\end{arastirmanotu}
+
+\begin{bolumozeti}
+\begin{itemize}
+  \item Bir yüklem \lc{α → Prop} türünde bir fonksiyondur.
+  \item $\forall$G: keyfi bir \lc{x} al (\leantac{intro}); $\forall$E:
+        genel kanıtı bir bireye uygula. $\forall$'nın kanıtı bağımlı bir
+        fonksiyondur.
+  \item $\exists$G: bir tanık ve kanıtını ver (\lc{⟨t, ht⟩}); $\exists$E:
+        tanığa ad ver (\leantac{obtain}). $\exists$'nin kanıtı bağımlı
+        bir çifttir.
+  \item $\neg\exists \leftrightarrow \forall\neg$ yapıcıdır;
+        $\neg\forall \to \exists\neg$ klasiktir. $\exists\forall \to
+        \forall\exists$ geçerlidir, tersi değildir.
+  \item Yerine koyarken bağlı değişkenler yakalanmamalıdır.
+  \item Eşitlik: \lc{rfl}, \leantac{rw}, \lc{▸}, \lc{calc}. Leibniz ilkesi
+        \Lean{}'de bir teoremdir.
+  \item Berber paradoksu yapıcı olarak ispatlanır. $\forall \to \exists$
+        yalnızca boş olmayan evrenlerde geçerlidir.
+\end{itemize}
+\end{bolumozeti}
+
+\begin{alistirmalar}
+\alistirma{1} \lc{(∀ x, P x ∧ Q x) → ∀ x, P x}. (\lc{a6\_1})
+
+\alistirma{1} \lc{(∀ x, P x) → (∀ x, Q x) → ∀ x, P x ∧ Q x}. (\lc{a6\_2})
+
+\alistirma{1} \lc{(∃ x, P x ∧ Q x) → ∃ x, P x}. (\lc{a6\_3})
+
+\alistirma{2} $\forall$'nın $\wedge$ üzerine dağıldığını ispatlayın:
+\lc{(∀ x, P x ∧ Q x) ↔ (∀ x, P x) ∧ (∀ x, Q x)}. (\lc{a6\_4})
+
+\alistirma{2} $\exists$'nin $\vee$ üzerine dağıldığını ispatlayın:
+\lc{(∃ x, P x ∨ Q x) ↔ (∃ x, P x) ∨ (∃ x, Q x)}. (\lc{a6\_5})
+
+\alistirma{2} \lc{(∃ x, P x ∧ Q x) → (∃ x, P x) ∧ (∃ x, Q x)}. Tersinin
+neden yanlış olduğunu doğal sayılar üzerinde bir karşı örnekle
+gösterin. (\lc{a6\_6})
+
+\alistirma{2} \lc{(∀ x, P x → Q x) → (∃ x, P x) → ∃ x, Q x}. (\lc{a6\_7})
+
+\alistirma{2} \lc{a = b} ve \lc{c = b} ise \lc{a = c}. Önce terim modunda
+(\lc{symm}, \lc{trans}), sonra \leantac{rw} ile ispatlayın. (\lc{a6\_8})
+
+\alistirma{2} \lc{a = b → f (f a) = f (f b)}. (\lc{a6\_9})
+
+\alistirma{3} (Klasik) \lc{(¬ ∀ x, P x) ↔ ∃ x, ¬ P x}. Hangi yön klasik
+mantık gerektiriyor? (\lc{a6\_10})
+
+\alistirma{3} (Klasik) \textbf{İçki içen paradoksu}: \lc{[Inhabited α]}
+varsayımıyla \lc{∃ x, P x → ∀ y, P y}. ``Bir barda öyle biri vardır ki,
+o içiyorsa herkes içiyordur.'' Bu önerme neden paradoks gibi görünür?
+\lc{Inhabited} varsayımı neden gereklidir? (\lc{a6\_11})
+
+\alistirma{3} Berber paradoksunun genel hâli:
+\lc{¬ ∃ x, ∀ y, R x y ↔ ¬ R y y}. Bu teoremden berber paradoksunu
+tek satırda elde edin. (\lc{a6\_12})
+
+\alistirma{2} (Kâğıt-kalem) Aşağıdaki önermelerde serbest ve bağlı
+değişkenleri belirleyin; ardından $x$ yerine $y + 1$ terimini
+yakalamadan koyun:
+(a) $\forall y,\; x < y$; \quad (b) $(\exists x,\; P(x)) \wedge Q(x)$.
+
+\alistirma{3} (Kâğıt-kalem) $\forall$G kuralındaki öz değişken koşulu
+çiğnenirse $P(a) \to \forall x\,P(x)$ ``ispatlanabilir''. Bu yanlış
+türetimi yazın ve hangi adımın kuralı çiğnediğini gösterin.
+\end{alistirmalar}
