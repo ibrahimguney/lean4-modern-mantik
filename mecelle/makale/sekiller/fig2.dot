@@ -1,0 +1,13 @@
+digraph G {
+  graph [fontname="Helvetica", fontsize=11, nodesep=0.45, ranksep=0.55];
+  node [fontname="Helvetica", fontsize=10, shape=box, style="rounded", width=0.6, height=0.32];
+  edge [fontname="Helvetica", fontsize=9];
+  a5 [label="Art. 5"]; a4 [label="Art. 4"]; a5 -> a4 [label=" + K1"];
+  a21 [label="Art. 21"]; a22 [label="Art. 22"]; a21t [label="Art. 21′ (restricted)"];
+  a21 -> a21t [label=" entails"]; a22 -> a21 [dir=both, style=dashed, arrowhead=tee, arrowtail=tee, label=" conflict (B4)"];
+  a17 [label="Art. 17"]; a17 -> a21 [style=dotted, arrowhead=onormal, label=" not derivable\n even with K2"];
+  a27 [label="Art. 27"]; a26 [label="Art. 26"]; a25 [label="Art. 25"]; a19 [label="Art. 19"];
+  a27 -> a26 [label=" + K3"]; a25 -> a19 [label=" + K5"];
+  a25 -> a27 [dir=both, style=dashed, arrowhead=tee, arrowtail=tee, label=" conflict\n without K4"];
+  a25 -> a26 [dir=both, style=dashed, arrowhead=tee, arrowtail=tee, label=" conflict\n without K3, K4"];
+}

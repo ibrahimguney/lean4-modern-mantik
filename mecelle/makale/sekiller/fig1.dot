@@ -1,0 +1,15 @@
+graph G {
+  graph [fontname="Helvetica", fontsize=11, nodesep=0.25, ranksep=0.35, compound=true, newrank=true, rankdir=LR];
+  node [fontname="Helvetica", fontsize=10, shape=box, style="rounded", width=0.55, height=0.32];
+  edge [fontname="Helvetica", fontsize=8, color="#555555"];
+  subgraph cluster_a { label="Intention"; style=dashed; color="#888888"; a2 [label="Art. 2"]; }
+  subgraph cluster_b { label="Certainty"; style=dashed; color="#888888"; a4 [label="Art. 4"]; a5 [label="Art. 5"]; a4 -- a5 [label="yakin, hukumA"]; }
+  subgraph cluster_c { label="Hardship / necessity (via K2)"; style=dashed; color="#888888";
+     a17 [label="Art. 17"]; a21 [label="Art. 21"]; a22 [label="Art. 22"];
+     a21 -- a22 [label="zaruret, aslenMemnu, mubah"]; a17 -- a21 [style=dotted, label="K2"]; }
+  subgraph cluster_d { label="Harm"; style=dashed; color="#888888";
+     a19 [label="Art. 19"]; a20 [label="Art. 20"]; a25 [label="Art. 25"]; a26 [label="Art. 26"]; a27 [label="Art. 27"];
+     a20 -- a26 [label="zarar"]; a20 -- a27 [label="zarar"]; a26 -- a27 [label="zarar, tedbirCaiz"];
+     a25 -- a26 [label="tedbirCaiz"]; a25 -- a27; a19 -- a25 [label="tedbirCaiz"]; }
+  subgraph cluster_e { label="Custom"; style=dashed; color="#888888"; a36 [label="Art. 36"]; }
+}
