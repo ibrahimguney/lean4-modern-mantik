@@ -105,9 +105,15 @@ add(
   new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [
     new TextRun({ text: "Maxims as Formulas: A Machine-Checked Propositional Analysis of the Universal Rules of the Ottoman Mecelle", bold: true, size: 32 }),
   ] }),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: "İbrahim GÜNEY", size: 24 })] }),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: "[Affiliation]", size: 22, italics: true })] }),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 360 }, children: [new TextRun({ text: "ibrahimguney16@gmail.com", size: 22 })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+    new TextRun({ text: "İbrahim GÜNEY", size: 24 }), new TextRun({ text: "1,*", size: 24, superScript: true }),
+    new TextRun({ text: "  and  Nuri AKSOY", size: 24 }), new TextRun({ text: "2", size: 24, superScript: true })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [
+    new TextRun({ text: "1", size: 20, superScript: true }), new TextRun({ text: " [Affiliation]", size: 22, italics: true })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+    new TextRun({ text: "2", size: 20, superScript: true }), new TextRun({ text: " [Affiliation]", size: 22, italics: true })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 360 }, children: [
+    new TextRun({ text: "*", size: 20, superScript: true }), new TextRun({ text: " Corresponding author: ibrahimguney16@gmail.com", size: 22 })] }),
   NOTE("**Working draft v0.1 (28 October 2026). Not for circulation.** This draft reports the pilot study (12 of the 99 maxims). Passages marked [TO EXTEND] will be written once the full corpus and the two books (Sale; Usurpation and Destruction) are formalised; passages marked [VERIFY] depend on sources still to be checked against printed editions. Target length: about 12,000 words."),
 );
 
@@ -438,7 +444,7 @@ add(
 
 // ---------------------------------------------------------------------
 const doc = new Document({
-  creator: "İbrahim GÜNEY",
+  creator: "İbrahim GÜNEY; Nuri AKSOY",
   title: "Maxims as Formulas",
   styles: {
     default: { document: { run: { font: SERIF, size: 24 } } },
