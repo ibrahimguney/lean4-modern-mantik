@@ -17,6 +17,7 @@ import ModernMantik.Bolum14
 import ModernMantik.Bolum15
 import ModernMantik.Bolum16
 import ModernMantik.Mecelle.Pilot
+import ModernMantik.Mecelle.Uzanti
 import ModernMantik.Alistirmalar.Bolum02
 import ModernMantik.Alistirmalar.Bolum03
 import ModernMantik.Alistirmalar.Bolum04
