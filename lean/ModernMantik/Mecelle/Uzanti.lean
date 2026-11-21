@@ -3,7 +3,7 @@
   Mecelle'nin külli kaideleri: pilot çalışmanın uzantısı
 
   Kapsam: md. 13, 23, 24, 36, 51, 64, 85, 87, 100 ve Kitâbü'l-Büyû'dan
-  md. 236, 251, 293, 294, 344, 348, 350, 369.
+  md. 236, 251, 293, 294, 344, 350, 369.
   Okuma ilkesi ve nesne dili `Pilot.lean` ile aynıdır: her formül, bir
   kaide şemasının tek bir olaydaki örneğidir. Atom numaraları 22'den başlar.
 
@@ -34,7 +34,7 @@ def akit         : Formul := atom 29  -- satış akdi kurulmuştur
 def teslim       : Formul := atom 30  -- satılan mal alıcıya teslim edilmiştir
 def yararAlici   : Formul := atom 31  -- satılan malın ürün ve artışı alıcıya aittir
 def hasarAlici   : Formul := atom 32  -- satılan malın telef hasarı alıcıya aittir
--- Örtük rıza (md. 100; md. 344, 348, 350)
+-- Örtük rıza (md. 100; md. 344, 350)
 def bilgi        : Formul := atom 33  -- alıcı eski ayıbı bilmektedir
 def tasarruf     : Formul := atom 34  -- alıcı malda mülkiyet gereği bir tasarrufta bulunmuştur
 def riza         : Formul := atom 35  -- alıcı ayıba razı olmuştur
@@ -75,8 +75,10 @@ def md293 : Formul := akit ⋀ ∼teslim ⟹ ∼hasarAlici
 def md294 : Formul := akit ⋀ teslim ⟹ hasarAlici
 -- md. 369  Kurulmuş satışın hükmü mülkiyettir (yarar mülkiyeti izler).
 def md369 : Formul := akit ⟹ yararAlici
--- md. 348  Geri vermek mümkünken, ayıbı öğrendikten sonra satan bedel eksikliğini isteyemez.
-def md348 : Formul := bilgi ⋀ tasarruf ⋀ iadeMumkun ⟹ ∼kusurHakki
+-- md. 344′ md. 344'ün md. 350 ile kısıtlanmış biçimi: geri vermek mümkünken ayıbı
+--          öğrendikten sonra tasarruf eden alıcı ayıp hakkını kaybeder.
+--          (Önceki sürümde yanlışlıkla md. 348 diye anılmıştı.)
+def md344t : Formul := bilgi ⋀ tasarruf ⋀ iadeMumkun ⟹ ∼kusurHakki
 -- md. 350  Geri vermeye engel varsa, ayıbı öğrendikten sonra satsa bile bedel eksikliğini alır.
 def md350 : Formul := bilgi ⋀ tasarruf ⋀ ∼iadeMumkun ⟹ kusurHakki
 -- ANCHOR_END: maddeler
@@ -93,7 +95,7 @@ def K9 : Formul := bilgi ⋀ tasarruf ⟹ riza        -- bilerek tasarruf ayıba
 
 macro "ac2" : tactic => `(tactic|
   simp only [hepsi, tepe, degil, esd, md13, md21, md21t, md22, md23, md24, md36, md51,
-    md64, md85, md87, md100, md236, md293, md294, md369, md348, md350, K6, K7, K8, K9,
+    md64, md85, md87, md100, md236, md293, md294, md369, md344t, md350, K6, K7, K8, K9,
     zaruret, aslenMemnu, mubah, miktariAsar, orf, orfeGore, maniZail, avdet, sakit,
     tasrih, delaletGore, mutlak, mutlakGore, akit, teslim, yararAlici, hasarAlici,
     bilgi, tasarruf, riza, iadeMumkun, kusurHakki, deger] at *)
@@ -243,7 +245,7 @@ theorem md293_kaideden_cikmaz : ¬ Sonuc [md85, md87t, md369] md293 := by
   intro h; have := h (model [29, 31, 32]) (by decide); revert this; decide
 -- ANCHOR_END: yarar_hasar
 
-/-! ### U12–U14. Örtük rıza (md. 100; md. 344, 348, 350) -/
+/-! ### U12–U14. Örtük rıza (md. 100; md. 344, 350) -/
 
 -- ANCHOR: ortuk_riza
 -- U12. K9 ve md. 100'den genel bir şema çıkar: ayıbı bilerek tasarruf eden,
@@ -266,7 +268,7 @@ theorem sema_md350_catisir :
   generalize v 36 = d; generalize v 37 = e
   revert a b c d e; decide
 
--- U14. Köprü "iade mümkünse" koşuluyla daraltılınca çatışma kalkar ve md. 348 çıkar.
+-- U14. Köprü "iade mümkünse" koşuluyla daraltılınca çatışma kalkar ve md. 344′ çıkar.
 def K9t : Formul := bilgi ⋀ tasarruf ⋀ iadeMumkun ⟹ riza
 
 theorem K9_K9tyi_gerektirir : Sonuc [K9] K9t := by
@@ -276,7 +278,7 @@ theorem K9_K9tyi_gerektirir : Sonuc [K9] K9t := by
   generalize v 33 = a; generalize v 34 = b; generalize v 35 = c; generalize v 36 = d
   revert a b c d; decide
 
-theorem md348_kaideden : Sonuc [K9t, md100] md348 := by
+theorem md344t_kaideden : Sonuc [K9t, md100] md344t := by
   intro v h
   have h1 := h K9t (by simp); have h2 := h md100 (by simp)
   simp only [K9t] at *; ac2; revert h1 h2
@@ -285,7 +287,7 @@ theorem md348_kaideden : Sonuc [K9t, md100] md348 := by
   revert a b c d e; decide
 
 theorem riza_tahsisi_tutarli :
-    Saglanabilir (hepsi [K9t, md100, md348, md350, bilgi, tasarruf, ∼iadeMumkun]) :=
+    Saglanabilir (hepsi [K9t, md100, md344t, md350, bilgi, tasarruf, ∼iadeMumkun]) :=
   ⟨model [33, 34, 37], by decide⟩
 -- ANCHOR_END: ortuk_riza
 
