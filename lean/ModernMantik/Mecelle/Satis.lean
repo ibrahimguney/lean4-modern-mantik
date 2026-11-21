@@ -16,6 +16,7 @@ open Bolum10 Bolum10.Formul Mecelle.Kulliyat
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 100000
 set_option synthInstance.maxHeartbeats 2000000
+set_option synthInstance.maxSize 100000
 set_option maxHeartbeats 4000000
 
 /-! ## 1. Satış Kitabı atomları -/
